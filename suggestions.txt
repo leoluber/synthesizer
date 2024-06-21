@@ -1,0 +1,231 @@
+
+----------------------------------------------------   2024-06-12   ----------------------------------------------------
+L-SYNTH-0001
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Butanol- as an antisolvent 
+to make NPLs in the range of [470, 505]nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  3293.845877387308', 'c (PbBr2) :  0.002116746576554944', 'V (PbBr2 prec.) :  3036.723915928975', 'V (Cs-OA) :  165.43676357804094']
+KRR predicted PLQY for this sample:   [0.91864506]
+KRR predicted peak position:   [502.88803612]
+
+[ DEV -->   KRR_PLQY range: [470, 505],  Opt. Iterations: 100]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-06-12   ----------------------------------------------------
+L-SYNTH-0002
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Methanol- as an antisolvent 
+to make NPLs in the range of [470, 505]nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  2366.0168348184566', 'c (PbBr2) :  0.00695813789366043', 'V (PbBr2 prec.) :  3147.510657613169', 'V (Cs-OA) :  174.22324940129212']
+KRR predicted PLQY for this sample:   [0.6221737]
+KRR predicted peak position:   [493.58239779]
+
+[ DEV -->   KRR_PLQY range: [470, 505],  Opt. Iterations: 100]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-06-12   ----------------------------------------------------
+L-SYNTH-0003
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Propanol- as an antisolvent 
+to make NPLs in the range of [470, 505]nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  3360.0', 'c (PbBr2) :  0.002', 'V (PbBr2 prec.) :  4960.0', 'V (Cs-OA) :  168.95319815844144']
+KRR predicted PLQY for this sample:   [0.53847683]
+KRR predicted peak position:   [499.99526557]
+
+[ DEV -->   KRR_PLQY range: [470, 505],  Opt. Iterations: 100]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-06-13   ---------------------------------------------------- !!
+L-SYNTH-0004
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Butanol- as an antisolvent 
+to make NPLs in the range of [450, 465]nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  4435.0', 'c (PbBr2) :  0.0124', 'V (PbBr2 prec.) :  4960.0', 'V (Cs-OA) :  398.5918814227391']
+KRR predicted PLQY for this sample:   [0.99830913]
+KRR predicted peak position:   [453.21194386]
+
+[ DEV -->   KRR_PLQY range: [440, 510],  Opt. Iterations: 70]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-06-13   ---------------------------------------------------- !!!!!!!!!!!
+L-SYNTH-0005
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Methanol- as an antisolvent 
+to make NPLs in the range of [450, 465]nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  347.5499697129302', 'c (PbBr2) :  0.06086636015149435', 'V (PbBr2 prec.) :  2789.4664831337586', 'V (Cs-OA) :  188.661080950982']
+KRR predicted PLQY for this sample:   [0.42396159]
+KRR predicted peak position:   [454.5402769]
+
+[ DEV -->   KRR_PLQY range: [440, 510],  Opt. Iterations: 70]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-06-13   ---------------------------------------------------- !!!!!
+L-SYNTH-0006
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Methanol- as an antisolvent 
+to make NPLs in the range of [470, 490]nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  962.2197645796746', 'c (PbBr2) :  0.006064462764410275', 'V (PbBr2 prec.) :  3482.7045788969094', 'V (Cs-OA) :  196.19347474240098']
+KRR predicted PLQY for this sample:   [0.44983677]
+KRR predicted peak position:   [480.43914888]
+
+[ DEV -->   KRR_PLQY range: [470, 510],  Opt. Iterations: 70]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-06-13   ----------------------------------------------------
+L-SYNTH-0007
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Butanol- as an antisolvent 
+to make NPLs in the range of [470, 490]nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  2843.116193382821', 'c (PbBr2) :  0.002', 'V (PbBr2 prec.) :  3549.224864891405', 'V (Cs-OA) :  318.02770474486925']
+KRR predicted PLQY for this sample:   [0.49900875]
+KRR predicted peak position:   [484.68750579]
+
+[ DEV -->   KRR_PLQY range: [470, 510],  Opt. Iterations: 70]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-06-13   ---------------------------------------------------- !!!!!!!!
+L-SYNTH-0008
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Ethanol- as an antisolvent 
+to make NPLs in the range of [455, 465]nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  892.3323155542471', 'c (PbBr2) :  0.003447551615350996', 'V (PbBr2 prec.) :  4691.8378191814045', 'V (Cs-OA) :  248.58640280445172']
+KRR predicted PLQY for this sample:   [0.48956149]
+KRR predicted peak position:   [460.90708623]
+
+[ DEV -->   KRR_PLQY range: [440, 470],  Opt. Iterations: 70]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-06-13   ----------------------------------------------------
+L-SYNTH-0009
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Butanol- as an antisolvent 
+to make NPLs in the range of [470, 510]nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  4435.0', 'c (PbBr2) :  0.074', 'V (PbBr2 prec.) :  2388.0669054511436', 'V (Cs-OA) :  68.0']
+KRR predicted PLQY for this sample:   [0.45941027]
+KRR predicted peak position:   [475.29743739]
+
+[ DEV -->   KRR_PLQY range: [400, 550],  Opt. Iterations: 100]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-06-18   ----------------------------------------------------
+L-SYNTH-706
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Ethanol- as an antisolvent 
+to make NPLs around 480nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  4435.0', 'c (PbBr2) :  0.047333732711958364', 'V (PbBr2 prec.) :  675.0', 'V (Cs-OA) :  169.24011544236996']
+with the following As/Pb ratio: 138.80947041200568
+KRR predicted PLQY for this sample:   [0.31260947]
+KRR predicted peak position:   [479.84826513]
+
+[ DEV -->   KRR_PLQY range: [400, 550],  Opt. Iterations: 50]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-06-18   ----------------------------------------------------
+L-SYNTH-372
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Propanol- as an antisolvent 
+to make NPLs around 480nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  1708.8599933581825', 'c (PbBr2) :  0.002', 'V (PbBr2 prec.) :  4787.539110544837', 'V (Cs-OA) :  368.4887475012902']
+with the following As/Pb ratio: 178.4695596109406
+KRR predicted PLQY for this sample:   [0.21608247]
+KRR predicted peak position:   [477.52303482]
+
+[ DEV -->   KRR_PLQY range: [400, 550],  Opt. Iterations: 50]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-06-18   ----------------------------------------------------
+L-SYNTH-436
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Ethanol- as an antisolvent 
+to make NPLs around 485nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  2953.4347078919222', 'c (PbBr2) :  0.008256257488369823', 'V (PbBr2 prec.) :  2352.8904476474495', 'V (Cs-OA) :  182.53861497206438']
+with the following As/Pb ratio: 152.03460105428357
+KRR predicted PLQY for this sample:   [0.46022497]
+KRR predicted peak position:   [485.11589878]
+
+[ DEV -->   KRR_PLQY range: [400, 550],  Opt. Iterations: 50]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-06-18   ----------------------------------------------------
+L-SYNTH-905
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Propanol- as an antisolvent 
+to make NPLs around 475nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  3185.00360573511', 'c (PbBr2) :  0.004094685445495044', 'V (PbBr2 prec.) :  4155.797684997279', 'V (Cs-OA) :  288.7700707444399']
+with the following As/Pb ratio: 187.1694597188478
+KRR predicted PLQY for this sample:   [0.32946657]
+KRR predicted peak position:   [475.7774285]
+
+[ DEV -->   KRR_PLQY range: [440, 510],  Opt. Iterations: 50]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-06-18   ---------------------------------------------------- (with extra As_Pb constraints)
+L-SYNTH-361
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Butanol- as an antisolvent 
+to make NPLs around 470nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  2214.7634402371896', 'c (PbBr2) :  0.0031663387627195714', 'V (PbBr2 prec.) :  2894.631565101233', 'V (Cs-OA) :  242.33075636132364']
+with the following As/Pb ratio: 241.64436636990905
+KRR predicted PLQY for this sample:   [0.76663438]
+KRR predicted peak position:   [476.26833593]
+
+[ DEV -->   KRR_PLQY range: [440, 510],  Opt. Iterations: 50]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-06-21   ----------------------------------------------------
+L-SYNTH-952
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Ethanol- as an antisolvent 
+to make NPLs around 475nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  4945.0', 'c (PbBr2) :  0.010000000000000002', 'V (PbBr2 prec.) :  3752.085931416989', 'V (Cs-OA) :  49.0']
+with the following As/Pb ratio: 131.79335682571912
+KRR predicted PLQY for this sample:   [0.32824105]
+KRR predicted peak position:   [474.86702528]
+
+[ DEV -->   KRR_PLQY range: [440, 510],  Opt. Iterations: 50]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
