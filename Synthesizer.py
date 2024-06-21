@@ -47,6 +47,9 @@ class Synthesizer:
             # sampling
         self.limits =     self.get_limits()
 
+            # results
+        self.results = None
+
 
 
 ### ------------------------ SAMPLING ------------------------ ###
@@ -78,11 +81,9 @@ class Synthesizer:
             # calculate As_Pb ratio
             As_Pb_ratio = x[0][0] / ((x[0][1]*x[0][2]))
             max_As_Pb_ratio = self.datastructure_NPL.max_min["AS_Pb_ratio"][0]
+            min_As_Pb_ratio = self.datastructure_NPL.max_min["AS_Pb_ratio"][1]
             As_Pb_ratio = As_Pb_ratio / max_As_Pb_ratio                                                # -------> normalize As_Pb ratio, might change to different method !!!!!!!!
 
-            """
-                For Butanol it would be a good idea to add constraints to the ratio
-            """
 
             # add the one hot encoded molecule to both inputs
             input = np.array(self.one_hot_molecule)
@@ -95,13 +96,15 @@ class Synthesizer:
             PLQY = self.PLQY_model.predict([input])
             NPL = self.NPL_model.predict([NPL_input])
 
-            return (1 - PLQY)**2  + ((NPL - self.peak)**2)            # minimize the distance to the perfect peak position
-            #return (1 - PLQY)**2  * ((NPL - self.peak)**2)             # minimize the distance to the perfect peak position
+            return (1 - PLQY)**2  + ((NPL - self.peak)**2)              # minimize the distance to the perfect peak position
+            #return (1 - PLQY)**2  * ((NPL - self.peak)**2)             # same but different weighting
 
 
         # optimize
         optimizer = BayesianOptimization(f = f, domain = bounds)
         optimizer.run_optimization(max_iter = self.iterations)
+
+        self.results = self.return_results(optimizer.x_opt)
 
         return optimizer.x_opt, optimizer.fx_opt
 
@@ -146,7 +149,8 @@ class Synthesizer:
         for i, parameter in enumerate(self.parameters_PLQY):
             limits[parameter] = [min([sample[i] for sample in samples]), max([sample[i] for sample in samples])]
         
-        limits["c (PbBr2)"][0] = 0.1
+        # extra limits can improve the optimization
+        #limits["c (PbBr2)"][0] = 0.1
 
         return limits
     
@@ -195,6 +199,36 @@ class Synthesizer:
 
 
 ### ------------------------ PRINTING AND TESTING ------------------------ ###
+
+    def return_results(self, x):
+        """
+            return the results from the optimization 
+        """
+
+        results = {}
+
+        # get As/Pb ratio
+        max_As_Pb_ratio =  self.datastructure_NPL.max_min["AS_Pb_ratio"][0]
+        results["As_Pb_ratio"] =      x[0] / (x[1] * x[2] * max_As_Pb_ratio)
+
+        # get initial input that leads to the best plqy value
+        one_hot =                   np.array(self.one_hot_molecule)
+        input_NPL =                 np.append(one_hot, results["As_Pb_ratio"])
+        input_PLQY =                np.append(one_hot, x)
+        results["input_NPL"] =      [value for value in input_NPL]
+        results["input_PLQY"] =     [value for value in input_PLQY]
+
+
+        # denormalize the parameters
+        results["results_string"] = []
+        denorm = {}
+        for i, parameter in enumerate(self.parameters_PLQY):
+            denorm[parameter] = self.datastructure_PLQY.denormalize(x[i], parameter)
+            results["results_string"].append(f"{parameter} :  {denorm[parameter]}")
+        results["As_Pb_ratio_denorm"] = denorm["V (antisolvent)"] / (denorm["c (PbBr2)"] * denorm["V (PbBr2 prec.)"])
+
+        return results
+
 
 
     def print_results(self, results_string, x, x_peak_pos, As_Pb_ratio):

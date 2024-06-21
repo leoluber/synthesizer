@@ -9,7 +9,7 @@ from helpers import *
     - bounds given by min/max of all data points
     - uses GPyOpt for optimization
     - constraints taken from the #ML model
-    - objective function: (1-PLQY)**2 * (target_peak_pos - peak_pos)**2
+    - objective function: (1-PLQY)**2 + (target_peak_pos - peak_pos)**2
 """
 
 
@@ -26,31 +26,16 @@ def main():
     print(f"opt_x: {opt_x}")
     print(f"opt_delta: {opt_delta}")
 
-    # get As/Pb ratio
-    max_As_Pb_ratio =  synthesizer.datastructure_NPL.max_min["AS_Pb_ratio"][0]
-    As_Pb_ratio =      opt_x[0] / (opt_x[1] * opt_x[2] * max_As_Pb_ratio)
-
-
-    # get initial input that leads to the best plqy value
-    input =             np.array(synthesizer.one_hot_molecule)
-    peak_pos_input =    np.append(input, As_Pb_ratio)
-    input =             np.append(input, opt_x)
-    x =                 [value for value in input]
-    x_peak_pos =        [value for value in peak_pos_input]
-
-
-    # denormalize the parameters
-    results_string = []
-    denorm = {}
-    for i, parameter in enumerate(synthesizer.parameters_PLQY):
-        denorm[parameter] = synthesizer.datastructure_PLQY.denormalize(opt_x[i], parameter)
-        results_string.append(f"{parameter} :  {denorm[parameter]}")
-    As_Pb_ratio_denorm = denorm["V (antisolvent)"] / (denorm["c (PbBr2)"] * denorm["V (PbBr2 prec.)"])
+    # get results
+    results_string =        synthesizer.results["results_string"]
+    input_NPL =             synthesizer.results["input_NPL"]
+    input_PLQY =            synthesizer.results["input_PLQY"]
+    As_Pb_ratio_denorm =    synthesizer.results["As_Pb_ratio_denorm"]
 
 
     # handle results (all done by the synthesizer class)
-    synthesizer.print_results(results_string, x, x_peak_pos, As_Pb_ratio_denorm)                 #-->  print results
-    synthesizer.test_results(x)                                                                  #-->  test results against Gaussian Process
+    synthesizer.print_results(results_string, input_PLQY, input_NPL, As_Pb_ratio_denorm)                  # -->  print results
+    synthesizer.test_results(input_PLQY)                                                                  # -->  test results against Gaussian Process
     synthesizer.plot_suggestions(opt_x[:3], synthesizer.datastructure_PLQY, parameters=synthesizer.datastructure_PLQY.synthesis_training_selection[:3])
     plt.show()
 
