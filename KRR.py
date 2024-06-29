@@ -212,11 +212,11 @@ class Ridge:
         plt.scatter(self.training_data, self.targets, color='blue', label='Data')
         plt.plot(x_vec, y_vec, label='KRR')
         plt.title('KRR - 1D MAP')
-        plt.legend()
-        plt.show()
+        #plt.legend()
+        #plt.show()
 
 
-    def visualize_kernel(self, ax, threshhold = 0.4):
+    def visualize_kernel(self, ax, threshhold = [0.2, 0.3, 0.4]):
         """
             Visualizes the kernel function
             (only for 3D data)
@@ -224,16 +224,28 @@ class Ridge:
         X = np.linspace(0, 0.5, 30)
         Y = np.linspace(0, 0.5, 30)
         Z = np.linspace(0, 1, 30)
-        sheet = np.ones((30, 30))
+        sheet_04 = np.ones((30, 30))
+        sheet_03 = np.ones((30, 30))
+        sheet_02 = np.ones((30, 30))
         for i, x in enumerate(X):
             for j, y in enumerate(Y):
                 for z in Z:
                     plqy = self.model.predict([[x, y, z]])
-                    if np.round(plqy, 1) == threshhold:
-                        sheet[i,j] = z
-                        #ax.scatter(x, y, z, color='red', marker="+", s=10, label = f"Pred. PLQY = {threshhold}")	
-                        break
+                    for thresh in threshhold:
+                        if np.round(plqy, 1) == thresh:
+                            if thresh == 0.2:
+                                sheet_02[i,j] = z
+                            elif thresh == 0.3:
+                                sheet_03[i,j] = z
+                            elif thresh == 0.4:
+                                sheet_04[i,j] = z
+                            break
+                for sheet in [sheet_02, sheet_03, sheet_04]:
+                    if sheet[i,j] == 1: sheet[i,j] = np.nan
+        
         X, Y = np.meshgrid(X, Y)
-        ax.plot_surface(X, Y, sheet, alpha=0.4, label = f"Pred. PLQY = {threshhold}")
+        for sheet, threshhold in zip([sheet_02, sheet_03, sheet_04], threshhold):
+            ax.plot_surface(X, Y, sheet, alpha=0.4, label = f"Pred. PLQY = {threshhold}")
         plt.legend()
+
         plt.show()

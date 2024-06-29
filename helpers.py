@@ -177,22 +177,29 @@ def plot_critical_As_Pb_ratio():
     """
         Plot the critical As/Pb ratio over molecule properties
     """
+    data = [{"molecule" : "Methanol", "dipole": 1.7, "relative_polarity" : 0.762, "hansen": 22.3, "chain_length" : 0, "critical_470nm" : 38, "critical_480nm" : 56,},
+            {"molecule" : "Ethanol",  "dipole": 1.68, "relative_polarity" : 0.654, "hansen": 19.4, "chain_length" : 1, "critical_470nm" : 131, "critical_480nm" : 139,},
+            {"molecule" : "Propanol", "dipole": 1.65, "relative_polarity" : 0.617, "hansen": 17.4, "chain_length" : 2, "critical_470nm" : 177, "critical_480nm" : 186,},
+            {"molecule" : "Butanol",  "dipole": 1.66, "relative_polarity" : 0.586, "hansen": 15.8, "chain_length" : 3, "critical_470nm" : 242, "critical_480nm" : 247,},
+            {"molecule" : "Cyclopentanone", "dipole": 3.3, "relative_polarity" : 0.269, "hansen": 5.2, "critical_470nm" : 83, "critical_480nm" : 156,},
+            {"molecule" : "Acetone",  "dipole": 2.86, "relative_polarity" : 0.355, "hansen": 7, "critical_470nm" : 210, "critical_480nm" : 300,},
+            ]
 
-    molecules = ["Methanol", "Ethanol", "Butanol", "Propanol",] # "Cyclopentanone"]
-    relative_polarities = [0.762, 0.654, 0.586, 0.617,] # 0.269]
-    hansen = [22.3, 19.4, 15.8, 17.4,] # 5.2]
-    chain_length = [1, 2, 4, 3,]
 
-    critical_470nm = [38, 131, 242, 177,] # 83]
-    critical_480nm = [56, 139, 247, 186,]# 156]
+    #chain_length = [data_point["chain_length"] for data_point in data]
+    hansen = [data_point["hansen"] for data_point in data]
+    dipole_moment = [data_point["dipole"] for data_point in data]
+    #chain_length = [data_point["chain_length"] for data_point in data]
+    relative_polarity = [data_point["relative_polarity"] for data_point in data]
+    critical_470nm = [data_point["critical_470nm"] for data_point in data]
+    #critical_480nm = [data_point["critical_480nm"] for data_point in data]
 
+    PARAMETER = dipole_moment
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x = chain_length, y = critical_470nm, mode = 'markers', name = '470nm', marker = dict(size = 10)))
-    fig.add_trace(go.Scatter(x = chain_length, y = critical_480nm, mode = 'markers', name = '480nm', marker = dict(size = 10)))
+    fig.add_trace(go.Scatter(x = PARAMETER, y = critical_470nm, mode = 'markers', name = '470nm', marker = dict(size = 10)))
+    #fig.add_trace(go.Scatter(x = PARAMETER, y = critical_480nm, mode = 'markers', name = '480nm', marker = dict(size = 10)))
     fig.update_layout(title = 'Critical As/Pb ratio over molecule properties',
-                      #xaxis_title = 'Hansen Solubility Parameter [MPa^0.5]',
-                      #xaxis_title = 'Relative Polarity',
-                      xaxis_title = 'Chain Length',
+                      xaxis_title = 'dipole_moment',
                       yaxis_title = 'Critical As/Pb ratio',
                       legend_title = 'Peak position',
                       )

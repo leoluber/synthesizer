@@ -163,6 +163,8 @@ class GaussianProcess:
             return GPy.kern.Exponential(input_dim)
         elif kernel == "LIN":
             return GPy.kern.Linear(input_dim)
+        elif kernel == "POLY":
+            return GPy.kern.Poly(input_dim)
         else:
             raise ValueError("Kernel not supported")
 

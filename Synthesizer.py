@@ -23,10 +23,14 @@ class Synthesizer:
                  molecule : str,
                  iterations : int,
                  peak : int,
+                 obj : str = ["PEAK_POS", "PLQY", "FWHM"]
                 ):
         
+            # set of parameters used in the objective function
+        self.obj = obj
+
             # main initialization
-        self.datastructure_NPL, self.datastructure_PLQY = self.get_datastructures()
+        self.datastructure_NPL, self.datastructure_PLQY, self.datastructure_FWHM= self.get_datastructures()
         self.iterations = iterations
         self.molecule_names = self.datastructure_NPL.molecule_names
         self.one_hot_molecule = self.one_hot_encode_molecule(molecule)
@@ -35,17 +39,23 @@ class Synthesizer:
         self.peak = peak
 
             # data
-        self.inputs_NPL, self.peak_pos =  self.get_data(self.datastructure_NPL)
-        self.inputs_PLQY, self.PLQY   =   self.get_data(self.datastructure_PLQY)
-        self.parameters_NPL  =            self.datastructure_NPL.synthesis_training_selection
-        self.parameters_PLQY =            self.datastructure_PLQY.synthesis_training_selection
+        self.inputs_NPL, self.peak_pos =        self.get_data(self.datastructure_NPL)
+        self.inputs_PLQY, self.PLQY   =         self.get_data(self.datastructure_PLQY)
+        if "FWHM" in self.obj:
+            self.inputs_FWHM, self.FWHM   =     self.get_data(self.datastructure_FWHM)
+        self.parameters_NPL  =                  self.datastructure_NPL.synthesis_training_selection
+        self.parameters_PLQY =                  self.datastructure_PLQY.synthesis_training_selection
+        if "FWHM" in self.obj:  
+            self.parameters_FWHM =              self.datastructure_FWHM.synthesis_training_selection
 
             # models
         self.NPL_model  = self.train(self.inputs_NPL, self.peak_pos, self.parameters_NPL)
         self.PLQY_model = self.train(self.inputs_PLQY, self.PLQY, self.parameters_PLQY)
+        if "FWHM" in self.obj:
+            self.FWHM_model = self.train(self.inputs_FWHM, self.FWHM, self.parameters_FWHM)
 
             # sampling
-        self.limits =     self.get_limits()
+        self.limits = self.get_limits()
 
             # results
         self.results = None
@@ -86,18 +96,28 @@ class Synthesizer:
 
 
             # add the one hot encoded molecule to both inputs
-            input = np.array(self.one_hot_molecule)
-            NPL_input = np.append(input, As_Pb_ratio)
-            NPL_input = [value for value in NPL_input]
-            input = np.append(input, x)
-            input = [value for value in input]
+            input =           np.array(self.one_hot_molecule)
+            PLQY_input =      np.append(input, x)
+            PLQY_input =      [value for value in PLQY_input]
+
+
+            NPL_input =       np.append(input, As_Pb_ratio)
+            FWHM_input =      np.append(NPL_input, x) 
+            NPL_input =       [value for value in NPL_input]
+            FWHM_input =      [value for value in FWHM_input]
         
             # return the loss
-            PLQY = self.PLQY_model.predict([input])
-            NPL = self.NPL_model.predict([NPL_input])
+            PLQY =  self.PLQY_model.predict([PLQY_input])
+            NPL =   self.NPL_model.predict([NPL_input])
+            if "FWHM" in self.obj:
+                FWHM =  self.FWHM_model.predict([FWHM_input])
 
-            return (1 - PLQY)**2  + ((NPL - self.peak)**2)              # minimize the distance to the perfect peak position
-            #return (1 - PLQY)**2  * ((NPL - self.peak)**2)             # same but different weighting
+            output = (1 - PLQY)**2  + ((NPL - self.peak)**2)             # minimize the distance to the perfect peak position
+            # output = (1 - PLQY)**2  * ((NPL - self.peak)**2)           # same but different weighting
+            if "FWHM" in self.obj:
+                output += FWHM
+
+            return output
 
 
         # optimize
@@ -105,13 +125,12 @@ class Synthesizer:
         optimizer.run_optimization(max_iter = self.iterations)
 
         self.results = self.return_results(optimizer.x_opt)
-
         return optimizer.x_opt, optimizer.fx_opt
+
 
 
 ### -------------------------- INIT -------------------------- ###
     
-
     def train(self, inputs, targets, parameter_selection):
         """
             Train a RKK model on the given data
@@ -124,7 +143,19 @@ class Synthesizer:
 
         rkk.fit()
         return rkk
+    
+    def train_gp(self, inputs, targets, parameter_selection):
+        """
+            Train a RKK model on the given data
+        """
+        rkk = Ridge(inputs, targets, parameter_selection, kernel_type= "polynomial", alpha= 1e-1, gamma= 0.01)
 
+        # optimize hyperparameters
+        print("finding hyperparameters ... ")
+        rkk.optimize_hyperparameters()
+
+        rkk.fit()
+        return rkk
 
     def get_data(self, datastructure : Datastructure):
         """
@@ -147,10 +178,12 @@ class Synthesizer:
         samples = [input[15:] for input in self.inputs_PLQY]                                   # exclude the one hot encoded molecule
         
         for i, parameter in enumerate(self.parameters_PLQY):
-            limits[parameter] = [min([sample[i] for sample in samples]), max([sample[i] for sample in samples])]
+            limits[parameter] = [min([sample[i] for sample in samples]), 
+                                 max([sample[i] for sample in samples])]
         
-        # extra limits can improve the optimization
-        #limits["c (PbBr2)"][0] = 0.1
+        # increase the values for the lead bromide concentration
+        limits["c (PbBr2)"] = [0.08,
+                               limits["c (PbBr2)"][1] * 1.5]
 
         return limits
     
@@ -187,14 +220,24 @@ class Synthesizer:
 
 
         datastructure_PLQY = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_240418.csv",
-                                    target = "PLQY",                                                       # "PLQY", "FWHM", "PEAK_POS"
-                                    wavelength_unit= "NM",                                                 # "NM", "EV"
-                                    exclude_no_star= True,
-                                    wavelength_filter= [440, 510],
-                                    )
+                                        target = "PLQY",                                                       # "PLQY", "FWHM", "PEAK_POS"
+                                        wavelength_unit= "NM",                                                 # "NM", "EV"
+                                        exclude_no_star= True,
+                                        wavelength_filter= [440, 510],
+                                        )
         datastructure_PLQY.synthesis_training_selection = ["V (antisolvent)", "c (PbBr2)", "V (PbBr2 prec.)", "V (Cs-OA)" ,]
+
+
+        datastructure_FWHM = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_240418.csv",
+                                        target = "FWHM",                                                       # "PLQY", "FWHM", "PEAK_POS"
+                                        wavelength_unit= "NM",                                                 # "NM", "EV"
+                                        exclude_no_star= False,
+                                        wavelength_filter= [400, 510],
+                                        monodispersity_only= True,
+                                        )
+        datastructure_FWHM.synthesis_training_selection = ["AS_Pb_ratio", "V (antisolvent)", "c (PbBr2)", "V (PbBr2 prec.)", "V (Cs-OA)" ,]
     
-        return datastructure_NPL, datastructure_PLQY
+        return datastructure_NPL, datastructure_PLQY, datastructure_FWHM
             
 
 
@@ -276,7 +319,7 @@ class Synthesizer:
             Plot the prediction in relation to all relevant data points with correct wavelength filter and molecule
         """
         
-        fig, ax = datastructure.plot_data(parameters[0], parameters[1], parameters[2])                  # plot data distribution
+        fig, ax = datastructure.plot_data(parameters[0], parameters[1], parameters[2], parameters)                  # plot data distribution
         ax.scatter(opt_x[0], opt_x[1], opt_x[2], color='red', marker="x", s=200)
         #plt.show()
         return fig, ax

@@ -3,6 +3,7 @@ from torch_geometric.data import Data   # bit of a relict from the GNN implement
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
 from helpers import *
 
 
@@ -31,6 +32,7 @@ class Datastructure:
                  wavelength_unit = "EV",            # "EV" or "NM
                  molecule = "all",                  # "all" or specific molecule
                  normalization = True,              # normalize the data
+                 monodispersity_only = False,       # only include samples with monodispersity
                  PLQY_threshold = 0.0,              # exclude samples with PLQY below threshold
                  ):
         
@@ -44,6 +46,7 @@ class Datastructure:
         self.wavelength_unit = wavelength_unit
         self.molecule = molecule
         self.PLQY_threshold = PLQY_threshold
+        self.monodispersity_only = monodispersity_only
 
         # directories
         self.current_path =  os.getcwd()
@@ -63,7 +66,7 @@ class Datastructure:
         
         # reading data from files, selections adjusted here
         self.global_attribute_selection =       [] #"dielectric constant (-)",  "Hansen parameter hydrogen bonding (MPa)1/2", "dipole moment (D)", "Gutman donor number (kcal/mol)", "viscosity (mPa ?s)" ,]
-        self.synthesis_training_selection =     ["V (antisolvent)", "c (PbBr2)", "V (PbBr2 prec.)",  "V (Cs-OA)",  "AS_Pb_ratio", "c (Cs-OA)", "Pb_Cs_ratio", "c (OlAm)", "c (OA)"] #
+        self.synthesis_training_selection =     [ "AS_Pb_ratio", "V (antisolvent)",  "V (Cs-OA)", "V (PbBr2 prec.)", "c (PbBr2)",  "c (Cs-OA)", "Pb_Cs_ratio", "c (OlAm)", "c (OA)"] #
 
         self.synthesis_selection =              [ "c (PbBr2)", "c (OlAm)", "c (OA)", "V (Cs-OA)", "c (Cs-OA)" ,"V (antisolvent)", "V (PbBr2 prec.)"]
         
@@ -81,7 +84,7 @@ class Datastructure:
         self.output_format = output_format
 
         # list of molecule names, don't ask ...
-        self.molecule_names =                   ["Toluene", "EthylAcetate", "MethylAcetate", "Acetone", "Ethanol", "Methanol", "Isopropanol", "Butanol", "Tert-Butanol", "Propanol", "Acetonitrile", "Dimethylformamide", "Dimethylsulfoxide", "Butanone", "Cyclopentanone"]
+        self.molecule_names = ["Toluene", "EthylAcetate", "MethylAcetate", "Acetone", "Ethanol", "Methanol", "Isopropanol", "Butanol", "Tert-Butanol", "Propanol", "Acetonitrile", "Dimethylformamide", "Dimethylsulfoxide", "Butanone", "Cyclopentanone"]
 
 
 
@@ -117,6 +120,8 @@ class Datastructure:
             if self.target == "PLQY" and self.synthesis_data['PLQY'][index] < self.PLQY_threshold:
                 continue
             if self.exclude_no_star and self.synthesis_data['include PLQY'][index] != 1 :
+                continue
+            if self.monodispersity_only and self.synthesis_data['monodispersity'][index] != "1":
                 continue
 
 
@@ -222,7 +227,6 @@ class Datastructure:
         fwhm = abs(wavelength[left_index] - wavelength[right_index])
         return fwhm, peak_pos, spectrum, wavelength
 
-
     # norm. dataframes or arrays (use with rows or columns); includes a check for zero range
     def normalize(self, a, name):
         self.max_min[name] = [a.max(), a.min()]   # store the max and min values for denormalization
@@ -238,7 +242,21 @@ class Datastructure:
         #return a * (max_val - min_val) + min_val
         return a * max_val
 
-    
+    # normalize targets
+    def normalize_target(self, data_objects):
+        target_name = self.target
+        targets = [data.y for data in data_objects]
+
+        max_val, min_val = max(targets), min(targets)
+        if (max_val - min_val) == 0: 
+            print(f"Normalization error: {targets}  has no range; returning original array")
+            return data_objects
+        for data in data_objects:
+            data.y = (data.y - min_val) / (max_val - min_val)
+        
+        self.max_min[target_name] = [max_val, min_val]
+        return data_objects
+
     # classify the NPL type from the peak position
     def get_NPL_type(self, peak_pos):
         if peak_pos is None: 
@@ -250,6 +268,7 @@ class Datastructure:
             if value[0] <= peak_pos <= value[1]:
                 return float(key)
         return 0
+
 
 
 #### ------------------------------------------  init. helpers  --------------------------------------------- ####
@@ -311,13 +330,13 @@ class Datastructure:
 #### ------------------------------------------  PLOTTING  --------------------------------------------- ####
 
     # plotting the Data in Parameter Space
-    def plot_data(self, var1, var2, var3):
+    def plot_data(self, var1, var2, var3, parameters):
         """
             Scatter plot of the data in parameter space, for visualization purposes
         """
-        index1 = self.total_training_parameter_selection.index(var1)
-        index2 = self.total_training_parameter_selection.index(var2)
-        index3 = self.total_training_parameter_selection.index(var3)
+        index1 = parameters.index(var1)
+        index2 = parameters.index(var2)
+        index3 = parameters.index(var3)
 
         one_hot = [data.one_hot_molecule for data in self.data]
         molecule_index = [np.argmax(one_hot) for one_hot in one_hot]
@@ -330,6 +349,7 @@ class Datastructure:
         fig = plt.figure()
         ax = fig.add_subplot(projection='3d')
         ax.scatter(x, y, z, c=c, cmap='viridis', linewidth=5, alpha=1)
+
         # Add colorbar
         cbar = fig.colorbar(ax.scatter(x, y, z, c=c, cmap='viridis', linewidth=5, alpha=1))
         cbar.set_label(self.target)
@@ -346,13 +366,33 @@ class Datastructure:
         """
         AS_Pb = [data.total_parameters[0] for data in self.data if data.molecule_name == molecule_name]
         peak_pos = [data.peak_pos for data in self.data if data.molecule_name == molecule_name]
-        fig, ax = plt.subplots()
-        ax.scatter(AS_Pb, peak_pos)
 
+        # fitting a Sigmoid function
+        Sigmoid = lambda x, a, b, c, d: (a / (1 + np.exp(-b * (x - c)))) + d
+        bounds = ([50, 0, 0, 460], [65, 0.5, 300, 463])
+        popt, pcov = curve_fit(Sigmoid, AS_Pb, peak_pos, bounds=bounds)
+        print(f"Optimal parameters: {popt}")
+
+        #write to csv
+        #df = pd.DataFrame({"AS_Pb_ratio": AS_Pb, "Peak Position": peak_pos})
+        #df.to_csv(f"{molecule_name}_AS_peak_pos.csv", index=False)
+
+        #plotting
+        fig, ax = plt.subplots()
+        x_vec = np.linspace(min(AS_Pb), max(AS_Pb), 500)
+        label = f"y = $\\frac{{{round(popt[0])}}}{{1 + e^{{-{round(popt[1],2)}(x - {round(popt[2])})}}}} + {round(popt[3])}$"
+        ax.plot(x_vec, Sigmoid(x_vec, *popt), color="red", label = label)
+        ax.scatter(AS_Pb, peak_pos)
         ax.set_xlabel("AS/Pb ratio")
         ax.set_ylabel("Peak Position")
         ax.set_title(f"Peak Position vs AS/Pb ratio for {molecule_name}")
-        plt.show()
+        ax.legend(fontsize = 15)
+
+        # save the plot
+        plt.savefig(f"{molecule_name}_AS_peak_pos_Sigmoid.png")
+
+        #plt.show()
+        return fig, ax
 
     # plotting the average target value for each molecule and NPL type
     def plot_avg_target(self):

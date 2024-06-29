@@ -229,3 +229,99 @@ KRR predicted peak position:   [474.86702528]
 [ DEV -->   KRR_PLQY range: [440, 510],  Opt. Iterations: 50]
 
 THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-06-21   ----------------------------------------------------
+L-SYNTH-611
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Ethanol- as an antisolvent 
+to make NPLs around 475nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  4945.0', 'c (PbBr2) :  0.010000000000000002', 'V (PbBr2 prec.) :  3722.178318106564', 'V (Cs-OA) :  144.99301741810882']
+with the following As/Pb ratio: 132.85231327969996
+KRR predicted PLQY for this sample:   [0.30924222]
+KRR predicted peak position:   [476.4844864]
+
+[ DEV -->   KRR_PLQY range: [440, 510],  Opt. Iterations: 50]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-06-21   ----------------------------------------------------
+L-SYNTH-474
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Propanol- as an antisolvent 
+to make NPLs around 485nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  4215.987842611456', 'c (PbBr2) :  0.00790073733398288', 'V (PbBr2 prec.) :  2710.215528273041', 'V (Cs-OA) :  145.01197009155638']
+with the following As/Pb ratio: 196.89192134896777
+KRR predicted PLQY for this sample:   [0.24234931]
+KRR predicted peak position:   [483.30851626]
+
+[ DEV -->   KRR_PLQY range: [440, 510],  Opt. Iterations: 50]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-06-21   ----------------------------------------------------
+L-SYNTH-96
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Propanol- as an antisolvent 
+to make NPLs around 480nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  1042.602389462414', 'c (PbBr2) :  0.008', 'V (PbBr2 prec.) :  675.0', 'V (Cs-OA) :  367.7020925831947']
+with the following As/Pb ratio: 193.0745165671137
+KRR predicted PLQY for this sample:   [0.12315373]
+KRR predicted peak position:   [478.60177617]
+
+[ DEV -->   KRR_PLQY range: [440, 510],  Opt. Iterations: 50]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-06-21   ----------------------------------------------------
+L-SYNTH-805
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Ethanol- as an antisolvent 
+to make NPLs around 480nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  2151.9338797504906', 'c (PbBr2) :  0.01745471152804356', 'V (PbBr2 prec.) :  885.6377606781044', 'V (Cs-OA) :  325.9782336758543']
+with the following As/Pb ratio: 139.2066948521901
+KRR predicted PLQY for this sample:   [0.22175717]
+KRR predicted peak position:   [480.55471768]
+
+[ DEV -->   KRR_PLQY range: [440, 510],  Opt. Iterations: 50]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-06-25   ----------------------------------------------------
+L-SYNTH-717
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Ethanol- as an antisolvent 
+to make NPLs around 470nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  1964.278926813961', 'c (PbBr2) :  0.0225', 'V (PbBr2 prec.) :  675.0', 'V (Cs-OA) :  500.0']
+with the following As/Pb ratio: 129.33523797952006
+KRR predicted PLQY for this sample:   [0.15114222]
+KRR predicted peak position:   [471.31028478]
+
+[ DEV -->   KRR_PLQY range: [440, 510],  Opt. Iterations: 50]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-06-28   ----------------------------------------------------
+L-SYNTH-771
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Butanol- as an antisolvent 
+to make NPLs around 470nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  4780.029221319079', 'c (PbBr2) :  0.016838819072780557', 'V (PbBr2 prec.) :  4565.71366619381', 'V (Cs-OA) :  122.38764938343365']
+with the following As/Pb ratio: 62.174206206596466
+KRR predicted PLQY for this sample:   [0.35457242]
+KRR predicted peak position:   [467.99568967]
+
+[ DEV -->   KRR_PLQY range: [440, 510],  Opt. Iterations: 100]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!

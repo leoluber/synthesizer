@@ -4,24 +4,29 @@ from Synthesizer import Synthesizer
 from helpers import *
 
 """
-    Uses the "Synthesizer" module to optimize Perovskite NPLs for a given molecule (target: PLQY)
+    Uses the "Synthesizer" module to optimize Perovskite NPLs for a given antisolvent molecule (target: PLQY)
     - KRR regression models for #MLs and PLQY
     - bounds given by min/max of all data points
     - uses GPyOpt for optimization
     - constraints taken from the #ML model
-    - objective function: (1-PLQY)**2 + (target_peak_pos - peak_pos)**2
+    - objective function: (1-PLQY)**2 + (target_peak_pos - peak_pos)**2 + FWHM    
+            ( can be modified by changing the "obj" parameter in the Synthesizer class)
 """
 
 
 ### -------------------- choose molecule and target peak -------------------- ###
-molecule_name = input("Enter the molecule name: (e.g. Ethanol, Methanol, ...):     ")
-target_peak = int(input("Enter the target peak position in nm: (e.g. 470):     "))
+#molecule_name = input("Enter the molecule name: (e.g. Ethanol, Methanol, ...):     ")
+#target_peak = int(input("Enter the target peak position in nm: (e.g. 470):         "))
+
+molecule_name = "Butanol"
+target_peak =   470
+
 ### ------------------------------------------------------------------------- ###
 
 def main():
 
     # initialize synthesizer object and optimize (specify As molecule and NPL type)
-    synthesizer = Synthesizer(molecule_name, iterations=50, peak = target_peak)
+    synthesizer = Synthesizer(molecule_name, iterations=100, peak = target_peak, obj=["PEAK_POS", "PLQY"])
     opt_x, opt_delta = synthesizer.optimize_NPL()
     print(f"opt_x: {opt_x}")
     print(f"opt_delta: {opt_delta}")
@@ -36,7 +41,7 @@ def main():
     # handle results (all done by the synthesizer class)
     synthesizer.print_results(results_string, input_PLQY, input_NPL, As_Pb_ratio_denorm)                  # -->  print results
     synthesizer.test_results(input_PLQY)                                                                  # -->  test results against Gaussian Process
-    synthesizer.plot_suggestions(opt_x[:3], synthesizer.datastructure_PLQY, parameters=synthesizer.datastructure_PLQY.synthesis_training_selection[:3])
+    synthesizer.plot_suggestions(opt_x, synthesizer.datastructure_PLQY, parameters=synthesizer.datastructure_PLQY.synthesis_training_selection)
     plt.show()
 
 
