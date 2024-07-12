@@ -405,11 +405,19 @@ class Datastructure:
         z = [data["total_parameters"][index3] for data in self.data]
         c = [data["y"] for data in self.data]
 
-        # plot with plotly
-        fig = plotly.graph_objects.Figure(data=plotly.graph_objects.Scatter3d(x=x, y=y, z=z, mode='markers', marker=dict(size=5, color=c, colorscale='Viridis', opacity=0.8)))
-        fig.update_layout(scene = dict(xaxis_title=var1, yaxis_title=var2, zaxis_title=var3))
-        fig.show()
-        fig.write_html(f"data/NR_{var1}_{var2}_{var3}peak_pos_3D_plot.html")
+        # plot with matplotlib
+        fig = plt.figure()
+        
+        ax = fig.add_subplot(111, projection='3d')
+        img = ax.scatter(x, y, z, c=c, cmap=plt.hot())
+
+        fig.colorbar(img)
+
+        ax.set_xlabel(var1)
+        ax.set_ylabel(var2)
+        ax.set_zlabel(var3)
+        
+        return fig, ax
 
 
 

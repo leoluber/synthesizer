@@ -533,3 +533,19 @@ KRR predicted peak position:          [479.91742226]
 [ DEV -->   KRR_PLQY range: [400, 510],  Opt. Iterations: 100]
 
 THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-07-12   ----------------------------------------------------
+L-SYNTH-9688
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Ethanol- as an antisolvent 
+to make NPLs around 480nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  4201.334058782779', 'c (PbBr2) :  0.00892', 'V (PbBr2 prec.) :  4960.0', 'V (Cs-OA) :  20.0']
+with the following As/Pb ratio: 94.95999518079115
+KRR predicted PLQY for this sample:   [0.38679715]
+KRR predicted peak position:          [470.87456007]
+
+[ DEV -->   KRR_PLQY range: [400, 510],  Opt. Iterations: 100]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
