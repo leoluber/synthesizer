@@ -3,7 +3,6 @@ from plotly import graph_objects as go
 from sklearn.kernel_ridge import KernelRidge
 from sklearn.neural_network import MLPRegressor
 from sklearn.model_selection import GridSearchCV
-import itertools
 from scipy.optimize import curve_fit
 import GPy
 
@@ -30,12 +29,12 @@ class GeometricTransfer:
 
 
     def __init__(self,
-                 molecule_training_selection,                               # list of molecules to train on
-                 expert = "KRR",                                            # "KRR", "SIGMOID_FILTERS", "GP"
-                 predictor = "MLP",                                         # "KRR", "MLP", "GP"
-                 mlp_layers = 20,                                           # number of layers for the MLP
-                 augmentation = True,                                       # load the data automatically
-                 data_path = "Perovskite_NC_synthesis_NH_240418.csv",
+                 molecule_training_selection: list,                                     # list of molecules to train on
+                 expert =           "KRR",                                              # "KRR", "SIGMOID_FILTERS", "GP"
+                 predictor =        "MLP",                                              # "KRR", "MLP", "GP"
+                 mlp_layers =       20,                                                 # number of layers for the MLP
+                 augmentation =     True,                                               # load the data automatically
+                 data_path =        "Perovskite_NC_synthesis_NH_240418.csv",
                 ):
         
 
@@ -64,9 +63,9 @@ class GeometricTransfer:
         elif self.expert ==      "GP":
             self.expert_models = self.train_expert_models_GP()
 
-        # selest between normal or popt based predictor training data
+        ## - select between normal or popt based predictor training data - ##
         self.predictor_inputs, self.predictor_targets = self.generate_predictor_training_data()
-        #self.predictor_inputs, self.predictor_targets = self.generate_predictor_training_data_popt()
+
 
         print(f"Predictor inputs: {len(self.predictor_inputs)} | Predictor targets: {len(self.predictor_targets)}")
         
@@ -81,7 +80,7 @@ class GeometricTransfer:
 
 
 
-    def read_data(self, molecule_training_selection):
+    def read_data(self, molecule_training_selection) -> list:
         """
             Read in the data for a given molecule using the Datastructure class
         """
@@ -92,9 +91,9 @@ class GeometricTransfer:
             datastructure = Datastructure.Datastructure(synthesis_file_path= self.data_path,
                                                         target="PEAK_POS",
                                                         output_format="LIST",
-                                                        wavelength_unit="NM",       # "NM", "EV"
-                                                        monodispersity_only=False,   # only use monodisperse data
-                                                        molecule=molecule,          # only use data for a specific molecule
+                                                        wavelength_unit="NM",           # "NM", "EV"
+                                                        monodispersity_only=True,       # only use monodisperse data
+                                                        molecule=molecule,              # only use data for a specific molecule
                                                         )
             data_objects = datastructure.get_data()
 
@@ -107,7 +106,7 @@ class GeometricTransfer:
 
 
 
-    def train_expert_models(self):
+    def train_expert_models(self)       -> dict:
         """
             Train a set of expert models on the training data
         """
@@ -120,9 +119,11 @@ class GeometricTransfer:
             if inputs == [] or targets == []:
                 raise ValueError(f"Error: No data found for {dataset['molecule']}")
 
-            print(f"Optimizing hyperparameters for {dataset['molecule']} ...")
+            #print(f"Optimizing hyperparameters for {dataset['molecule']} ...")
 
-            krr = self.optimize_hyperparameters(inputs, targets)
+            #krr = self.optimize_hyperparameters(inputs, targets)
+
+            krr = KernelRidge(alpha=0.001, gamma=0.001, kernel="laplacian")
             krr.fit(inputs, targets)
 
             expert_models[dataset["molecule"]] = krr
@@ -130,7 +131,8 @@ class GeometricTransfer:
         return expert_models
     
     
-    def train_expert_models_GP(self):
+
+    def train_expert_models_GP(self)    -> dict:
         """
             Train a set of expert models on the training data using Gaussian Processes
         """
@@ -157,7 +159,7 @@ class GeometricTransfer:
 
 
 
-    def train_sigmoid_filters(self):
+    def train_sigmoid_filters(self)     -> dict:
         """
             Train a set of sigmoid filters on the training data
         """
@@ -174,7 +176,9 @@ class GeometricTransfer:
             
             # fit a Sigmoid filter to the data
             Sigmoid = lambda x, a, b, c, d: (a / (1 + np.exp(-b * (x - c)))) + d
-            bounds = ([50, 8, -1, 460], [60, 30, 5, 463])
+
+            bounds = ([50, 0, -1, 460], [60, 30, 5, 463])           ### TODO: generalize the bounds, this is bad practice
+            
             popt, _ = curve_fit(Sigmoid, inputs, targets, bounds=bounds, maxfev=10000)
 
             print(f"Optimized parameters for {dataset['molecule']}: {popt}")
@@ -185,22 +189,30 @@ class GeometricTransfer:
 
 
 
-    def train_predictor_model_KRR(self, predictor_inputs, predictor_targets):
+    def train_predictor_model_KRR(self, predictor_inputs, predictor_targets) -> KernelRidge:
+
         """
             Train the predictor model on the predictor inputs and targets
         """
 
         print("Training predictor model ...")
         
+
+        ### - choose the best approach for hyperparameters - KRR - ###
+
         #predictor_model = self.optimize_hyperparameters(predictor_inputs, predictor_targets)
-        predictor_model = KernelRidge(alpha=0.001, kernel="laplacian", gamma=0.001)
+        predictor_model = KernelRidge(alpha=0.01, gamma=0.01, kernel="poly")
+
+        ### ------------------------------------------------------- ###
+
         predictor_model.fit(predictor_inputs, predictor_targets)
 
         return predictor_model
     
 
 
-    def train_predictor_model_MLP(self, predictor_inputs, predictor_targets):
+    def train_predictor_model_MLP(self, predictor_inputs, predictor_targets) -> MLPRegressor:
+
         """
             Train the predictor model on the predictor inputs and targets
         """
@@ -214,7 +226,8 @@ class GeometricTransfer:
 
 
 
-    def train_predictor_model_GP(self, predictor_inputs, predictor_targets):
+    def train_predictor_model_GP(self, predictor_inputs, predictor_targets) -> GPy.models.GPRegression:
+
         """
             Train a Gaussian Process model on the predictor inputs and targets
         """
@@ -232,8 +245,10 @@ class GeometricTransfer:
 
         return model
 
+
     
     def forward_pass(self, input, molecule):
+
         """
             Predict the properties for synthesis parameters with a new molecule using the trained models
         """
@@ -243,6 +258,10 @@ class GeometricTransfer:
             return None
 
         predictor_input = []
+        predictor_output = []
+
+
+### ---------------- USE THIS  for the normal predictor training data ------------------ ###
 
         for basis_molecule in self.molecule_training_selection:
             if molecule != basis_molecule:
@@ -262,8 +281,6 @@ class GeometricTransfer:
 
                 predictor_input.append( [expert_opinion] + scoring)
 
-        predictor_output = []
-
         for pred_input in predictor_input:
             if self.predictor == "GP":
                 pred_input = np.reshape(pred_input, (1, len(pred_input)))
@@ -275,33 +292,12 @@ class GeometricTransfer:
     
 
 
-    ### --------- USE THIS INSETEAD for the pop based predictor training data --------- ###
-
-        # 
-        # for basis_molecule in self.molecule_training_selection:
-
-        #     score = self.scoring_function(molecule, basis_molecule)
-        #     offset = self.expert_models[basis_molecule][2]
-
-        #     predictor_input = [offset] + score
-
-        # if self.predictor == "GP":
-        #     predictor_input = np.reshape(predictor_input, (1, len(predictor_input)))
-        #     predictor_output = self.predictor_model.predict(predictor_input)[0][0]	
-
-        # else:
-        #     predictor_output = self.predictor_model.predict([predictor_input])
-
-
-        # return predictor_output
-
-
-
 
 ### -------------------------- HELPERS -------------------------- ###
 
 
-    def optimize_hyperparameters(self, inputs, targets):
+    def optimize_hyperparameters(self, inputs, targets) -> KernelRidge:
+
         """
             Optimize the hyperparameters of the kernel ridge regression
         """
@@ -321,28 +317,43 @@ class GeometricTransfer:
     
 
 
-    def scoring_function(self, molecule1, molecule2):
+    def scoring_function(self, molecule1, molecule2) -> list:
+
         """
             Scoring function for similarity between molecules
             TODO: add regularization for the scores, magnitudes are too different
         """
 
-        group_score =       [0 if self.molecule_dictionary[molecule1]["group"] == self.molecule_dictionary[molecule2]["group"]           else 1         ]
-        chainlength_score = [(self.molecule_dictionary[molecule1]    ["chainlength"] - self.molecule_dictionary[molecule2]["chainlength"])              ]
-        cycles_score =      [self.molecule_dictionary[molecule1]     ["cycles"]      - self.molecule_dictionary[molecule2]["cycles"]                    ]
-        hansen_score =      [(self.molecule_dictionary[molecule1]    ["hansen"]     - self.molecule_dictionary[molecule2]["hansen"])                    ]
-        dipole_score =      [self.molecule_dictionary[molecule1]     ["dipole"]      - self.molecule_dictionary[molecule2]["dipole"]                    ]
-        relpol_score =      [self.molecule_dictionary[molecule1]     ["relative_polarity"] - self.molecule_dictionary[molecule2]["relative_polarity"]   ]
+        ### ------------------ APPROACH 1: MANUALLY DEFINED SCORES ------------------ ###
+
+        # group_score =       [0 if self.molecule_dictionary[molecule1]["group"] == self.molecule_dictionary[molecule2]["group"]           else 1                     ]
+        # chainlength_score = [(self.molecule_dictionary[molecule1]["chainlength"] - self.molecule_dictionary[molecule2]["chainlength"])                              ]
+        cycles_score =      [self.molecule_dictionary[molecule1]["cycles"]      - self.molecule_dictionary[molecule2]["cycles"]                                     ]
+        hansen_score =      [(self.molecule_dictionary[molecule1]["hansen"]     - self.molecule_dictionary[molecule2]["hansen"])                                    ]
+        # dipole_score =      [self.molecule_dictionary[molecule1]["dipole"]      - self.molecule_dictionary[molecule2]["dipole"]                                     ]
+        relpol_score =      [self.molecule_dictionary[molecule1]["relative_polarity"] - self.molecule_dictionary[molecule2]["relative_polarity"]                    ]
+        # diffusivity_score = [(self.molecule_dictionary[molecule1]["diffusivity"] - self.molecule_dictionary[molecule2]["diffusivity"]) * 10                         ]
         
-        score =  hansen_score  # + chainlength_score  + cycles_score + dipole_score + relpol_score
+        score =     relpol_score + hansen_score
+
+
+        ### ------------------ APPROACH 2: SCORING DONE BY THE MODEL ----------------- ###
+
+        #score = []
+        #score += [self.molecule_dictionary[molecule1]["diffusivity"], self.molecule_dictionary[molecule2]["diffusivity"]]
+        #score += [self.molecule_dictionary[molecule1]["hansen"], self.molecule_dictionary[molecule2]["hansen"]]
+        #score += [self.molecule_dictionary[molecule1]["relative_polarity"], self.molecule_dictionary[molecule2]["relative_polarity"]]
+
+
+        ## --------------------------------------------------------------------------- ###
 
         self.scoring_dim = len(score)
-
         return score
     
 
 
-    def generate_predictor_training_data(self):
+    def generate_predictor_training_data(self) -> list:
+
         """
             Generate scored inputs for the prediction model and corresponding targets
         """
@@ -388,61 +399,9 @@ class GeometricTransfer:
         return prediction_inputs, prediction_targets
 
 
-    
-    def generate_predictor_training_data_popt(self):
-        """
-            Scored inputs for the prediction model and corresponding targets
-            from the optimized sigmoid filters
-        """
 
-        print("Generating predictor training data ...")
+    def fit_final_sigmoid(self, molecule) -> list:
 
-        prediction_inputs, prediction_targets = [], []
-
-        for target_molecule in self.molecule_training_selection:
-
-            for basis_molecule in self.molecule_training_selection:
-
-                if target_molecule != basis_molecule:
-
-                    popt_basis  = self.expert_models[basis_molecule]
-                    popt_target = self.expert_models[target_molecule]
-
-                    score = self.scoring_function(target_molecule, basis_molecule)
-
-                    prediction_inputs.append([popt_basis[2]] + score)
-                    prediction_targets.append(popt_target[2])
-
-        return prediction_inputs, prediction_targets
-
-
-
-    def data_augmentation(self, input):
-        """
-            Augment the dataset by shuffling the predictor inputs in chunks of size (1 + scoring_dim)
-            and using all permutations of the chunks as new inputs 
-            (ONLY for the approach where the predictor is trained on concatenated expert outputs; not used in current setting)
-        """
-
-        input_list = []
-        chunk_size = 1 + self.scoring_dim
-
-        for i in range(0, len(input), chunk_size):
-            chunk = input[i:i+chunk_size]
-            input_list.append(chunk)
-        
-        permutations = list(itertools.permutations(input_list))
-        augmented_inputs = []
-
-        for permutation in permutations:
-            augmented_inputs.append([item for sublist in permutation for item in sublist])
-
-            
-        return augmented_inputs
-    
-
-
-    def fit_final_sigmoid(self, molecule):
         """
             Fit the final sigmoid to the data from full model for unknown molecules
         """
@@ -461,7 +420,8 @@ class GeometricTransfer:
 
 ### ------------------------ DICTIONARY ------------------------- ###
 
-    def get_molecule_dictionary(self):
+    def get_molecule_dictionary(self) -> dict:
+
         """
             Get a dictionary of the molecules and their geometry
         """
@@ -472,8 +432,8 @@ class GeometricTransfer:
                         "Propanol":         {'group': [1,0], 'chainlength': 3, 'cycles' : 0, 'group_pos': 0, 'diffusivity' : 0.75, "dipole": 1.65, "relative_polarity" : 0.617, "hansen": 17.4,},
                         "Isopropanol":      {'group': [1,0], 'chainlength': 3, 'cycles' : 0, 'group_pos': 1, 'diffusivity' : 0.56, "dipole": 1.58, "relative_polarity" : 0.546, "hansen": 16.4,},
                         "Butanol":          {'group': [1,0], 'chainlength': 4, 'cycles' : 0, 'group_pos': 0, 'diffusivity' : 0.47, "dipole": 1.66, "relative_polarity" : 0.586, "hansen": 15.8,},
-                        "Hexanol":          {'group': [1,0], 'chainlength': 6, 'cycles' : 0, 'group_pos': 0,                       'dipole': 1.60, "relative_polarity" : 0.559, "hansen": 12.5,},
-                        "Octanol":          {'group': [1,0], 'chainlength': 8, 'cycles' : 0, 'group_pos': 0,                       'dipole': 1.68, "relative_polarity" : 0.537, "hansen": 11.2,},
+                        "Hexanol":          {'group': [1,0], 'chainlength': 6, 'cycles' : 0, 'group_pos': 0, 'diffusivity' : 0.18, 'dipole': 1.60, "relative_polarity" : 0.559, "hansen": 12.5,},
+                        "Octanol":          {'group': [1,0], 'chainlength': 8, 'cycles' : 0, 'group_pos': 0, 'diffusivity' : 0.07, 'dipole': 1.68, "relative_polarity" : 0.537, "hansen": 11.2,},
                         "Acetone":          {'group': [0,1], 'chainlength': 3, 'cycles' : 0, 'group_pos': 1,                       "dipole": 2.86, "relative_polarity" : 0.355, "hansen": 7.0,},
                         "Butanone":         {'group': [0,1], 'chainlength': 4, 'cycles' : 0, 'group_pos': 1,                       "dipole": 2.78, "relative_polarity" : 0.327, "hansen": 5.1,},
                         "Cyclopentanone":   {'group': [0,1], 'chainlength': 5, 'cycles' : 1, 'group_pos': 0,                       "dipole": 3.30, "relative_polarity" : 0.269, "hansen": 5.2,},
@@ -487,6 +447,7 @@ class GeometricTransfer:
 ### ------------------------ PLOTTING ------------------------- ###
 
     def viz_experts(self):
+
         """
             Visualize the expert models
         """
@@ -506,12 +467,12 @@ class GeometricTransfer:
                 y_vec = [self.expert_models[expert].predict(np.reshape([x], (1, 1)))[0][0][0] for x in x_vec]
                 print(y_vec)
 
-            inputs =  [input[0] for input in self.data[self.molecule_training_selection.index(expert)]["inputs"]]
-            targets = [target for target in self.data[self.molecule_training_selection.index(expert)]["targets"]]
+            #inputs =  [input[0] for input in self.data[self.molecule_training_selection.index(expert)]["inputs"]]
+            #targets = [target for target in self.data[self.molecule_training_selection.index(expert)]["targets"]]
 
             fig = go.Figure()
 
-            fig.add_trace(go.Scatter(x= x_vec, y= y_vec, mode='lines', name= f"{expert}_krr"))
-            fig.add_trace(go.Scatter(x= inputs, y= targets, mode='markers', name= f"{expert}_data"))
+            fig.add_trace(go.Scatter(x= x_vec, y= y_vec, mode='lines', name= f"{expert}_model"))
+            #fig.add_trace(go.Scatter(x= inputs, y= targets, mode='markers', name= f"{expert}_data"))
             
             fig.show()

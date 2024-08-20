@@ -21,9 +21,9 @@ import Datastructure
 
 
 geo_transfer = GeometricTransfer.GeometricTransfer(
-                                                   molecule_training_selection= ["Butanol",  "Methanol", "Ethanol",  ],
-                                                   expert=                      "SIGMOID_FILTERS",                              # "KRR", "SIGMOID_FILTERS", "GP"
-                                                   predictor=                   "KRR",                                          # "MLP", "KRR", "GP"
+                                                   molecule_training_selection= [ "Ethanol", "Butanol",],
+                                                   expert=                      "SIGMOID_FILTERS",                               # "KRR", "SIGMOID_FILTERS", "GP"
+                                                   predictor=                   "KRR",                                           # "MLP", "KRR", "GP"
                                                    mlp_layers=                   50,                                             # only relevant for predictor = "MLP"
                                                    data_path =                  "Perovskite_NC_synthesis_NH_240418.csv",
                                                    )
@@ -53,6 +53,7 @@ targets =       [data["y"] for data in molecule_data]
 predictions =   []
 
 
+### ------------------------------ GEOMETRY TRANSFER ---------------------------- ###
 
 #plot the model predictions
 for input in inputs:
@@ -72,37 +73,4 @@ fig.add_trace(go.Scatter(x= inputs, y= targets, mode='markers', name='Data'))
 fig.show()
 
 
-# # popt variation (offset learning from the sigmoid fitting parameters; GeometricTransfer.py must be modified)
 
-# fig = go.Figure()
-# for molecule in ["Methanol", "Ethanol", "Propanol", "Butanol", "Hexanol", "Octanol",]:
-
-#     offset = geo_transfer.forward_pass(None, molecule= molecule)
-#     print("Offset: ", offset)
-#     popt = [50, 8, offset[0], 460]
-
-#     #plot the sigmoid
-#     x_vec = np.linspace(0, 10, 300)
-#     y_vec = [ popt[0] / (1 + np.exp(-popt[1] * (x - popt[2]))) + popt[3] for x in x_vec]
-
-#     # loo validation
-#     print("LOO Validation")
-
-#     #fig.add_trace(go.Scatter(x= inputs, y= targets, mode='markers', name='Data'))
-#     fig.add_trace(go.Scatter(x= x_vec, y= y_vec, mode='lines', name=f'offset learning: {molecule}'))
-#     #fig.add_trace(go.Scatter(x= targets, y= predictions, mode='markers', name='LOO Validation'))
-#     #fig.add_trace(go.Scatter(x= [410, 510], y= [410, 510], mode='lines', name='Ideal'))
-# fig.show()
-
-
-# fitting the final sigmoid to the data
-popt = geo_transfer.fit_final_sigmoid(molecule=molecule)
-x_vec = np.linspace(0, 10, 300)
-y_vec = [ popt[0] / (1 + np.exp(-popt[1] * (x - popt[2]))) + popt[3] for x in x_vec]
-
-fig = go.Figure()
-
-fig.add_trace(go.Scatter(x= inputs, y= targets, mode='markers', name='Data'))
-fig.add_trace(go.Scatter(x= x_vec, y= y_vec, mode='lines', name='Sigmoid'))
-
-fig.show()

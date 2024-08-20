@@ -1,6 +1,7 @@
 import numpy as np
 from plotly import graph_objects as go
 import pandas as pd
+from scipy.optimize import curve_fit
 
 # for plotting
 import matplotlib.pyplot as plt
@@ -51,7 +52,7 @@ atom_types_inv_map = {v: k for k, v in atom_types.items()}   #inverse dictionary
 
 #### ------------------------------------ DATA ------------------------------------ ###
 
-def get_avg_sample(inputs):
+def get_avg_sample(inputs) -> list:
     """
         Get the average sample from a list of samples
     """
@@ -68,27 +69,25 @@ def get_avg_sample(inputs):
 
 #### ------------------------------------ OTHER ------------------------------------ ###
 
-def nm_to_ev(nm):
+def nm_to_ev(nm) -> float:
     return 1240/nm
 
-def ev_to_nm(ev):
+def ev_to_nm(ev) -> float:
     return 1240/ev
 
-def surface_proportion(eV):
+def surface_proportion(nm) -> float:
     """
         Get the surface proportion for NPLs from a given wavelength (estimation)
     """
-
-    wavelength = ev_to_nm(eV)
+    prop = 0
     for key in ml_dictionary:
-
-        if ml_dictionary[key][0] <= wavelength <= ml_dictionary[key][1]:
-            return 2/ (float(key) + 1)
+        if ml_dictionary[key][0] <= nm:
+            prop =  2/ (float(key) + 1)
         
-    return 0
+    return 1 - prop
 
 
-def get_perfect_peak(peak_in_nm, sigma = 40):
+def get_perfect_peak(peak_in_nm, sigma = 40) -> list:
     """
         Get a perfect peak for a given peak position and sigma
     """
@@ -103,7 +102,7 @@ def get_perfect_peak(peak_in_nm, sigma = 40):
     return y
 
 
-def compress_spectrum(spectrum, factor = 1):
+def compress_spectrum(spectrum, factor = 1) -> list:
     """
         Compress a spectrum by a given factor
     """
@@ -177,12 +176,14 @@ def plot_critical_As_Pb_ratio():
     """
 
 
-    data = [{"molecule" : "Methanol",       "dipole": 1.70, "relative_polarity" : 0.762, "hansen": 22.3, "chain_length" : 0, "fit": 54,  "cubes": 40},
-            {"molecule" : "Ethanol",        "dipole": 1.68, "relative_polarity" : 0.654, "hansen": 19.4, "chain_length" : 1, "fit": 153, "cubes": 133},
-            {"molecule" : "Propanol",       "dipole": 1.65, "relative_polarity" : 0.617, "hansen": 17.4, "chain_length" : 2, "fit": 185, "cubes": 178},
-            {"molecule" : "Butanol",        "dipole": 1.66, "relative_polarity" : 0.586, "hansen": 15.8, "chain_length" : 3, "fit": 249, "cubes": 257},
-            {"molecule" : "Acetone",        "dipole": 2.86, "relative_polarity" : 0.355, "hansen": 7.0,                      "fit": 300, "cubes": 500},  # estimated, don't use for anything important
-            {"molecule" : "Cyclopentanone", "dipole": 3.30, "relative_polarity" : 0.269, "hansen": 5.2,                      "fit": 203, "cubes": 533},
+    data = [{"molecule" : "Methanol",       "dipole": 1.70, "relative_polarity" : 0.762, "hansen": 22.3, "chain_length" : 0, "fit": 54,  "cubes": 40, "diffusivity": 2.87},
+            {"molecule" : "Ethanol",        "dipole": 1.68, "relative_polarity" : 0.654, "hansen": 19.4, "chain_length" : 1, "fit": 144, "cubes": 133, "diffusivity": 1.15},
+            {"molecule" : "Propanol",       "dipole": 1.65, "relative_polarity" : 0.617, "hansen": 17.4, "chain_length" : 2, "fit": 183, "cubes": 178, "diffusivity": 0.75},
+            {"molecule" : "Butanol",        "dipole": 1.66, "relative_polarity" : 0.586, "hansen": 15.8, "chain_length" : 3, "fit": 249, "cubes": 257, "diffusivity": 0.56},
+          #  {"molecule" : "Acetone",        "dipole": 2.86, "relative_polarity" : 0.355, "hansen": 7.0,                      "fit": 300, "cubes": 500},  # estimated, don't use for anything important
+          #  {"molecule" : "Cyclopentanone", "dipole": 3.30, "relative_polarity" : 0.269, "hansen": 5.2,                      "fit": 203, "cubes": 533},
+            {"molecule" : "Octanol",        "dipole": 1.68, "relative_polarity" : 0.537, "hansen": 11.2, "chain_length" : 8, "fit": 381, "diffusivity": 0.07},
+          #  {"molecule" : "Hexanol",        "dipole": 1.60, "relative_polarity" : 0.559, "hansen": 12.5, "chain_length" : 6, "diffusivity": 0.18},
           # {"molecule" : "Isopropanol",    "dipole": 1.58, "relative_polarity" : 0.546, "hansen": 16.4, "chain_length" : 3, "fit": 300, "cubes": 167},  # estimated lower bound, could be higher
           # {"molecule" : "Toluene",        "dipole": 0.38, "relative_polarity" : 0.099, "hansen": 2,                        "fit": 1000, "cubes": 1000},  # estimated, don't use for anything important
 
@@ -194,20 +195,33 @@ def plot_critical_As_Pb_ratio():
     dipole_moment =     [data_point["dipole"] for data_point in data]
     relative_polarity = [data_point["relative_polarity"] for data_point in data]
     fit =               [data_point["fit"] for data_point in data]
-    cubes =             [data_point["cubes"] for data_point in data]
+    diffusivity =       [data_point["diffusivity"]*10 for data_point in data]
+    #cubes =             [data_point["cubes"] for data_point in data]
+
+    
+    # fitting
+
+    func = lambda x, a, b, c: a/ (x + b) + c
+    bounds = ([1000, -50, -50], [5000, 50, 50])
+    popt, pcov = curve_fit(func, fit, diffusivity, bounds= bounds)
+    print(popt)
+    x_vec = np.linspace(50, 400, 100)
+    y_vec = func(x_vec, *popt)
 
 
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x = cubes, y = relative_polarity, mode = 'markers', name = 'relative polarity', marker = dict(size = 10)))
-    #fig.add_trace(go.Scatter(x = cubes, y = hansen, mode = 'markers', name = 'hansen', marker = dict(size = 10)))
-    
+
+    fig.add_trace(go.Scatter(x = fit, y = diffusivity, mode = 'markers', name = 'diffusivity * 10', marker = dict(size = 10)))
+    fig.add_trace(go.Scatter(x = fit, y = hansen, mode = 'markers', name = 'hansen', marker = dict(size = 10)))
+    fig.add_trace(go.Scatter(x = x_vec, y = y_vec, mode = 'lines', name = 'Diffusion fit: a/(x + b) + c', marker = dict(size = 10)))
+
+
     fig.update_layout(title = 'Critical As/Pb ratio over molecule properties',
-                      xaxis_title = 'Critical As/Pb ratio',
                       legend_title = 'Method',
                       )
     
     fig.show()
-    fig.write_html("RelPolarity_critical_As_Pb_ratio.html")
+    fig.write_html("diff_hansen_critical_As_Pb_ratio.html")
 
 
 

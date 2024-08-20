@@ -45,7 +45,7 @@ class GaussianProcess:
 ### ------------------ CROSS VALIDATION -------------------- ###
 
 
-    def leave_one_out_cross_validation(self, training_data, targets):
+    def leave_one_out_cross_validation(self, training_data, targets) -> float:
 
         """
             LOO cross validation on the training data, returns the mean squared error
@@ -94,7 +94,7 @@ class GaussianProcess:
 
 ### --------------------- OPTIMIZATION ----------------------- ###
 
-    def train(self):
+    def train(self) -> GPy.models.GPRegression:
         """
             Trains the Gaussian Process model
         """
@@ -116,7 +116,7 @@ class GaussianProcess:
 
 
 
-    def predict(self, sample):
+    def predict(self, sample) -> np.ndarray:
         """
             Predicts the target value for a given sample
         """
@@ -181,7 +181,7 @@ class GaussianProcess:
 
 ### ------------- HELPER FUNCTIONS --------------- ###
 
-    def get_kernel(self, kernel, input_dim = None):
+    def get_kernel(self, kernel, input_dim = None) -> GPy.kern:
         """
             Returns the kernel object based on the kernel string
         """

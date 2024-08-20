@@ -22,8 +22,8 @@ from helpers import *
 #molecule_name = input("Enter the molecule name: (e.g. Ethanol, Methanol, ...):     ")
 #target_peak = int(input("Enter the target peak position in nm: (e.g. 470):         "))
 
-molecule_name = "Ethanol"
-target_peak = 480
+molecule_name =  "Isopropanol"
+target_peak   =   500
 
 ### ------------------------------------------------------------------------- ###
 
@@ -32,22 +32,25 @@ target_peak = 480
 def main():
 
     # initialize synthesizer object and optimize (specify As molecule and NPL type)
-    synthesizer = Synthesizer(molecule_name, iterations=100, peak = target_peak, obj=["PEAK_POS", "PLQY"], encoding_type="one_hot")
+    synthesizer = Synthesizer(molecule_name, iterations=150, peak = target_peak, obj=["PEAK_POS", "FWHM"], encoding_type="one_hot", Cs_Pb_opt=True, c_Pb_max= 0.03)
     opt_x, opt_delta = synthesizer.optimize_NPL()
+
+    #  "PLQY", "FWHM"
 
     print(f"opt_x: {opt_x}")
     print(f"opt_delta: {opt_delta}")
 
     # get results
-    results_string =        synthesizer.results["results_string"]
-    input_NPL =             synthesizer.results["input_NPL"]
-    input_PLQY =            synthesizer.results["input_PLQY"]
-    input_FWHM =            synthesizer.results["input_FWHM"]
-    As_Pb_ratio=            synthesizer.results["As_Pb_ratio"]
+    results_string =    synthesizer.results["results_string"]
+    input_NPL =         synthesizer.results["input_NPL"]
+    input_PLQY =        synthesizer.results["input_PLQY"]
+    input_FWHM =        synthesizer.results["input_FWHM"]
+    As_Pb_ratio=        synthesizer.results["As_Pb_ratio"]
+    Cs_Pb_ratio =       synthesizer.results["Cs_Pb_ratio"]
 
 
     # handle results (all done by the synthesizer class)
-    synthesizer.print_results(results_string, input_PLQY, input_NPL, input_FWHM, As_Pb_ratio)       	  # -->  print results
+    synthesizer.print_results(results_string, input_PLQY, input_NPL, input_FWHM, As_Pb_ratio, Cs_Pb_ratio)       	  # -->  print results
     synthesizer.test_results(input_PLQY)                                                                  # -->  test results against Gaussian Process
     synthesizer.plot_suggestions(opt_x, synthesizer.datastructure_PLQY, parameters=synthesizer.datastructure_PLQY.synthesis_training_selection)
     plt.show()

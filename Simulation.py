@@ -4,7 +4,7 @@ import GaussianProcess as GP
 from KRR import Ridge
 
 """
-    Just some exeriments, disregard this file pls
+    Just some experiments, disregard this file pls
     ALSO: the code is chaos, I know ... I'm sorry
 """
 

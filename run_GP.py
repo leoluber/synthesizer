@@ -1,5 +1,7 @@
 import numpy as np
 import random
+import matplotlib.pyplot as plt
+
 from Datastructure import *
 from GaussianProcess import *
 
@@ -16,12 +18,16 @@ def main():
 
     datastructure = Datastructure(
                                 synthesis_file_path= "Perovskite_NC_synthesis_NH_240418.csv", 
-                                target = "PLQY",                                                       # "PLQY", "FWHM", "PEAK_POS"
-                                #wavelength_filter= [470, 510],                                        
+                                target = "PEAK_POS",                                                       # "PLQY", "FWHM", "PEAK_POS"
+                                #wavelength_filter= [470, 480],                                        
                                 exclude_no_star = True,
                                 wavelength_unit= "NM",                                                 # "NM", "EV"
-                                normalization= True,
+                                monodispersity_only= True,
+                                normalization= False,
+                                P_only= False,
                                 )
+    
+
 
     # standard procedure	
     data_objects = datastructure.get_data()
@@ -31,6 +37,7 @@ def main():
 
     # select input and target from Data objects
     inputs, targets, sample_numbers = [], [], []
+    molecule, peak_pos = [], []
 
     for data in data_objects:
 
@@ -40,15 +47,21 @@ def main():
                 # TARGETS
         targets.append(data["y"])
 
-                # OTHER
-        sample_numbers.append(data["sample_number"])
 
+
+
+
+    # # plot plqy vs peak pos
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111)
+    # ax.scatter(inputs, targets, c = molecule)
+    # plt.show()
 
 
     # random sample for a MAP (3D plot), only relevant for map_3D()
-    sample = random.sample(inputs, 1)[0]                                        # sample data
-    sample_target = targets[inputs.index(sample)]                               # get target
-    sample_number = sample_numbers[inputs.index(sample)]                        # get sample number
+    #sample = random.sample(inputs, 1)[0]                                        # sample data
+    #sample_target = targets[inputs.index(sample)]                               # get target
+    #sample_number = sample_numbers[inputs.index(sample)]                        # get sample number
 
 
     # convert to numpy arrays

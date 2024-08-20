@@ -27,11 +27,15 @@ class Synthesizer:
                  peak : int,
                  obj : str = ["PEAK_POS", "PLQY", "FWHM"],
                  encoding_type = "one_hot",                          # "one_hot", "geometry"
+                 Cs_Pb_opt = False,                                  # Cs/Pb ratio optimization
+                 c_Pb_max = None,                                    # maximum Pb concentration
                 ):
         
 
             # set of parameters used in the objective function
         self.obj = obj
+        self.molecule =         molecule
+        self.Cs_Pb_opt =        Cs_Pb_opt
 
             # main initialization
         self.encoding_type =    encoding_type
@@ -52,6 +56,8 @@ class Synthesizer:
         self.parameters_PLQY =                  self.datastructure_PLQY.synthesis_training_selection
         if "FWHM" in self.obj:  
             self.parameters_FWHM =              self.datastructure_FWHM.synthesis_training_selection
+        
+        self.c_Pb_max = c_Pb_max
 
             # models
         self.NPL_model  =       self.train(self.inputs_NPL, self.peak_pos, self.parameters_NPL)
@@ -69,7 +75,7 @@ class Synthesizer:
 
 ### ------------------------ SAMPLING ------------------------ ###
 
-    def optimize_NPL(self):
+    def optimize_NPL(self) -> tuple:
         """
             Optimize for the selected NPL type using the GPyOpt library
             - minimizes the distance to the perfect peak position
@@ -88,7 +94,6 @@ class Synthesizer:
 
 
         # define the objective function
-
         def f(x):
 
             """
@@ -97,9 +102,13 @@ class Synthesizer:
             """
 
             # calculate As_Pb ratio
-            V_AS_norm, c_Pb_norm, V_Pb_norm = x[0][0], x[0][1], x[0][2]
+            V_AS_norm, c_Pb_norm, V_Pb_norm, V_Cs_norm = x[0][0], x[0][1], x[0][2], x[0][3]
             V_As, c_Pb, V_Pb = self.datastructure_NPL.denormalize(V_AS_norm, "V (antisolvent)"), self.datastructure_NPL.denormalize(c_Pb_norm, "c (PbBr2)"), self.datastructure_NPL.denormalize(V_Pb_norm, "V (PbBr2 prec.)")
-            As_Pb_ratio = V_As / (c_Pb * V_Pb *100)    # /100 from "unit conversion"
+            V_Cs = self.datastructure_NPL.denormalize(V_Cs_norm, "V (Cs-OA)")
+            As_Pb_ratio = V_As / (c_Pb * V_Pb * 100)    # /100 from "unit conversion"
+            Cs_Pb_ratio = (0.02 * V_Cs) / (c_Pb * V_Pb)
+
+            if As_Pb_ratio > 4: return 1000
 
 
             # add the encoded molecule to both inputs
@@ -122,12 +131,19 @@ class Synthesizer:
                 FWHM =  self.FWHM_model.predict([FWHM_input])
 
             # handle the output, choose the objective function type
-            #output = (1 - PLQY)**2  + ((NPL - self.peak)**2)           # minimize the distance to the perfect peak position
-            output = (1 - PLQY)**2  * ((NPL - self.peak)**2)            # same but different weighting
+            output = ((NPL - self.peak)**2)             # minimize the distance to the perfect peak position
 
             if "FWHM" in self.obj:
-                #output += FWHM
-                output *= FWHM 
+                output += FWHM
+                #output *= FWHM 
+
+            if "PLQY" in self.obj:
+                output += (1 - PLQY)**2 * 20
+                #output *= (1 - PLQY)**2
+            
+            if self.Cs_Pb_opt:
+                output += Cs_Pb_ratio
+                #output *= Cs_Pb_ratio
 
             return output
 
@@ -154,10 +170,12 @@ class Synthesizer:
             Train a RKK model on the given data
         """
 
-        rkk = Ridge(inputs, targets, parameter_selection, kernel_type= "polynomial", alpha= 1e-1, gamma= 0.01)
+        rkk = Ridge(inputs, targets, parameter_selection, kernel_type= "laplacian", alpha=0.01, gamma=0.01)  # kernel ridge regression
 
         # optimize hyperparameters
         print("finding hyperparameters ... ")
+
+        ''' the RKK hyper_parameter optimization is defined in the KRR class, adjust possible functions there '''
         rkk.optimize_hyperparameters()
 
         rkk.fit()
@@ -165,7 +183,7 @@ class Synthesizer:
 
 
 
-    def get_data(self, datastructure : Datastructure):
+    def get_data(self, datastructure : Datastructure) -> tuple:
         """
             Get data from the Datastructure object
         """
@@ -179,7 +197,7 @@ class Synthesizer:
 
 
 
-    def get_limits(self):
+    def get_limits(self) -> dict:
         """
             Defines the limits for the NPL synthesis parameters from the peak range,
             returns them as a dictionary
@@ -192,14 +210,18 @@ class Synthesizer:
             limits[parameter] = [min([sample[i] for sample in samples]), 
                                  max([sample[i] for sample in samples])]
         
-        # increase the values for the lead bromide concentration
-        limits["c (PbBr2)"] = [0.08, limits["c (PbBr2)"][1] * 1.2]
+        # set the limits for the Pb concentration
+        if self.c_Pb_max is not None:
+            max_c_Pb = self.c_Pb_max
+            norm_max_c_Pb = (max_c_Pb - self.datastructure_NPL.max_min["c (PbBr2)"][1]) / (self.datastructure_NPL.max_min["c (PbBr2)"][0] - self.datastructure_NPL.max_min["c (PbBr2)"][1])
+            limits["c (PbBr2)"] = [0, norm_max_c_Pb]
+        
 
         return limits
     
 
 
-    def get_discrete_values(self, parameter):
+    def get_discrete_values(self, parameter) -> list:
         """
             Get all the discrete values for the specified parameter
         """
@@ -208,7 +230,7 @@ class Synthesizer:
         return list(set([sample[index] for sample in self.inputs_NPL]))
     
 
-    def encode_molecule(self, molecule, encoding):
+    def encode_molecule(self, molecule, encoding) -> list:
         """
             One hot encode the value
         """
@@ -223,7 +245,7 @@ class Synthesizer:
 
 
 
-    def get_datastructures(self):
+    def get_datastructures(self) -> tuple:
         """
             Get the datastructures for the NPL and PLQY models
             --> make adjustments here if necessary
@@ -236,6 +258,7 @@ class Synthesizer:
                                         wavelength_filter= [400, 550],
                                         encoding= self.encoding_type,
                                         #monodispersity_only= True,
+                                        molecule= self.molecule,
                                         )
         
         datastructure_NPL.synthesis_training_selection = ["AS_Pb_ratio",]
@@ -247,9 +270,10 @@ class Synthesizer:
                                         exclude_no_star= True,
                                         wavelength_filter= [400, 510],
                                         encoding= self.encoding_type,       
-                                        monodispersity_only= True,                                 
+                                        monodispersity_only= True,   
+                                        P_only= True,                              
                                         )
-        datastructure_PLQY.synthesis_training_selection = ["V (antisolvent)", "c (PbBr2)", "V (PbBr2 prec.)", "V (Cs-OA)" ,]
+        datastructure_PLQY.synthesis_training_selection = ["V (antisolvent)", "c (PbBr2)", "V (PbBr2 prec.)", "V (Cs-OA)"]
 
 
         datastructure_FWHM = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_240418.csv",
@@ -257,10 +281,11 @@ class Synthesizer:
                                         wavelength_unit= "NM",                                                 # "NM", "EV"
                                         exclude_no_star= False,
                                         wavelength_filter= [400, 550],
-                                        #monodispersity_only= True,
+                                        monodispersity_only= True,
                                         encoding= self.encoding_type,
+                                        P_only= True,
                                         )
-        datastructure_FWHM.synthesis_training_selection = ["AS_Pb_ratio", "V (antisolvent)", "c (PbBr2)", "V (PbBr2 prec.)", "V (Cs-OA)" ,]
+        datastructure_FWHM.synthesis_training_selection = ["AS_Pb_ratio", "V (antisolvent)", "c (PbBr2)", "V (PbBr2 prec.)", "V (Cs-OA)"]
     
         return datastructure_NPL, datastructure_PLQY, datastructure_FWHM
             
@@ -269,7 +294,7 @@ class Synthesizer:
 
 ### ------------------------ PRINTING AND TESTING ------------------------ ###
 
-    def return_results(self, x):
+    def return_results(self, x) -> dict:
         """
             return the results from the optimization 
         """
@@ -280,8 +305,11 @@ class Synthesizer:
         V_As = self.datastructure_NPL.denormalize(x[0], "V (antisolvent)")
         c_Pb = self.datastructure_NPL.denormalize(x[1], "c (PbBr2)")
         V_Pb = self.datastructure_NPL.denormalize(x[2], "V (PbBr2 prec.)")
+        V_Cs = self.datastructure_NPL.denormalize(x[3], "V (Cs-OA)")
+        c_Cs = 0.02
 
         results["As_Pb_ratio"] =  V_As / (c_Pb * V_Pb * 100)
+        results["Cs_Pb_ratio"] =  (c_Cs * V_Cs) / (c_Cs * V_Pb)
 
 
         # get initial input that leads to the best plqy value
@@ -307,7 +335,7 @@ class Synthesizer:
 
 
 
-    def print_results(self, results_string, input_PLQY, input_NPL, input_FWHM, As_Pb_ratio):
+    def print_results(self, results_string, input_PLQY, input_NPL, input_FWHM, As_Pb_ratio, Cs_Pb_ratio):
         """
             Print the results to a file
         """
@@ -324,7 +352,8 @@ class Synthesizer:
             file.write(f"to make NPLs around {self.peak}nm:\n")
             file.write(f"Choose the following synthesis parameters:\n")
             file.write(f"{results_string}\n")
-            file.write(f"with the following As/Pb ratio: {As_Pb_ratio * 100}\n")
+            file.write(f"with the following As/Pb ratio: {As_Pb_ratio}\n")
+            file.write(f" and the following Cs/Pb ratio: {Cs_Pb_ratio}\n")
             file.write(f"KRR predicted PLQY for this sample:   {self.PLQY_model.predict([input_PLQY])}\n")
             file.write(f"KRR predicted peak position:          {self.NPL_model.predict([input_NPL])}\n")
 

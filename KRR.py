@@ -21,7 +21,7 @@ class Ridge:
                  training_data,
                  targets,
                  parameter_selection,       # list of parameter names
-                 kernel_type = "rbf",       # "rbf", "polynomial", "laplacian", "linear"
+                 kernel_type = None,       # "rbf", "polynomial", "laplacian", "linear"
                  alpha = 0.1,               # regularization parameter
                  gamma = 0.1,               # kernel coefficient
                  ):
@@ -55,7 +55,7 @@ class Ridge:
 
 ### ----------------------- LOO Validation ----------------------- ###
 
-    def loo_validation(self, inputs, targets):
+    def loo_validation(self, inputs, targets) -> float:
         """
             LOO cross validation on the training data
         """
@@ -77,7 +77,7 @@ class Ridge:
         #plot regression
         self.plot_regression(targets, self.predictions)
 
-        return self.predictions, np.mean(self.error)
+        return np.mean(self.error)
 
 
 
@@ -102,7 +102,7 @@ class Ridge:
 
 ### ------------------------ OPTIMIZATION ------------------------ ###
 
-    def optimize_hyperparameters(self):
+    def optimize_hyperparameters(self) -> KernelRidge:
         """
             Optimize the hyperparameters of the kernel ridge regression
         """
@@ -110,9 +110,9 @@ class Ridge:
         krr = KernelRidge()
 
         param_grid = {
-            'alpha': [5e-1, 1e-1, 1e-3, 1e-5, 1e-7],
-            'gamma': [0.5, 0.1, 0.01, 0.001],
-            'kernel': ['rbf', 'polynomial', 'laplacian', 'linear']
+            'alpha': [ 1e-3, 1e-2, 1e-1,],
+            'gamma': [ 0.1, 0.0001, 0.001,],
+            'kernel': ['laplacian', 'exponential',]
         }
 
         # grid search for hyperparameters
@@ -195,7 +195,7 @@ class Ridge:
     
 
 
-    def plot_1D(self, initial_sample, changed_index, range = [0,1], resolution = 100):
+    def plot_1D(self, initial_sample, changed_index, range = [0,10], resolution = 100):
         """
             Plots the 1D MAP of the kernel ridge regression for the specified variable
         """
@@ -205,7 +205,8 @@ class Ridge:
         inputs = [initial_sample[:changed_index] + [x] + initial_sample[changed_index+1:] for x in lin]
         targets = [self.model.predict([x]) for x in inputs]
 
-        plt.plot(lin, targets, color='red', label='transfer KRR')
+        plt.plot(lin, targets, color='red', label='KRR')
+        plt.scatter(self.training_data, self.targets, color='blue', label='data')
         plt.title('KRR - 1D MAP')
         
         #plt.show()
