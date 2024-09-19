@@ -1,20 +1,22 @@
-import numpy as np
+r""" Script to optimize NPLs for a given antisolvent molecule (target: PLQY) 
+    using the Synthesizer.py module. """
+    # < github.com/leoluber >
+
 
 # custom
-from Datastructure import Datastructure
 from Synthesizer import Synthesizer
 from helpers import *
 
 
+
 """
-    Uses the "Synthesizer" module to optimize Perovskite NPLs for a given antisolvent molecule (target: PLQY)
-    - KRR regression models for #MLs and PLQY
+    This script uses the Synthesizer.py module to optimize Perovskite NPLs for a given 
+    antisolvent molecule (target: PLQY)
+    - KRR / GP regression models for Peak Position, PLQY, FWHM, ...
     - bounds given by min/max of all data points
     - uses GPyOpt for optimization
-    - constraints taken from the #ML model
-    - objective function: (1-PLQY)**2 + (target_peak_pos - peak_pos)**2 + FWHM        
-                      OR: (1-PLQY)**2 * (target_peak_pos - peak_pos)**2 * FWHM 
 """
+
 
 
 ### -------------------- choose molecule and target peak -------------------- ###
@@ -22,8 +24,9 @@ from helpers import *
 #molecule_name = input("Enter the molecule name: (e.g. Ethanol, Methanol, ...):     ")
 #target_peak = int(input("Enter the target peak position in nm: (e.g. 470):         "))
 
-molecule_name =  "Isopropanol"
-target_peak   =   500
+molecule_name =  "Methanol"
+geometry =        [0.5, 1, 0]
+target_peak   =   496
 
 ### ------------------------------------------------------------------------- ###
 
@@ -31,14 +34,31 @@ target_peak   =   500
 
 def main():
 
+    """ For explanation of the parameters see the Synthesizer.py module """
+
     # initialize synthesizer object and optimize (specify As molecule and NPL type)
-    synthesizer = Synthesizer(molecule_name, iterations=150, peak = target_peak, obj=["PEAK_POS", "FWHM"], encoding_type="one_hot", Cs_Pb_opt=True, c_Pb_max= 0.03)
+    synthesizer = Synthesizer(molecule_name, 
+                              iterations =       10, 
+                              peak =             target_peak,
+                              obj =              ["PEAK_POS", "PLQY",], 
+                              encoding_type =    "one_hot", 
+                              #geometry =        geometry,
+                              Cs_Pb_opt =        False,
+                              Cs_As_opt=         False,
+                              c_Pb_fixed =       0.05, 
+                              #V_As_fixed=       5000,
+                              #V_Cs_fixed=       100,  
+                              c_Pb_max =         None,
+                              model_type=       "GP",
+                              )
+    
+    synthesizer.print_logo()
+    
+    # optimize NPL
     opt_x, opt_delta = synthesizer.optimize_NPL()
-
-    #  "PLQY", "FWHM"
-
-    print(f"opt_x: {opt_x}")
+    print(f"\n")
     print(f"opt_delta: {opt_delta}")
+
 
     # get results
     results_string =    synthesizer.results["results_string"]
@@ -50,10 +70,14 @@ def main():
 
 
     # handle results (all done by the synthesizer class)
-    synthesizer.print_results(results_string, input_PLQY, input_NPL, input_FWHM, As_Pb_ratio, Cs_Pb_ratio)       	  # -->  print results
-    synthesizer.test_results(input_PLQY)                                                                  # -->  test results against Gaussian Process
-    synthesizer.plot_suggestions(opt_x, synthesizer.datastructure_PLQY, parameters=synthesizer.datastructure_PLQY.synthesis_training_selection)
-    plt.show()
+    synthesizer.print_results(results_string, 
+                              input_PLQY, 
+                              input_NPL, 
+                              input_FWHM, 
+                              As_Pb_ratio, 
+                              Cs_Pb_ratio)
+    #synthesizer.test_results(input_PLQY)       
+
 
 
 if __name__ == "__main__":

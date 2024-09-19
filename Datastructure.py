@@ -1,8 +1,13 @@
+r"""  Datastructure.py implements the Datastructure class used 
+      throughout the project as main data structure  """
+      # << github.com/leoluber >> 
+
+
+from typing import Literal
 import numpy as np
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit
 import plotly
 
 # custom
@@ -10,184 +15,225 @@ from helpers import *
 
 
 
+class Datastructure:
 
-"""
+    """ Datastructure class
+
     General purpose data structure that reads in the synthesis data, spectral information 
-    and the global attributes of the molecules and creates a list of dict.objects; can be 
-    easily extended to include more global attributes or other target values.
+    and the global attributes of the molecules, performs various selections and creates a 
+    list of dict. objects that can be used for machine learning tasks.
+    Can be easily extended to include more attributes or other target values.
+    It is discouraged to use this class with different data sets!
 
-    DATA: 
+    REQUIREMENTS
+    ------------
     - all data should be at "/data/" relative to the current working directory and contain:
         - a folder "spectrum" with the spectral data in .txt files (csv)
         - AntisolventProperties.csv with the global attributes of the molecules; names for 
           properties to be found in the global_attribute_selection list
-        - a .csv file with the synthesis data (synthesis_file_path) containing the sample 
-          numbers, molecule names and synthesis parameters
+        - a _.csv file with the synthesis data (synthesis_file_path) containing the sample 
+          numbers, molecule names, synthesis parameters and other properties
 
-"""
+    PARAMETERS
+    ----------
+    - synthesis_file_path:   path to the synthesis data file (csv)
+    - target:                target value for the machine learning task (FWHM, PEAK_POS, PLQY, NR)
+    - encoding:              encoding type for the molecules (one_hot, geometry)
+    - wavelength_unit:       unit of the wavelength (NM, EV)
+    - wavelength_filter:     filter for the peak position (list of two values in nm)
+    - molecule:              molecule to be selected (all, specific molecule)
+    - add_baseline:          add a baseline data to the data objects
+    - PLQY_criteria:         exclude samples with low Cs/Pb ratios if the measurement can not be trusted
+    - monodispersity_only:   exclude samples that are not monodisperse
+    - P_only:                exclude samples that are not P type
+
+    INTENDED USAGE
+    -------------
+    >>> from Datastructure import Datastructure
+    >>> ds = Datastructure(synthesis_file_path = "synthesis_data.csv", target = "FWHM")
+    >>> data_objects = ds.get_data()
+
+    DATA OBJECTS
+    ------------
+    Dictionary objects with the following keys (returned by get_data())
+
+    - "y":                   target value
+    - "total_parameters":    list of all selected parameters (list)
+    - "parameter_selection": list of selected parameters as strings (for reference)
+    - "encoding":            one hot OR geometric encoding of the molecule (list)
+    - "sample_number":       sample number (string)
+    - "molecule_name":       name of the molecule (string)
+    - "monodispersity":      monodispersity (bool)
+    - "product":             product type
+    - "index":               index of the data object
+    - "age_prec":            age of the precursor
+
+    """
 
 
-class Datastructure:
+    def __init__(
+                 self,
+                 synthesis_file_path:   str, 
 
-    def __init__(self,
-                 synthesis_file_path:   str,                   # path to the synthesis data file
-                 target =              "FWHM",                 # Options: PEAK_POS, PLQY, FWHM, NPL_TYPE, NR
-                 output_format =       "LIST",                 # LIST or TENSOR (for final output format of array-like data)
-                 wavelength_filter =    [400, 600],            # filter for the spectrum, always in "NM"
-                 exclude_no_star =      False,                 # exclude samples with bad PLQY measurements
-                 exclude_PLQY =         False,
-                 wavelength_unit =     "NM",                   # "EV" or "NM
-                 molecule =            "all",                  # "all" or specific molecule
-                 normalization =        True,                  # normalize the data if "True"
-                 monodispersity_only =  False,                 # only includes samples with monodispersity flag if "True"
-                 encoding =            "one_hot",              # "one_hot" or "geometry"
-                 P_only =               False,                 # only include precipitate samples	
+                 target:          Literal["FWHM", "PEAK_POS", "PLQY", "NR"] = "FWHM",
+                 encoding:        Literal["one_hot", "geometry"] = "one_hot",
+                 wavelength_unit: Literal["NM", "EV"] = "NM",
+
+                 wavelength_filter =    [400, 600],
+                 molecule =            "all",
+                 add_baseline =         False,
+                 PLQY_criteria =        True,
+                 monodispersity_only =  False,
+                 P_only =               False,
+
                  ):
         
 
         # main stettings
-        self.target = target
-        self.output_format = output_format
-        self.encoding = encoding
+        self.target          = target
+        self.encoding        = encoding
+        self.add_baseline    = add_baseline
         self.wavelength_unit = wavelength_unit
-        self.normalization = normalization
 
-        # flags
-        self.exclude_no_star = exclude_no_star
-        self.exclude_PLQY = exclude_PLQY
-        self.molecule = molecule
-        self.monodispersity_only = monodispersity_only
-        self.P_only = P_only
 
-        # directories  (define data related directories here)
-        self.current_path =  os.getcwd()
+        # selection flags
+        self.flags = {"PLQY_criteria"      : PLQY_criteria,
+                      "monodispersity_only": monodispersity_only,
+                      "P_only"             : P_only,
+                      "molecule"           : molecule}
+        
+
+        # directories
+        self.current_path =             os.getcwd()
         self.data_path =                self.current_path + "/data/"
         self.synthesis_file_path =      self.data_path + synthesis_file_path
         self.global_attributes_path =   self.data_path + "AntisolventProperties.csv"
         self.spectrum_path =            self.data_path + "spectrum/"
 
-        # data related local variables
-        self.max_min = {"FWHM" : [0, 1000],}                                            # dictionary to store the max and min values of the parameters for denormalization
-        self.data = []                                                                  # should not be accessed, use get_data() instead
-        if wavelength_unit == "EV":
-            self.wavelength_filter = [nm_to_ev(wavelength_filter[0]), 
-                                      nm_to_ev(wavelength_filter[1])]
-        else:
-            self.wavelength_filter = wavelength_filter
 
-        
-        # parmeter selections (make sure this fits th csv headers in the data files); As_Pb_ratio and Pb_Cs_ratio are calculated during initialization
+        # dictionaries for molecule names, geometries and atom numbers
+        self.molecule_dictionary, self.ml_dictionary = self.get_molecule_dictionary()
+        self.molecule_geometry = self.get_molecule_geometry()
 
-        # ------- ADJUSTABLE ------- #
-        self.global_attribute_selection =       [] #"Hansen parameter hydrogen bonding (MPa)1/2", 'relative polarity (-)', "dielectric constant (-)",  "Hansen parameter hydrogen bonding (MPa)1/2", "dipole moment (D)", "Gutman donor number (kcal/mol)", "viscosity (mPa ?s)" ,]
-        self.synthesis_training_selection =     ["AS_Pb_ratio",] # "c (PbBr2)", "V (antisolvent)", "V (Cs-OA)", "V (PbBr2 prec.)", ] # "Pb_Cs_ratio", "c (Cs-OA)", "c (OlAm)", "c (OA)"] #
-        # -------------------------- #
-
-        self.synthesis_selection =              [ "c (PbBr2)", "c (OlAm)", "c (OA)", "V (Cs-OA)", "c (Cs-OA)" ,"V (antisolvent)", "V (PbBr2 prec.)"]        
-        self.total_training_parameter_selection = self.synthesis_training_selection + self.global_attribute_selection
-
-        # read in the data
-        self.synthesis_data = self.read_synthesis_data()                                # container of synthesis data arrays,           read in during initialization
-        self.global_attributes_df = self.read_global_attributes_and_nomalize()          # dataframe of global attributes,               read in during initialization
-
-        # dictionaries (will need to be adjusted for new molecules)
-        self.molecule_dictionary, self.atom_to_num, self.num_to_atom, self.ml_dictionary, self.molecule_geometry = self.get_molecule_dictionary()
 
         # list of all relevant molecule names
         self.molecule_names = list(self.molecule_dictionary.values())
 
 
+        # data related local variables (should not be accessed directly)
+        self.data = []    
+        self.max_min = {}  # norm/denorm
+        if wavelength_unit == "EV":
+            self.wavelength_filter = [nm_to_ev(wavelength_filter[1]),
+                                      nm_to_ev(wavelength_filter[0])]
+        else:
+            self.wavelength_filter = wavelength_filter
+
+        # ------- Training parameter selection ------- #
+
+        """ Can be adjusted after initialization BUT before calling get_data()! """
+
+        self.global_attribute_selection =       [] # "dielectric constant (-)", 'relative polarity (-)',"Hansen parameter hydrogen bonding (MPa)1/2",]
+        self.synthesis_training_selection =     ["c (PbBr2)", "V (antisolvent)", "V (Cs-OA)", "V (PbBr2 prec.)", "AS_Pb_ratio",  "Cs_Pb_ratio",]
+        self.total_training_parameter_selection = self.synthesis_training_selection + self.global_attribute_selection
+
+        # ------------------------------------------- #
+
+
+        # read in the data
+        self.synthesis_data = self.read_synthesis_data()
+        self.global_attributes_df = self.read_global_attributes_and_nomalize()
+
+
+        # densities for adjusting the concentrations
+        self.densities = {f"{molecule}": self.global_attributes_df
+                          .loc[self.global_attributes_df['antisolvent'] == molecule]['n [mol/L]']
+                          .to_numpy()
+                          .astype(float)[0] for molecule in self.molecule_names}
+
+
+
 
     def get_data(self)-> list:
         
-        """
-            - loop that iterates through the samples in the synthesis file, reads in all the extra information and 
-              represents it as a Data object
-            - synthesis data and the gloal attributes dataframe are read in during initialization 
-            (accessed via self.synthesis_data["property_name"][index])
-            - molecule specific data is read in during the loop
+        """ Data collection function
+        
+        Returns a list of data objects (dicts) that can be used for machine learning tasks
+        - Loop that iterates through the samples in the synthesis file, reads in all the extra information and 
+            represents it as a Data object
+        - synthesis data and the gloal attributes dataframe are read in during initialization 
+        (accessed via self.synthesis_data["property_name"][index])
+        - molecule specific data is read in during the loop
+
         """
 
 
         for index, sample_number in enumerate(self.synthesis_data["sample_numbers"]):
 
-            #if index > 160 : continue # skip the first 100 samples for testing purposes -> !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-           
+
             # check if the molecule is in the molecule dictionary, skip if not
             if self.synthesis_data["molecule_names"][index] not in self.molecule_dictionary.keys():
                 continue
 
-            # translates the data dependent molecule name to inherent module code (because I'm not a chemist and this is a mess otherwise)
+            # translates the data dependent molecule name to inherent module specific names 
             molecule_name = self.molecule_dictionary[self.synthesis_data["molecule_names"][index]]
-           
-            # get the spectral data, that matches "sample_number".txt and read in the peak position and FWHM
+
+
+            # get the spectral data that matches the sample_number (if it exists)
             path = self.spectrum_path + sample_number + ".txt"
             if not os.path.exists(path): 
                 continue
-            fwhm, peak_pos, spectrum, wavelength = self.read_spectrum(sample_number)
+            fwhm, peak_pos, spectrum, wavelength = self.read_spectrum(path)            
 
-            # if the spectrum is used as input, it should be compressed to reduce the dimensionality
-            spectrum = compress_spectrum(spectrum=spectrum[0:150])                        
 
-            # check flags (would be more elegant to do this during the csv read in, but this is more flexible for now)
-            if self.molecule != "all" and self.molecule != molecule_name:
-                continue  
-            if peak_pos <= min(self.wavelength_filter) or peak_pos >= max(self.wavelength_filter):
-                continue
-            if self.target == "PLQY" and self.synthesis_data['PLQY'][index] == 0:
-                continue
-            if self.target == "PLQY"  and self.exclude_no_star and self.synthesis_data['include PLQY'][index] != 1 :
-                continue
-            if self.monodispersity_only and self.synthesis_data['monodispersity'][index] != "1":
-                continue
-            if self.P_only and self.synthesis_data['S/P'][index] != "P":
+            # BASELINE->  if baseline is set to True, the Toluene samples are included
+            # the "molecule" == "all" case is handled outside the loop
+            if molecule_name == "Toluene" and self.add_baseline and self.flags["molecule"] != "all":
+                molecule_name = self.flags["molecule"]
+
+
+            # check flags (more elegant to do this during the csv reading, but this gives allows
+            # resetting the flags and calling get_data() again for the same Datastructure object
+            if not self.check_flags(index, molecule_name, peak_pos):
                 continue
 
-            # exclude sample numbers
-            # if index > 220:               #- ----------> !!!!!!!!!!!!!!!
-            #     continue
+
+            """
+                PLQY data is an unfortunate mess, the following is a temporary solution 
+                --> excluding samples with low Cs/Pb ratios if the measurement can not be trusted 
+                (old prec, wrong timing)
+            """
+            if self.flags["PLQY_criteria"]:
+                if (self.synthesis_data["Cs_Pb_ratio"][index] < 0.2 
+                    and self.synthesis_data["Age of prec"][index] not in ["0",] 
+                    and self.target == "PLQY"):
+                    continue
 
 
             # classify the product
-            NPL_type = self.get_NPL_type(peak_pos)
+            NPL_type = self.get_NPL_type(peak_pos)             # Thickness of the NPLs in MLs
             product = self.synthesis_data["NC shape"][index]   # "NR", "NPL", "NC"
 
 
             # get global attributes df for the molecule
             global_attributes_df = self.global_attributes_df.loc[self.global_attributes_df['antisolvent'] == molecule_name]
-            
-            
-            # calculate extra attributes (relative polarity needs to be denormalized first)
-            RelPolarity = global_attributes_df['relative polarity (-)'].to_numpy().astype(float)[0]
-            if self.normalization:
-                RelPolarity = self.denormalize(RelPolarity, "relative polarity (-)")
-            polarity = ((self.synthesis_data["V (antisolvent)"][index] * RelPolarity) 
-                        + ( 0.099 * self.synthesis_data["V (PbBr2 prec.)"][index])) / (self.synthesis_data["V (antisolvent)"][index] + self.synthesis_data["V (PbBr2 prec.)"][index] + 0.0001)
-            special_ratio = (self.synthesis_data["V (antisolvent)"][index] * RelPolarity) / (self.synthesis_data["V (PbBr2 prec.)"][index] + self.synthesis_data["c (PbBr2)"][index] + 0.0001)
-    
+
 
             # adjust th As/Pb ratio for actual amount of substance
-            # if molecule_name not in ["Ethanol", "Methanol", "Propanol", "Butanol", "Cyclopentanone", "Acetone", "Isopropanol", "Toluene", "EthylAcetate", "MethylAcetate", "Tert-Butanol", "Butanone",]:
-            #     continue
-            # self.synthesis_data['AS_Pb_ratio'][index] = self.synthesis_data['AS_Pb_ratio'][index] * global_attributes_df['n [mol/L]'].to_numpy().astype(float)[0]
-            # self.synthesis_data['AS_Pb_ratio'][index] /= 1000
-            self.synthesis_data['AS_Pb_ratio'][index] /= 100
+            self.synthesis_data['AS_Pb_ratio'][index] = (self.synthesis_data['AS_Pb_ratio'][index] 
+                                                        * self.densities[molecule_name] / 10000)
+            self.synthesis_data['Cs_As_ratio'][index] = (self.synthesis_data['Cs_As_ratio'][index] 
+                                                         * self.densities[molecule_name]) 
 
 
-
-            # select the global attributes, add the extra attributes
-            global_attributes = [global_attributes_df[attribute].to_numpy().astype(float)[0] for attribute in self.global_attribute_selection]
+            # read selected attributes to a list format
+            global_attributes = [global_attributes_df[attribute]
+                                 .to_numpy()
+                                 .astype(float)[0] for attribute in self.global_attribute_selection]
             
+            synthesis_parameters = [self.synthesis_data[key][index] 
+                                    for key in self.synthesis_training_selection]
 
-            # pass the selected synthesis parameters to a list
-            synthesis_parameters = []
-            for key in self.synthesis_training_selection:
-                synthesis_parameters.append(self.synthesis_data[key][index])
-
-
-            # total parameters
-            #synthesis_parameters.append(polarity)        #---------------------->  add the extra attributes here; 
-                                                                                  # BUT: also add them to the global_attribute_selection !!!
             total_parameters = synthesis_parameters + global_attributes
 
 
@@ -197,63 +243,69 @@ class Datastructure:
 
 
             # set the target
-            if self.target   ==     "FWHM": target = fwhm
-            elif self.target ==     "PEAK_POS": target = peak_pos
-            elif self.target ==     "NPL_TYPE": target = NPL_type
-            elif self.target ==     "PLQY": target = self.synthesis_data["PLQY"][index]
-            elif self.target ==     "SYNTH": target = self.synthesis_data["Pb_Cs_ratio"][index]     # for reverse approach
-            elif self.target ==     "NR": target = 1 if product == "NR" else 0
-            else:                   raise ValueError("No valid target specified")
+            match self.target:
+                case "NPL_TYPE": target = NPL_type
+                case "FWHM": target = fwhm
+                case "PEAK_POS": target = peak_pos
+                case "PLQY": target = self.synthesis_data["PLQY"][index]
+                case "NR": target = 1 if product == "NR" else 0
+                case _: raise ValueError("No valid target specified")
+            
             
         
             ### ----------------------  DATA OBJECT CREATION  ---------------------- ###
-             # ( this is the final output format of the data, good practice to exclued everything you don't need)
+            # ( this is the final output format of the data,
+            # good practice to exclued everything you don't need)
 
             data_point = {  "y": target,
-                            "spectrum": spectrum,
+                            "spectrum": (wavelength, spectrum),
                             "peak_pos": peak_pos,
-                        #   "NPL_type": NPL_type,
+                            "Cs_Pb_ratio": self.synthesis_data["Cs_Pb_ratio"][index],
+                            "suggestion":  self.synthesis_data["suggestion"][index],
+                            "S/P":         self.synthesis_data["S/P"][index],
                             "fwhm": fwhm,
                             "sample_number": sample_number,
+                            "plqy": self.synthesis_data["PLQY"][index],
                             "total_parameters": total_parameters,
-                        #   "global_attributes": global_attributes,
-                            "synthesis_parameters": synthesis_parameters,
-                            "parameter_selection": self.total_training_parameter_selection,
                             "encoding": encoding,
                             "molecule_name": molecule_name,
-                        #   "product": product,
+                            "monodispersity": self.synthesis_data["monodispersity"][index],
                             "index" : index,
+                            "Cs_Pb_ratio": self.synthesis_data["Cs_Pb_ratio"][index],
                             }
             
             self.data.append(data_point)
-        
-        # normalize the spectral data (discouraged when working with different datastructure objects, since the normalization is selection dependent)
-        for data in self.data:
-            data["fwhm"] = (data["fwhm"] - self.max_min["FWHM"][1]) / (self.max_min["FWHM"][0] - self.max_min["FWHM"][1])
 
-        return self.data
+        # add baseline
+        if self.add_baseline:
+            self.data = self.add_limit_baseline(self.data)
+            self.data = self.add_Toluene_baseline(self.data)
+        
+        return self.data 
     
 
 
-#### ------------------------------------------  helper functions  --------------------------------------------- ####
+#### ------------------------------------  HELPERS  ---------------------------------- ####
+
 
     def encode(self, molecule_name, encoding_type) -> list:
-        """ 
-            encodes the molecule name to a one hot or geometry encoding 
-        """
 
-        # this is a more complex encoding based on the molecule geometry ( see molecule_geometry list)
+        """ Encodes the molecule name to a one hot or geometry encoding """
+
+
+        # (1) this is a more complex encoding based on the molecule geometry ( see molecule_geometry list)
         if encoding_type == "geometry":
             encoding = None
             for molecule in self.molecule_geometry:
                 if molecule['molecule'] == molecule_name:
-                    encoding =  [molecule['chainlength']] + [molecule['cycles']] + [molecule['group_pos']] + molecule['group']
+                    encoding =  ([molecule['chainlength']] + molecule['group'] 
+                                 + [molecule['group_pos']] + [molecule['cycles']])
             
             if encoding is None: 
-                return None
+                raise ValueError(f"Geometry encoding not found for {molecule_name}")
 
 
-        # as the name suggests, this is just a one hot encoding based on the molecule name list
+        # (2) as the name suggests, this is just a one hot encoding based on the molecule name list
         elif encoding_type == "one_hot":   
             encoding = [0] * len(self.molecule_names)
             encoding[self.molecule_names.index(molecule_name)] = 1
@@ -264,20 +316,23 @@ class Datastructure:
         return encoding
     
 
-    def read_spectrum(self, sample_number) -> tuple:
-        """
-            Reads in the spectrum of a single sample and returns the FWHM and peak position
-        """
+
+    def read_spectrum(self, path) -> tuple:
+
+        """ Reads in the spectral data from a .txt file
         
-        #path
-        path = self.spectrum_path + sample_number + ".txt"
+        Critically important to have the data in the correct format, that is: 
+        - wavelength in the first column
+        - spectrum in the third column!
+        - comma separated
+        """
     
         wavelength, spectrum = [], []
         with open(path, "r") as filestream:
             for line in filestream:
 
                 if line == '': break
-                x, A, y  = line.split(",")                          # of the form (wavelength in nm, amplitude, norm. amplitude)
+                x, A, y  = line.split(",")
 
                 if self.wavelength_unit == "EV":
                     wavelength.append(nm_to_ev(float(x)))           
@@ -285,12 +340,18 @@ class Datastructure:
                     wavelength.append(float(x)) 
                 spectrum.append(float(y))
 
+
+        """ TODO: both of the following operations could be done more elegantly
+            both should ideally be evaluated by fitting a function, but since the
+            data has very little noise, this is fine
+        """ 
+
         # get peak position
         max_index = spectrum.index(max(spectrum))
-        peak_pos = wavelength[max_index]
+        peak_pos  = wavelength[max_index]
 
         #logic for FWHM, could be changed
-        half_max = 0.5 * max(spectrum)
+        half_max  = 0.5 * max(spectrum)
         left_index, right_index = max_index, max_index
 
         while spectrum[left_index] > half_max:
@@ -299,44 +360,41 @@ class Datastructure:
             right_index += 1
 
         fwhm = abs(wavelength[left_index] - wavelength[right_index])
-
-
-        # update max_min dictionary (normalization happens during the data creation)
-        if fwhm > self.max_min["FWHM"][0]:          self.max_min["FWHM"][0] = fwhm
-        if fwhm < self.max_min["FWHM"][1]:          self.max_min["FWHM"][1] = fwhm
         
         return fwhm, peak_pos, spectrum, wavelength
 
 
 
     def normalize(self, a, name):
-        """
-            norm. dataframes or arrays and stores the max and min values for denormalization
-        """
+
+        """ norm. dataframes or arrays and stores the max and min values for denormalization """
+
         self.max_min[name] = [a.max(), a.min()]
 
         if (a.max() - a.min()) == 0: 
-            print(f"Normalization error: {a}  has no range; returning original array")
+            print(f"Normalization issue: {a}  has no range; returning original array")
             return a
         
         return (a-a.min())/(a.max()-a.min())
     
 
+
     def denormalize(self, a, name):
-        """
-            denormalizes a value based on the max and min values
-        """
+
+        """ denormalizes a value based on the max and min values """
+
         try:
             max_val, min_val = self.max_min[name]
         except KeyError:
             print(f"KeyError: {name} not found in max_min dictionary")
+
         return a * (max_val - min_val) + min_val
 
 
+
     def get_NPL_type(self, peak_pos) -> float:
-        """
-            classify the NPL type from the peak position using the ml_dictionary
-        """
+
+        """ Classify the NPL type from the peak position using the ml_dictionary """
         
         if self.wavelength_unit == "EV":
             peak_pos = ev_to_nm(peak_pos)
@@ -349,289 +407,448 @@ class Datastructure:
 
 
 
-#### ------------------------------------------  init. helpers  --------------------------------------------- ####
+#### ------------------------------  init. helpers  ------------------------------- ####
 
     
     def read_global_attributes_and_nomalize(self) -> pd.DataFrame:
-        """
-            reads in the global attributes of the molecules and normalizes them
-        """
+
+        """ Reads in the global attributes of the molecules and normalizes them """
         
+
         # dataframe
         df = pd.read_csv( self.global_attributes_path, delimiter= ';', header= 0)
-
         
         # normalize the columns
-        if self.normalization:
-            for column in self.global_attribute_selection + ["relative polarity (-)"]:
-                df[column] = self.normalize(df[column], column)
+        for column in self.global_attribute_selection + ["relative polarity (-)"]:
+            df[column] = self.normalize(df[column], column)
         return df
     
     
-    
+
     def read_synthesis_data(self) -> dict:
+
+        """ Read in the synthesis data from dataframe and return as container (dict.) 
+        
+        The synthesis data is read in from the synthesis file and normalized.
+        The data is then stored in a dictionary container:
+        - the keys are the column names of the synthesis data file
+        - the values are the normalized data as numpy arrays
+        --> ratios are NOT normalized, use units instead to rescale them
         """
-            read in the synthesis data from dataframe and return as container (dict.)
-        """
+
+        synthesis_selection = [ "c (PbBr2)", "c (OlAm)", "c (OA)", "V (Cs-OA)", 
+                               "c (Cs-OA)" ,"V (antisolvent)", "V (PbBr2 prec.)"]  
+
 
         # dataframe
         try:
-            df = pd.read_csv(self.synthesis_file_path, delimiter= ';', header= 0)                                                                 
+            df = pd.read_csv(self.synthesis_file_path, delimiter= ';', header= 0)  
+
         except FileNotFoundError:
             print(f"FileNotFoundError: {self.synthesis_file_path} not found")
             return None
+        
+        # remove unwanted molecules
+        recognized_molecules = list(self.molecule_dictionary.keys())
+        df = df[df['antisolvent'].isin(recognized_molecules)]
+
 
         try:
-            # calculate the Pb/Cs ratio
-            Pb_Cs_ratio = (df["c (PbBr2)"] * df["V (PbBr2 prec.)"] ) / (df["c (Cs-OA)"] * df["V (Cs-OA)"])	
-            AS_Pb_ratio = (df["V (antisolvent)"])   / ((df["V (PbBr2 prec.)"] * df["c (PbBr2)"]))
+            # calculate the ratios 
+            Pb_Cs_ratio = ((df["c (PbBr2)"] * df["V (PbBr2 prec.)"] ) 
+                           / (df["c (Cs-OA)"] * df["V (Cs-OA)"]))
+            Cs_Pb_ratio = 1 / Pb_Cs_ratio
+            AS_Pb_ratio = (df["V (antisolvent)"]) / ((df["V (PbBr2 prec.)"] * df["c (PbBr2)"]))
+            Cs_As_ratio = (df["c (Cs-OA)"] * df["V (Cs-OA)"]) / (df["V (antisolvent)"] + 0.0001)
 
-
-            # normalize the columns 
-            if self.normalization:
-                for key in self.synthesis_selection:
-                    df[key] = self.normalize(df[key], key)
+            # normalize the columns
+            for key in synthesis_selection:
+                df[key] = self.normalize(df[key], key)
 
             # create the synthesis data container
-            synthesis_data = {key  : df[key].to_numpy().astype(float) for key in self.synthesis_selection} 
+            synthesis_data = {key  : df[key].to_numpy().astype(float) for key in synthesis_selection} 
 
             # add ratios (probably the most expressive parameters)
-            synthesis_data["Pb_Cs_ratio"] = Pb_Cs_ratio.to_numpy().astype(float)
             synthesis_data["AS_Pb_ratio"] = AS_Pb_ratio.to_numpy().astype(float)
+            synthesis_data["Cs_Pb_ratio"] = Cs_Pb_ratio.to_numpy().astype(float)
+            synthesis_data["Cs_As_ratio"] = Cs_As_ratio.to_numpy().astype(float)
 
             # add target related data
-            synthesis_data["monodispersity"] = df["monodispersity"].to_numpy()
+            synthesis_data["monodispersity"] = df["monodispersity"].to_numpy().astype(int)
             synthesis_data["sample_numbers"] = df['Sample No.'].to_numpy()
-            synthesis_data["PLQY"] =           df["PLQY"].to_numpy().astype(float)
-            synthesis_data["include PLQY"] =   df["include PLQY"].to_numpy()
-            synthesis_data["NC shape"] =       df["NC shape"].to_numpy()
-            synthesis_data["S/P"] =            df["S/P"].to_numpy()
+            synthesis_data["PLQY"]           = df["PLQY"].to_numpy().astype(float)
+            synthesis_data["include PLQY"]   = df["include PLQY"].to_numpy()
+            synthesis_data["NC shape"]       = df["NC shape"].to_numpy()
+            synthesis_data["S/P"]            = df["S/P"].to_numpy()
+            synthesis_data["suggestion"]     = df["suggestion"].to_numpy().astype(str)
+            synthesis_data["suggestion"]     = ["" if x == "nan" else x for x in synthesis_data["suggestion"]]
+            synthesis_data["Age of prec"]    = df["Age of prec"].to_numpy()
 
             # add the sample numbers and molecule names (not normalized obviously)
             synthesis_data["molecule_names"] = df['antisolvent'].to_numpy()
         
-        except KeyError: print("KeyError: invalid key encountered in the synthesis data")
+
+        except KeyError:
+            print(f"maybe a key error, maybe not a key error, but life's too short for proper error propagation")
+            return None
 
         return synthesis_data
 
 
 
-#### ------------------------------------------  PLOTTING  --------------------------------------------- ####
+    def check_flags(self, index, molecule_name, peak_pos) -> bool:
 
-    def plot_data(self, var1, var2, var3):
+        """ check the flags for the data selection """
+
+
+        if self.flags["molecule"] != "all" and self.flags["molecule"] != molecule_name:
+            return False
+        
+        if peak_pos <= min(self.wavelength_filter) or peak_pos >= max(self.wavelength_filter):
+            return False
+        
+        if self.target == "PLQY" and self.synthesis_data['PLQY'][index] == 0:
+            return False
+        
+        if self.target == "PLQY"  and  self.synthesis_data['include PLQY'][index] != 1 :
+            return False
+        
+        if self.flags["monodispersity_only"] and self.synthesis_data['monodispersity'][index] != 1:
+            return False
+        
+        if self.flags["P_only"] and self.synthesis_data['S/P'][index] != "P": 
+            return False
+        
+        if self.synthesis_data["Cs_Pb_ratio"][index] > 1:
+            return False
+        
+        return True
+
+
+
+    def add_limit_baseline(self, data_objects):
+
+        """ Adds a baseline to the data objects """
+    
+
+        # get the 515nm baseline
+        inputs  = [[i/10, 1] for i in range(0, 8)]
+        inputs += [[0.8, i/10] for i in range(4, 10)]
+        
+        peak  = 510
+        if self.wavelength_unit == "EV":
+            peaks = [nm_to_ev(peak) for i in range(len(inputs))]
+        else:
+            peaks = [peak for i in range(len(inputs))]
+
+        # add new data to data objects
+        molecules = list(set([data["molecule_name"] for data in data_objects]))
+
+        for molecule in molecules:
+            for input, peak in zip(inputs, peaks):
+                data_objects.append({"molecule_name": molecule, "y": peak, 
+                                     "encoding": self.encode(molecule, self.encoding),
+                                    "total_parameters": input, "spectra": None, 
+                                    "peak_pos": peak, "index": -1, 
+                                    "sample_number": "baseline"})
+
+        return data_objects
+
+
+
+    def add_Toluene_baseline(self, data_objects):
+
+        """ Adds a baseline of the Toluene (no antisolvent) data to the data objects """
+
+
+        # get Toluene data
+        toluene_data = [data for data in data_objects if data["molecule_name"] == "Toluene"]
+
+        # define the molecule selection
+        if self.flags["molecule"] == "all":
+            molecule_selection = self.molecule_names.copy()
+            molecule_selection.remove("Toluene")
+        else:
+            molecule_selection = [self.flags["molecule"]]
+
+        # add the Toluene data to the data objects
+        for molecule in molecule_selection:
+            for data in toluene_data:
+                data["molecule_name"] = molecule
+                data["encoding"] = self.encode(molecule, self.encoding)
+                data_objects.append(data)
+
+        return data_objects
+
+
+
+#### ---------------------------  PLOTTING  ------------------------------ ####
+    """       < don't put this on the final .git, it's a mess >         """
+
+
+    def plot_data(self, var1, var2, var3 = None, 
+                  kernel = None, 
+                  model = "KRR", 
+                  molecule = "all") -> None:
+
         """
-            Scatter plot of the data in parameter space, for visualization purposes
+            Scatter plot of the data in parameter space, for visualization;
+            kernel can be plotted as well
+            -> var1, var2, var3: parameters to be plotted
         """
+
+        # get the indices of the parameters
         index1 = self.synthesis_training_selection.index(var1)
         index2 = self.synthesis_training_selection.index(var2)
-        index3 = self.synthesis_training_selection.index(var3)
 
-        x = [data["total_parameters"][index1] for data in self.data]
-        y = [data["total_parameters"][index2] for data in self.data]
-        z = [data["total_parameters"][index3] for data in self.data]
-        c = [data["y"] for data in self.data]
-
-        # plot with matplotlib
-        fig = plt.figure()
-        
-        ax = fig.add_subplot(111, projection='3d')
-        img = ax.scatter(x, y, z, c=c, cmap=plt.hot())
-
-        fig.colorbar(img)
-
-        ax.set_xlabel(var1)
-        ax.set_ylabel(var2)
-        ax.set_zlabel(var3)
-        
-        return fig, ax
-
-
-
-    def plot_As_Pb_peak_pos(self, molecule_name, sample_range):
-        """
-            Plots the peak position over AS/Pb ratio
-        """
-        if molecule_name == "all":
-            AS_Pb =     	    [data["total_parameters"][0] for data in self.data]
-            peak_pos =          [data["peak_pos"]            for data in self.data]
-            fwhm =              [data["fwhm"]                for data in self.data]
-            index =             [data["index"]               for data in self.data]
-            target =            [data["y"]                   for data in self.data]
-            molecule_name =     [self.molecule_names.index(data["molecule_name"]) for data in self.data]
+        # get the data
+        if molecule == "all":
+            x =     [data["total_parameters"][index1] for data in self.data]
+            y =     [data["total_parameters"][index2] for data in self.data]
+            t =     [data["y"] for data in self.data]
+            molecules = [self.molecule_names.index(data["molecule_name"]) for data in self.data]
 
         else:
-            AS_Pb =     	    [data["total_parameters"][0] for data in self.data if data["molecule_name"] == molecule_name]
-            peak_pos =          [data["peak_pos"]            for data in self.data if data["molecule_name"] == molecule_name]
-            fwhm =              [data["fwhm"]                for data in self.data if data["molecule_name"] == molecule_name]
-            index =             [data["index"]               for data in self.data if data["molecule_name"] == molecule_name]
-            target =            [data["y"]                   for data in self.data if data["molecule_name"] == molecule_name]
+            x = [data["total_parameters"][index1] for data in self.data 
+                 if data["molecule_name"] == molecule]
+            y = [data["total_parameters"][index2] for data in self.data 
+                 if data["molecule_name"] == molecule]
+            t = [data["y"] for data in self.data 
+                 if data["molecule_name"] == molecule]
+            molecules = [1 for _ in self.data]
+
+
+        # plot data with plotly
+        fig = plotly.graph_objects.Figure()
+        fig.add_trace(plotly.graph_objects
+                      .Scatter3d(x=x, y=y, z=t, mode='markers', 
+                                marker=dict(size=16, color=molecules, 
+                                            colorscale='Viridis', opacity=0.8)))
+        fig.update_layout(scene = dict(xaxis_title=var1, 
+                                       yaxis_title=var2, 
+                                       zaxis_title=var3))
+
+        # plot model
+        if kernel is not None:
+            y_vec = np.linspace(0, 1, 100)
+            x_vec = np.linspace(0, 0.8, 100)
+            X, Y  = np.meshgrid(x_vec, y_vec)
+            input = np.c_[X.ravel(), Y.ravel()]
             
+            # add self.encode(molecule, self.encoding) to the input
+            if molecule != "all":
+                encoding = self.encode(molecule, self.encoding)
+                input = [np.append(encoding, row ) for row in input]
+            else:
+                fig.show()
+                return fig
 
-        if len(AS_Pb) == 0:
-            raise ValueError(f"Not enough data found for {molecule_name}")
+            if model == "GP":
+                input = np.array(input)
+                print(input.shape)
+                Z = kernel.model.predict(input)[0].reshape(X.shape)
+                err = kernel.model.predict(input)[1].reshape(X.shape)
 
-        # fitting a Sigmoid function
-        Sigmoid = lambda x, a, b, c, d: (a / (1 + np.exp(-b * (x - c)))) + d
+            elif model == "KRR":
+                Z = kernel.predict(input).reshape(X.shape)
 
-        if self.wavelength_unit == "EV":
-              bounds = ([0.25, -0.04, 0, 2.35], [0.35, 0, 300, 2.45])
-        else: bounds = ([55, 0, 0, 458], [65, 30, 3, 461])
+            # add the surface plot of the kernel
+            fig.add_trace(plotly.graph_objects.Surface(x=x_vec, y=y_vec, z=Z, opacity=0.5, colorscale='gray'))
+            
+            # add confidence intervals
+            #if model == "GP":
+                #fig.add_trace(plotly.graph_objects.Surface(x=x_vec, y=y_vec, z=Z + 1.96 * err, opacity=0.5, colorscale='gray'))
+                #fig.add_trace(plotly.graph_objects.Surface(x=x_vec, y=y_vec, z=Z - 1.96 * err, opacity=0.5, colorscale='gray'))
 
-        #popt, pcov = curve_fit(Sigmoid, AS_Pb, peak_pos, bounds=bounds, maxfev=100000)
-        #print(f"Optimal parameters: {popt}")
+
+        # save the plot as interactive html
+        #molecules = list(set(molecules))
+        #molecule_str = "_".join([self.molecule_names[mol] for mol in molecules])
+        #fig.write_html(f"data/{var1}_{var2}_{var3}_{molecule_str}.html")
 
 
-        #plotting
+        fig.show()
+        return fig
+        
+
+
+    def plot_2D_contour(self, var1, var2, kernel = None) -> None:
+
+        """
+            2D contour plot of the data in parameter space, for visualization 
+            purposes color coded by the target value (PEAK_POS)
+        """
+
+        # get the data
+        x = [data["total_parameters"][-1] for data in self.data]
+        y = [data["total_parameters"][-2] for data in self.data]
+
+        # output string
+        molecules = list(set([data["molecule_name"] for data in self.data]))
+        mol_str = "_".join(molecules)
+
+
+        # a contour plot of the kernel
         fig, ax = plt.subplots()
-        x_vec = np.linspace(min(AS_Pb), max(AS_Pb), 500)
-        #label = f"y = $\\frac{{{round(popt[0],2)}}}{{1 + e^{{-{round(popt[1],2)}(x - {round(popt[2],2)})}}}} + {round(popt[3],2)}$"
+        y_vec = np.linspace(0, 1, 100)
+        x_vec = np.linspace(0, 8, 100)
+        X, Y = np.meshgrid(x_vec, y_vec)
 
-        #ax.plot(x_vec, Sigmoid(x_vec, *popt), color="red", label = label)
+        # evaluate the kernel on the grid
+        if kernel is not None:
+            Z = kernel.predict(np.c_[X.ravel(), Y.ravel()]).reshape(X.shape)
+            c = ax.contourf(X, Y, Z, 20, cmap='viridis', vmin = 440, vmax = 500)
+            
+            fig.colorbar(c, ax=ax, label = "PEAK POS")
 
-        #cbar = plt.colorbar(ax.scatter(AS_Pb, peak_pos, c = index, cmap = "viridis"))
-        cbar = plt.colorbar(ax.scatter(peak_pos, target, c = index, cmap = "viridis"))
+
+        # plot the data
+        ax.scatter(x, y, c = [data["y"] for data in self.data], 
+                   cmap = "viridis", vmin = 440, vmax = 500, 
+                   edgecolors='black')
+        
+        ax.set_xlabel(var1)
+        ax.set_ylabel(var2)
+
+        plt.legend()
+        plt.show()
+
+
+
+    def plot_parameters(self, data_objects,) -> None:
+
+        """
+            Plots arbitrary parameters for visualization purposes
+            -> not pretty, but useful for quick checks
+        """
+
+
+        total_1 =     	    [data["total_parameters"][0] for data in data_objects]
+        total_2 =           [data["total_parameters"][1] for data in data_objects]
+        peak_pos =          [data["peak_pos"]            for data in data_objects]
+        target =            [data["y"]                   for data in data_objects]
+        #target =           [data["y_res"]               for data in data_objects]
+
+        molecule_name =     [self.molecule_names.index(data["molecule_name"]) 
+                             for data in data_objects]
         
 
-        # plot surface proportions
+        if len(total_1) == 0:
+            raise ValueError(f"Not enough data found for molecule: {molecule_name}")
+
+        
+        """ basic scatter plot """
+        fig, ax = plt.subplots()
+        cbar = plt.colorbar(ax.scatter(peak_pos, target, 
+                                       c = molecule_name, cmap = "viridis_r",))
+      
+        """plot surface proportions"""
         # x_vec = np.linspace(min(peak_pos), max(peak_pos), 100)
-        # y = [surface_proportion(x) for x in x_vec]
-        # plt.rc('legend', fontsize=4)
-        # ax.plot(x_vec, y, color = "red", label = "1 - Surface Proportion", linestyle = "dashed")
+        # if self.wavelength_unit == "EV":
+        #     y = [surface_proportion(ev_to_nm(x)) for x in x_vec]
+        # else:
+        #     y = [surface_proportion(x) for x in x_vec]
+        # plt.rc('legend', fontsize=2)
+        # ax.plot(x_vec, y, color = "red", label = "1 - Surface Proportion", 
+        #         linestyle = "dashed", linewidth = 1)
 
-
-        
-        #ax.set_xlabel("# Sample")
-        #ax.set_ylabel("FWHM")
-
-        #ax.set_title(f"{molecule_name}")
-
+    
         ax.legend(fontsize = 15)
-
+        plt.show()
         #plt.savefig(f"data/{molecule_name}_As_Pb_peak_pos.png")
 
         return fig, ax
 
 
 
-    def plot_As_Pb_peak_pos_3D(self, molecule_selection  = None):
+    def plot_correlation(self) -> None:
+
         """
-            3D plot of the As/Pb ratio vs. peak position vs. molecule property
-        """
-
-        if molecule_selection is None: molecule_selection = self.molecule_names
-
-        AS_Pb =                 [data["total_parameters"][0]  for data in self.data if data["molecule_name"] in molecule_selection]
-        peak_pos =              [data["peak_pos"]             for data in self.data if data["molecule_name"] in molecule_selection]
-        color =                 [data["encoding"][-1]         for data in self.data if data["molecule_name"] in molecule_selection]
-
-        for n in range(10):
-
-            molecule_property =     [data["global_attributes"][n] for data in self.data if data["molecule_name"] in molecule_selection]
-
-            #plot with plotly
-            fig = plotly.graph_objects.Figure(data=plotly.graph_objects.Scatter3d(x=AS_Pb, y=peak_pos, z=molecule_property, mode='markers', marker=dict(size=5, color=color, colorscale='Viridis', opacity=0.8)))
-            fig.update_layout(scene = dict(xaxis_title='AS/Pb ratio', yaxis_title='Peak Position', zaxis_title=self.global_attribute_selection[n]))
-            fig.show()
-            fig.write_html(f"data/{n}_3D_plot.html")
-
-
-
-    def plot_avg_target(self):
-        """
-            Plots the average target value for each molecule and NPL type as a heatmap
+            Plots the correlation matrix of the data 
+            together with the target values
         """
 
-        map = np.zeros((len(self.molecule_names), 9))
-        stds = map.copy()
 
-        for molecule in self.molecule_names:
-            for NPL_type in range (1, 10):
+        data = [data["total_parameters"] for data in self.data]
 
-                targets = [data["y"] for data in self.data if data["molecule_name"] == molecule and data["NPL_type"] == NPL_type]
+        df = pd.DataFrame(data, columns = self.total_training_parameter_selection)
+        df["plqy"]     = [data["plqy"] for data in self.data]
+        df["fwhm"]     = [data["fwhm"] for data in self.data]
+        df["peak_pos"] = [data["peak_pos"] for data in self.data]
 
-                if len(targets) == 0:
-                    continue
-
-                stds[self.molecule_names.index(molecule), NPL_type - 1] = np.std(targets)
-                map[self.molecule_names.index(molecule), NPL_type - 1] =  np.mean(targets)
-        
-
-        map = map[~np.all(map == 0, axis=1)]
+        corr = df.corr()
         fig, ax = plt.subplots()
+        im = ax.imshow(abs(corr), cmap="Blues")
 
-        im = ax.imshow(map, cmap="viridis")
-        cbar = ax.figure.colorbar(im, ax=ax)
+        ax.set_xticks(np.arange(len(self.total_training_parameter_selection)+ 3))
+        ax.set_yticks(np.arange(len(self.total_training_parameter_selection)+ 3))
+        ax.set_xticklabels(self.total_training_parameter_selection 
+                           + ["plqy", "fwhm", "peak_pos"], rotation='vertical')    
+        ax.set_yticklabels(self.total_training_parameter_selection 
+                           + ["plqy", "fwhm", "peak_pos"])
 
-        ax.set_title(f"Average {self.target} Distribution")
-        ax.set_xticks(np.arange(9))
-        ax.set_yticks(np.arange(len(self.molecule_names)))
-        ax.set_xticklabels([str(i) for i in range(1, 10)])
-        ax.set_yticklabels(self.molecule_names)
 
+        plt.colorbar(im)
         plt.show()
 
 
 
-### ------------------------DICIONARIES------------------------ ###
+#### --------------------------  DICIONARIES  ---------------------------- ####
 
 
-    def get_molecule_dictionary(self):
-        """
-            dictionaries for the molecule names, atom to number and number to atom conversion
-        """
+    def get_molecule_dictionary(self) -> dict:
+        
+        """ Dictionaries for the molecule names and the NPL types """
 
         ml_dictionary = {"1": (402, 407),
-                         "1.5": (408, 429),
                          "2": (430, 437),
-                         "2.5": (438, 456),
-                         "3": (457, 466),
-                         "3.5": (467, 471),
+                         "3": (456, 463),
                          "4": (472, 481),
-                         "4.5": (482, 483),
                          "5": (484, 489),
                          "6": (491, 497),
                          "7": (498, 504),
                          "8": (505, 509),
                          "9": (510, 525),}
+        
 
         molecule_dictionary = {"Tol" : 'Toluene',
-                       "EtAc" : "EthylAcetate",
-                       "MeAc" : "MethylAcetate",
                        "Ac" : "Acetone",
                        "EtOH" : "Ethanol",
                        "MeOH" : "Methanol",
                        "i-PrOH" : "Isopropanol",
                        "n-BuOH" : "Butanol",
-                       "t-BuOH" : "Tert-Butanol",
                        "n-PrOH": "Propanol",
-                       "ACN" : "Acetonitrile",
-                       "DMF" : "Dimethylformamide",
-                       "DMSO" : "Dimethylsulfoxide",
                        "butanone" : "Butanone",
                        "CyPen" : "Cyclopentanone",
-                       "HexOH" : "Hexanol",}
+                       "CyPol" : "Cyclopentanol",
+                       "HexOH" : "Hexanol",
+                       "OctOH" : "Octanol",
+                       }
         
+        return molecule_dictionary, ml_dictionary
 
+
+
+    def get_molecule_geometry(self) -> list:
+
+        """
+            Geometry of the molecules (chainlength, group, cycles, group_pos) 
+            TODO: move to a csv file (or just use fingerprints)
+        """
+        
         molecule_geometry = [
-                             {'molecule': "Methanol",       'group': [1,0], 'chainlength': 0.1, 'cycles' : 0, 'group_pos': 0, 'diffusivity' : 2.87},
-                             {'molecule': "Ethanol",        'group': [1,0], 'chainlength': 0.2, 'cycles' : 0, 'group_pos': 0, 'diffusivity' : 1.15},
-                             {'molecule': "Propanol",       'group': [1,0], 'chainlength': 0.3, 'cycles' : 0, 'group_pos': 0, 'diffusivity' : 0.75},
-                             {'molecule': "Isopropanol",    'group': [1,0], 'chainlength': 0.3, 'cycles' : 0, 'group_pos': 1, 'diffusivity' : 0.56},
-                             {'molecule': "Butanol",        'group': [1,0], 'chainlength': 0.4, 'cycles' : 0, 'group_pos': 0, 'diffusivity' : 0.47},
-                             {'molecule': "Acetone",        'group': [0,1], 'chainlength': 0.3, 'cycles' : 0, 'group_pos': 1},
-                             {'molecule': "Butanone",       'group': [0,1], 'chainlength': 0.4, 'cycles' : 0, 'group_pos': 1},
-                             {'molecule': "Cyclopentanone", 'group': [0,1], 'chainlength': 0.5, 'cycles' : 1, 'group_pos': 0},
+            {'molecule': "Methanol",       'group': [1,0], 'chainlength': 0.1, 'cycles' : 0, 'group_pos': 0},
+            {'molecule': "Ethanol",        'group': [1,0], 'chainlength': 0.2, 'cycles' : 0, 'group_pos': 0},
+            {'molecule': "Propanol",       'group': [1,0], 'chainlength': 0.3, 'cycles' : 0, 'group_pos': 0},
+            {'molecule': "Isopropanol",    'group': [1,0], 'chainlength': 0.3, 'cycles' : 0, 'group_pos': 1},
+            {'molecule': "Butanol",        'group': [1,0], 'chainlength': 0.4, 'cycles' : 0, 'group_pos': 0},
+            {'molecule': "Acetone",        'group': [0,1], 'chainlength': 0.3, 'cycles' : 0, 'group_pos': 1},
+            {'molecule': "Butanone",       'group': [0,1], 'chainlength': 0.4, 'cycles' : 0, 'group_pos': 1},
+            {'molecule': "Cyclopentanone", 'group': [0,1], 'chainlength': 0.5, 'cycles' : 1, 'group_pos': 0},
+            {'molecule': "Cyclopentanol",  'group': [1,0], 'chainlength': 0.5, 'cycles' : 1, 'group_pos': 0},
+            {'molecule': "Hexanol",        'group': [1,0], 'chainlength': 0.6, 'cycles' : 1, 'group_pos': 0},
+            {'molecule': "Octanol",        'group': [1,0], 'chainlength': 0.8, 'cycles' : 1, 'group_pos': 0},
+            {'molecule': "Toluene",        'group': [0,0], 'chainlength': 0.7, 'cycles' : 1, 'group_pos': 0},
         ]
 
-
-        
-        atom_to_num = {'H' : 1,
-              'C' : 6,
-              'O' : 8,
-              'N' : 7,
-              'S' : 16
-              }
-        
-        num_to_atom = {v: k for k, v in atom_to_num.items()}   #inverse dictionary
-
-        return molecule_dictionary, atom_to_num, num_to_atom, ml_dictionary, molecule_geometry
+        return molecule_geometry

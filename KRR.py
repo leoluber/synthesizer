@@ -1,33 +1,65 @@
+""" Kernel Ridge Regression on a Datastructure object using the KRR from sci-kit learn """
+    # < github.com/leoluber >
+
+
 from sklearn.kernel_ridge import KernelRidge
 from sklearn.model_selection import GridSearchCV
 import numpy as np
-from helpers import *
 import matplotlib.pyplot as plt
+from timeit import default_timer as timer
+from typing import Literal
+
+#custom
+from helpers import *
 
 
-"""
-    Kernel Ridge Regression:
+
+
+
+class Ridge:
+
+    """ Kernel Ridge Regression:
+
+    BASICS
+    ------
     - uses scikit-learn's KernelRidge
     - can optimize hyperparameters
     - can optimize the choice of input parameters
     - can plot regression results
     - can plot 3D MAPs in parameter space
-"""
+
+    PARAMETERS
+    ----------
+    - training_data: list of training data (list)
+    - targets: list of targets (list)
+    - parameter_selection: list of parameter names (list)
+    - kernel_type: type of kernel (str)
+    - alpha: regularization parameter (float)
+    - gamma: kernel coefficient (float)
+
+    USAGE
+    -----
+    >>> rk = Ridge(training_data, targets, parameter_selection, ...)
+    >>> rk.optimize_hyperparameters()
+    >>> rk.fit()
+    >>> rk.loo_validation()
+    >>> rk.predict(...)
+
+    """
 
 
-class Ridge:
-
-    def __init__(self, 
-                 training_data,
-                 targets,
-                 parameter_selection,       # list of parameter names
-                 kernel_type = None,       # "rbf", "polynomial", "laplacian", "linear"
-                 alpha = 0.1,               # regularization parameter
-                 gamma = 0.1,               # kernel coefficient
+    def __init__(
+                 self, 
+                 training_data: list,
+                 targets: list,
+                 parameter_selection: list,
+                 kernel_type: Literal["laplacian", "rbf", "linear", "polynomial"] = "laplacian",
+                 alpha      = 0.01,
+                 gamma      = 0.01,
                  ):
         
 
-            # training specific
+        # training specific
         self.training_data =        training_data
         self.input_dim =            len(self.training_data[0])
         self.num_data =             len(targets)
@@ -39,6 +71,9 @@ class Ridge:
         self.model =                KernelRidge(kernel=kernel_type, alpha=alpha, gamma=gamma)
         self.predictions =          []
         self.error =                []
+
+            # performance
+        self.fitting_time =         None
 
 
 
@@ -52,39 +87,48 @@ class Ridge:
         return self.model.predict(X)
 
 
-
 ### ----------------------- LOO Validation ----------------------- ###
 
-    def loo_validation(self, inputs, targets) -> float:
-        """
-            LOO cross validation on the training data
-        """
+    def loo_validation(self, inputs, targets, molecule = None) -> float:
+        """LOO cross validation on the training data"""
+
         self.predictions, self.error = [], []
 
         for i in range(len(inputs)):
 
-            train_inputs = inputs[:i] + inputs[i+1:]
+            # leave one out
+            train_inputs  = inputs[:i] + inputs[i+1:]
             train_targets = targets[:i] + targets[i+1:]
+
+            # timed fitting for the first iteration
+            if self.fitting_time is None: 
+                timer_start = timer()
 
             self.model.fit(train_inputs, train_targets)
 
+            if self.fitting_time is None:
+                self.fitting_time = timer() - timer_start
+
             prediction = self.model.predict([inputs[i]])
 
+            # store predictions and errors
             self.predictions.append(prediction[0])
             self.error.append(abs(prediction - targets[i]))
         
 
+        # print results
+        print(f"mean error: {np.mean(self.error)}")
+        print(f"fitting time: {self.fitting_time}")
+        
         #plot regression
-        self.plot_regression(targets, self.predictions)
-
+        self.plot_regression(targets, self.predictions, molecule)
         return np.mean(self.error)
 
 
 
     def transfer_validation(self, transfer_inputs, transfer_targets):
-        """
-            Validation on a separate dataset
-        """
+        
+        """ Validation on a separate dataset """
 
         predictions, errors = [], []
 
@@ -102,21 +146,26 @@ class Ridge:
 
 ### ------------------------ OPTIMIZATION ------------------------ ###
 
+
     def optimize_hyperparameters(self) -> KernelRidge:
-        """
-            Optimize the hyperparameters of the kernel ridge regression
-        """
+        
+        """ Optimize the hyperparameters of the kernel ridge regression """
+
 
         krr = KernelRidge()
-
         param_grid = {
-            'alpha': [ 1e-3, 1e-2, 1e-1,],
-            'gamma': [ 0.1, 0.0001, 0.001,],
-            'kernel': ['laplacian', 'exponential',]
+            'alpha':  [0.1, 0.01, 0.001],
+            'gamma':  [0.01,],
+            'kernel': ['laplacian',]
         }
 
         # grid search for hyperparameters
-        gs_krr = GridSearchCV(estimator=krr, param_grid=param_grid, scoring='neg_root_mean_squared_error', cv= int(self.num_data))
+        gs_krr = GridSearchCV(estimator=krr, 
+                              param_grid=param_grid, 
+                              scoring='neg_root_mean_squared_error', 
+                              cv= int(self.num_data))
+
+
         gs_krr.fit(self.training_data[:int(self.num_data)], self.targets[:int(self.num_data)])
 
         print(gs_krr.best_params_)
@@ -129,80 +178,36 @@ class Ridge:
 
 
 
-    def optimize_inputs(self, iterations = 1):
-        """
-            Optimize the choice of parameters by excluding them one by one
-            and checking if the error decreases
-        """
-            
-        # main opt. loop
-        for i in range(iterations):
-            print(f"parameter selection: {self.parameter_selection}")
-                
-            # first we run the loo validation on the full dataset to get a baseline
-            base_predictions, smallest_error = self.loo_validation(self.training_data, self.targets)
-            best_parameter_selection = self.parameter_selection
-            training_data = self.training_data
-
-            # then we exclude one parameter at a time and check if the error decreases
-            for index, parameter in enumerate(self.parameter_selection):
-
-                # we need a local copy of the data
-                local_inputs, local_targets, local_parameter_selection = self.training_data, self.targets, self.parameter_selection
-                local_inputs = [data[:index] + data[index+1:] for data in local_inputs]
-
-                local_parameter_selection = local_parameter_selection[:index] + local_parameter_selection[index+1:]
-                    
-                # run the loo validation
-                predictions, mean_error = self.loo_validation(local_inputs, local_targets)
-
-                # if the error is smaller, we update the best parameter selection
-                if mean_error < smallest_error:
-                    smallest_error = mean_error
-                    best_parameter_selection = local_parameter_selection
-
-                    training_data = local_inputs
-            
-
-            self.parameter_selection = best_parameter_selection
-            self.training_data = training_data
-        
-        print(f"best parameter selection: {best_parameter_selection}")
-
-
-            
-
 ### ------------------------ PLOTTING ------------------------ ###
 
-    def plot_regression(self, targets = None, predictions = None):
-        """
-            Plots the regression results
-        """
+    def plot_regression(self, targets = None, predictions = None, molecule = None):
+        
+        """ Plots the regression results """
 
         # default is the loo output
         if targets == None: targets = self.targets
         if predictions == None: predictions = self.predictions
 
-        print(f"targets: {len(targets)}")
-        print(f"predictions: {len(predictions)}")
 
-        plt.scatter(targets, predictions, color='blue', label='krr')
-        plt.plot([min(targets), max(targets)], [min(targets), max(targets)], color='black', linestyle='--')
+        plt.scatter(targets, predictions, color='blue', label='krr', s=10)
+        plt.plot([min(targets), max(targets)], 
+                 [min(targets), max(targets)], 
+                 color='black', linestyle='--')
 
-        plt.title('KRR - LOO')
+        if molecule != None: plt.title(f'KRR - LOO - {molecule}')
         plt.legend()
         plt.show()
     
 
 
-    def plot_1D(self, initial_sample, changed_index, range = [0,10], resolution = 100):
-        """
-            Plots the 1D MAP of the kernel ridge regression for the specified variable
-        """
+    def plot_1D(self, initial_sample, changed_index,
+                range = [0,10], resolution = 100):
+        
+        """ Plots the 1D MAP of the kernel ridge regression for the specified variable """
 
         lin = np.linspace(range[0], range[1], resolution)
 
-        inputs = [initial_sample[:changed_index] + [x] + initial_sample[changed_index+1:] for x in lin]
+        inputs  = [initial_sample[:changed_index] + [x] + initial_sample[changed_index+1:] for x in lin]
         targets = [self.model.predict([x]) for x in inputs]
 
         plt.plot(lin, targets, color='red', label='KRR')

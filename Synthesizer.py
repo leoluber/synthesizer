@@ -1,79 +1,156 @@
+r""" Bayesian Optimization for Perovskite NPL synthesis parameters based on 
+    Gaussian Process and Kernel Ridge Regression models"""
+    # << github.com/leoluber >> 
+
+
 import numpy as np
+import time
 from GPyOpt.methods import BayesianOptimization
 from datetime import date
+from typing import Literal
 
 # custom modules
 from Datastructure import *
 from helpers import *
 from KRR import Ridge
 from GaussianProcess import GaussianProcess
+from Preprocessor import Preprocessor
 
-
-"""
-    Optimization Module with Synthesis Parameter Recommendations for Perovskite NPL synthesis;
-    Samples synthesis parameters for a given NPL type while optimizing the target value (PLQY, ...)
-    - models:           Kernel Ridge Regression
-    - datastructure:    DatastructureGP (custom)
-    - optimization:     GPyOpt (Bayesian Optimization)
-"""
 
 
 class Synthesizer:
 
+    """ Optimizer Class
 
-    def __init__(self,
+    Optimization Module with Synthesis Parameter Recommendations for Perovskite 
+    NPL synthesis; Samples synthesis parameters for a given NPL type while 
+    optimizing the target values (PLQY, FWHM, ...)
+
+    BASICS
+    ------
+    - models:           Gaussian Process, Kernel Ridge Regression (GPy, scikit-learn)
+    - datastructure:    Datastructure (custom)
+    - optimization:     Bayesian Optimization (GPyOpt)
+
+    PARAMETERS
+    ----------
+    - molecule:         molecule for the synthesis (e.g. "Methanol")
+    - iterations:       max. number of optimization iterations
+    - peak:             target peak position
+    - obj:              properties included in the objective function
+    - encoding_type:    one hot encoding or geometry encoding
+    - model_type:       model type for the optimization (KRR, GP)
+    - geometry:         geometry encoding of an UNKNOWN molecule; 
+                        None if we predict a known molecule
+    - c_Pb_fixed:       fixed Pb concentration (default is None)
+    - V_As_fixed:       fixed As volume (default is None)
+    - V_Cs_fixed:       fixed Cs volume (default is None)
+    - Cs_Pb_opt:        Cs/Pb ratio optimization (default is False)
+    - Cs_As_opt:        Cs/As ratio optimization (default is False)
+    - c_Pb_max:         maximum Pb concentration (default is None)
+
+    USAGE
+    -----
+    >>> synthesizer      = Synthesizer(...)
+    >>> opt_x, opt_delta = synthesizer.optimize_NPL()
+    >>> results          = synthesizer.results
+    >>> synthesizer.print_results(results["results_string"], results["input_PLQY"], ... )
+
+    """
+
+
+    def __init__(
+                 self,
                  molecule : str,
                  iterations : int,
                  peak : int,
-                 obj : str = ["PEAK_POS", "PLQY", "FWHM"],
-                 encoding_type = "one_hot",                          # "one_hot", "geometry"
-                 Cs_Pb_opt = False,                                  # Cs/Pb ratio optimization
-                 c_Pb_max = None,                                    # maximum Pb concentration
+                 obj : str =    ["PEAK_POS", "PLQY", "FWHM"],
+                 encoding_type: Literal["one_hot", "geometry"] = "one_hot",
+                 model_type:    Literal["KRR", "GP"] = "GP",
+                 geometry =     None,
+                 c_Pb_fixed =   None,
+                 V_As_fixed =   None,
+                 V_Cs_fixed =   None,
+                 Cs_Pb_opt =    False,
+                 Cs_As_opt =    False,
+                 c_Pb_max =     None,
                 ):
         
 
-            # set of parameters used in the objective function
+        # set of parameters used in the objective function
         self.obj = obj
         self.molecule =         molecule
         self.Cs_Pb_opt =        Cs_Pb_opt
+        self.Cs_As_opt =        Cs_As_opt
 
-            # main initialization
+
+        # main parameters
+        self.model_type =       model_type
+        self.geometry =         geometry
         self.encoding_type =    encoding_type
         self.datastructure_NPL, self.datastructure_PLQY, self.datastructure_FWHM= self.get_datastructures()
         self.iterations =       iterations
         self.molecule_names =   self.datastructure_NPL.molecule_names
-        self.encoding =         self.encode_molecule(molecule, encoding_type)
-
-            # target peak position
-        self.peak = peak
-
-            # data
-        self.inputs_NPL, self.peak_pos =        self.get_data(self.datastructure_NPL)
-        self.inputs_PLQY, self.PLQY   =         self.get_data(self.datastructure_PLQY)
-        if "FWHM" in self.obj:
-            self.inputs_FWHM, self.FWHM   =     self.get_data(self.datastructure_FWHM)
-        self.parameters_NPL  =                  self.datastructure_NPL.synthesis_training_selection
-        self.parameters_PLQY =                  self.datastructure_PLQY.synthesis_training_selection
-        if "FWHM" in self.obj:  
-            self.parameters_FWHM =              self.datastructure_FWHM.synthesis_training_selection
-        
-        self.c_Pb_max = c_Pb_max
-
-            # models
-        self.NPL_model  =       self.train(self.inputs_NPL, self.peak_pos, self.parameters_NPL)
-        self.PLQY_model =       self.train(self.inputs_PLQY, self.PLQY, self.parameters_PLQY)
-        if "FWHM" in self.obj:
-            self.FWHM_model =   self.train(self.inputs_FWHM, self.FWHM, self.parameters_FWHM)
-
-            # sampling
-        self.limits = self.get_limits()
-
-            # results
+        self.encoding =         self.datastructure_NPL.encode(self.molecule, self.encoding_type)
         self.results = None
 
 
+        # target peak position
+        self.peak = peak
 
-### ------------------------ SAMPLING ------------------------ ###
+
+        # data
+        self.inputs_NPL, self.peak_pos =   self.get_data(self.datastructure_NPL)
+        if "PLQY" in self.obj:
+            self.inputs_PLQY, self.PLQY =  self.get_data(self.datastructure_PLQY)
+        if "FWHM" in self.obj:
+            self.inputs_FWHM, self.FWHM =  self.get_data(self.datastructure_FWHM)
+
+        self.parameters_NPL  =      self.datastructure_NPL.synthesis_training_selection
+        if "PLQY" in self.obj:
+            self.parameters_PLQY =  self.datastructure_PLQY.synthesis_training_selection
+        if "FWHM" in self.obj:  
+            self.parameters_FWHM =  self.datastructure_FWHM.synthesis_training_selection
+        
+
+        # extra constraints
+        self.c_Pb_max = c_Pb_max
+        self.c_Pb_fixed = c_Pb_fixed
+        self.V_As_fixed = V_As_fixed
+        self.V_Cs_fixed = V_Cs_fixed
+        self.limits = self.get_limits()
+
+
+        # models
+        if model_type == "KRR":
+            self.NPL_model  =       self.train(self.inputs_NPL, self.peak_pos, 
+                                               self.parameters_NPL)
+        elif model_type == "GP":
+            self.NPL_model  =       self.train_GP(self.inputs_NPL, self.peak_pos, 
+                                                  self.parameters_NPL)
+        else:
+            raise ValueError("model type not recognized")
+
+        if "PLQY" in self.obj:
+            self.PLQY_model =       self.train(self.inputs_PLQY, self.PLQY, 
+                                               self.parameters_PLQY)
+
+        if "FWHM" in self.obj:
+            self.FWHM_model =       self.train(self.inputs_FWHM, self.FWHM, 
+                                               self.parameters_FWHM)
+
+
+        # show the models for the user
+        self.datastructure_NPL.plot_data(self.parameters_NPL[0], 
+                                         self.parameters_NPL[1], 
+                                         kernel = self.NPL_model,
+                                         model = model_type ,  
+                                         molecule = self.molecule)
+
+
+
+### ------------------------- OPTIMIZATION ------------------------- ###
+
 
     def optimize_NPL(self) -> tuple:
         """
@@ -83,6 +160,7 @@ class Synthesizer:
         """
 
         print("optimizing NPL ...")
+        print(f"\n")
 
 
         # define the optimization domain from the limits dictionary
@@ -90,60 +168,95 @@ class Synthesizer:
                    'type': 'continuous', 
                    'domain': (self.limits[parameter][0], 
                               self.limits[parameter][1])} 
-                              for parameter in self.parameters_PLQY[:]]
+                              for parameter in self.parameters_PLQY[2:]]
+        
 
-
-        # define the objective function
+        # defining the objective function
         def f(x):
 
             """
-                The As_Pb ratio is calculated from the input parameters since it is not included in the optimization itself
+                The As_Pb ratio is calculated from the input parameters 
+                since it is not included in the optimization itself
                 - it is used here as an input for the NPL model (#MLs)
             """
 
-            # calculate As_Pb ratio
+            # calculate ratios from the current input parameters
             V_AS_norm, c_Pb_norm, V_Pb_norm, V_Cs_norm = x[0][0], x[0][1], x[0][2], x[0][3]
-            V_As, c_Pb, V_Pb = self.datastructure_NPL.denormalize(V_AS_norm, "V (antisolvent)"), self.datastructure_NPL.denormalize(c_Pb_norm, "c (PbBr2)"), self.datastructure_NPL.denormalize(V_Pb_norm, "V (PbBr2 prec.)")
+            V_As = self.datastructure_NPL.denormalize(V_AS_norm, "V (antisolvent)")
+            V_Pb = self.datastructure_NPL.denormalize(V_Pb_norm, "V (PbBr2 prec.)")
             V_Cs = self.datastructure_NPL.denormalize(V_Cs_norm, "V (Cs-OA)")
-            As_Pb_ratio = V_As / (c_Pb * V_Pb * 100)    # /100 from "unit conversion"
-            Cs_Pb_ratio = (0.02 * V_Cs) / (c_Pb * V_Pb)
+            c_Pb = self.datastructure_NPL.denormalize(c_Pb_norm, "c (PbBr2)") 
 
-            if As_Pb_ratio > 4: return 1000
+            As_Pb_ratio = V_As *self.datastructure_NPL.densities[self.molecule] / (c_Pb * V_Pb * 10000) 
+            Cs_Pb_ratio = (0.02 * V_Cs) / (c_Pb * V_Pb)
+            Cs_As_ratio = (V_Cs) / (V_As)
+
+
+            # hard constraints (not ideal, but simpler than adding them to the bounds)
+            if Cs_Pb_ratio > 0.5: return 1000
+            if As_Pb_ratio > 0.8: return 1000
 
 
             # add the encoded molecule to both inputs
-            input =           np.array(self.encoding)
+            if self.geometry is None:  input = np.array(self.encoding)
+            else:                      input = np.array(self.geometry)
 
-            PLQY_input =      [value for value in np.append(input, x)]
-            NPL_input =       np.append(input, As_Pb_ratio)
-            FWHM_input =      np.append(NPL_input, x)
-            NPL_input =       [value for value in NPL_input]
-            FWHM_input =      [value for value in FWHM_input]
-        
+            NPL_input =        np.append(np.append(input, As_Pb_ratio), Cs_Pb_ratio)    
+            FWHM_PLQY_input =  np.append(NPL_input, x)
+
+            if self.model_type == "KRR":
+                NPL_input =  [value for value in NPL_input]
+            elif self.model_type == "GP":	
+                NPL_input =  NPL_input
+            else:
+                raise ValueError("model type not recognized")
+
+            FWHM_PLQY_input = [value for value in FWHM_PLQY_input]
+
+
 
             # predictions
-            PLQY =  self.PLQY_model.predict([PLQY_input])
-            NPL =   self.NPL_model.predict([NPL_input])
+            if self.model_type == "KRR":
+                NPL =   self.NPL_model.predict([NPL_input])
 
-            plt.scatter(NPL_input[-1], NPL, color= "blue")              # vizualize the optimization process  
-
+            elif self.model_type == "GP":
+                NPL =   self.NPL_model.predict(NPL_input)[0][0]
+                err =   self.NPL_model.predict(NPL_input)[1][0]
+            else:
+                raise ValueError("model type not recognized")
+            
+            # predictions for the other models
             if "FWHM" in self.obj:
-                FWHM =  self.FWHM_model.predict([FWHM_input])
-
-            # handle the output, choose the objective function type
-            output = ((NPL - self.peak)**2)             # minimize the distance to the perfect peak position
-
-            if "FWHM" in self.obj:
-                output += FWHM
-                #output *= FWHM 
+                FWHM =  self.FWHM_model.predict([FWHM_PLQY_input])
 
             if "PLQY" in self.obj:
-                output += (1 - PLQY)**2 * 20
-                #output *= (1 - PLQY)**2
+                PLQY =  self.PLQY_model.predict([FWHM_PLQY_input])
+            
+
+            # print the current NPL value and ratios (for real-time feedback)
+            print(f"NPL: {NPL}, As_Pb: {As_Pb_ratio}, Cs_Pb: {Cs_Pb_ratio}")
+
+            # plot the optimization process
+            plt.scatter(NPL_input[-2], NPL_input[-1], c = NPL, vmin=450, vmax = 500)
+
+
+            # construct the objective function
+            output = abs(NPL - self.peak)
+
+            if "FWHM" in self.obj:
+                output += FWHM[0]*10
+
+            if "PLQY" in self.obj:
+                output -= PLQY[0]*10
             
             if self.Cs_Pb_opt:
-                output += Cs_Pb_ratio
-                #output *= Cs_Pb_ratio
+                output += Cs_Pb_ratio * 20
+
+            if self.Cs_As_opt:
+                output += Cs_As_ratio * 20
+
+            if "UNCERTAINTY" in self.obj:
+                output += (1000-err)/1000
 
             return output
 
@@ -154,6 +267,7 @@ class Synthesizer:
         optimizer.run_optimization(max_iter = self.iterations)
 
         # show the optimization process
+        plt.colorbar() 
         plt.show()
 
         self.results = self.return_results(optimizer.x_opt)
@@ -166,33 +280,53 @@ class Synthesizer:
 ### -------------------------- INIT -------------------------- ###
     
     def train(self, inputs, targets, parameter_selection):
-        """
-            Train a RKK model on the given data
-        """
+        """ Train a RKK model on the given data """
 
-        rkk = Ridge(inputs, targets, parameter_selection, kernel_type= "laplacian", alpha=0.01, gamma=0.01)  # kernel ridge regression
+        rkk = Ridge(inputs, targets, 
+                    parameter_selection, 
+                    kernel_type= "laplacian", alpha=0.01, gamma=0.01)
 
         # optimize hyperparameters
-        print("finding hyperparameters ... ")
+        #print("finding hyperparameters ... ")
 
-        ''' the RKK hyper_parameter optimization is defined in the KRR class, adjust possible functions there '''
-        rkk.optimize_hyperparameters()
+        #the RKK hyper_parameter optimization is defined in the KRR class
+        #rkk.optimize_hyperparameters()
 
         rkk.fit()
         return rkk
 
 
+    def train_GP(self, inputs, targets, parameter_selection):
+        """ Train a Gaussian Process model on the given data """
+
+        gp = GaussianProcess(training_data = np.array(inputs),
+                            parameter_selection = parameter_selection,
+                            targets = np.array(targets), 
+                            kernel_type = "EXP",
+                            model_type  = "GPRegression",
+                            )
+        gp.train()
+        return gp
+
 
     def get_data(self, datastructure : Datastructure) -> tuple:
-        """
-            Get data from the Datastructure object
-        """
+        """ Get data from the Datastructure object """
 
         data_objects = datastructure.get_data()
 
-        inputs =  [data["encoding"] + data["total_parameters"] for data in data_objects]     # including one hot encoding
-        target  = [data["y"] for data in data_objects]
+        # adding the residual targets to the data (-> see Datastructure.py)
+        if datastructure.target in ["PLQY", "FWHM"]:
+            ds = Preprocessor()
+            data_objects = ds.add_residual_targets_avg(data_objects)
 
+        inputs =  [data["encoding"] + data["total_parameters"] 
+                   for data in data_objects]     # including one hot encoding
+        
+        # set the target values for the optimization
+        if datastructure.target in ["PLQY", "FWHM"]:
+            target  = [data["y_res"] for data in data_objects]
+        else:
+            target  = [data["y"] for data in data_objects]
         return inputs, target
 
 
@@ -204,16 +338,35 @@ class Synthesizer:
         """
 
         limits = {}
-        samples = [input[len(self.encoding):] for input in self.inputs_PLQY]                                   # exclude the one hot encoded molecule
+
+        # exclude the one hot encoded molecule and ratios; +2 for the As/Pb and Cs/Pb ratios
+        samples = [input[len(self.encoding)+2:] for input in self.inputs_PLQY]
         
-        for i, parameter in enumerate(self.parameters_PLQY):
+        for i, parameter in enumerate(self.parameters_PLQY[2:]):
             limits[parameter] = [min([sample[i] for sample in samples]), 
                                  max([sample[i] for sample in samples])]
         
-        # set the limits for the Pb concentration
-        if self.c_Pb_max is not None:
+        
+        # local normalization function
+        Norm = lambda value, parameter_string: ((value - self.datastructure_NPL.max_min[parameter_string][1]) 
+                                                / (self.datastructure_NPL.max_min[parameter_string][0] 
+                                                   - self.datastructure_NPL.max_min[parameter_string][1]))
+        
+        if self.V_As_fixed is not None:
+            norm_V_As_fixed = Norm(self.V_As_fixed, "V (antisolvent)")
+            limits["V (antisolvent)"] = [norm_V_As_fixed, norm_V_As_fixed]
+
+        if self.c_Pb_fixed is not None:
+            norm_c_Pb_fixed = Norm(self.c_Pb_fixed, "c (PbBr2)")
+            limits["c (PbBr2)"] = [norm_c_Pb_fixed, norm_c_Pb_fixed]
+
+        if self.V_Cs_fixed is not None:
+            norm_V_Cs_fixed = Norm(self.V_Cs_fixed, "V (Cs-OA)")
+            limits["V (Cs-OA)"] = [norm_V_Cs_fixed, norm_V_Cs_fixed]
+
+        elif self.c_Pb_max is not None:
             max_c_Pb = self.c_Pb_max
-            norm_max_c_Pb = (max_c_Pb - self.datastructure_NPL.max_min["c (PbBr2)"][1]) / (self.datastructure_NPL.max_min["c (PbBr2)"][0] - self.datastructure_NPL.max_min["c (PbBr2)"][1])
+            norm_max_c_Pb   = Norm(max_c_Pb, "c (PbBr2)")
             limits["c (PbBr2)"] = [0, norm_max_c_Pb]
         
 
@@ -221,72 +374,65 @@ class Synthesizer:
     
 
 
-    def get_discrete_values(self, parameter) -> list:
-        """
-            Get all the discrete values for the specified parameter
-        """
-
-        index = self.parameters_NPL.index(parameter)
-        return list(set([sample[index] for sample in self.inputs_NPL]))
-    
-
-    def encode_molecule(self, molecule, encoding) -> list:
-        """
-            One hot encode the value
-        """
-
-        if encoding == "one_hot":
-            one_hot_molecule = [0] * len(self.molecule_names)
-            one_hot_molecule[self.molecule_names.index(molecule)] = 1
-            return one_hot_molecule
-        
-        #elif encoding == "geometry":
-        # ----> implement here if necessary
-
-
-
     def get_datastructures(self) -> tuple:
         """
-            Get the datastructures for the NPL and PLQY models
+            Get the datastructures for the NPL, PLQY and FWHM models
             --> make adjustments here if necessary
         """
 
+        ## - choosing the correct settings for the datastructures - ##
+        # if we predict an unknown molecule, we need "molecule = "all"" to extrapolate to the 
+        # unknown molecule using the geometric encoding TODO: change to fingerprint encoding
+
+        if self.geometry is not None:
+            pred_molecule = "all"
+            encoding = "geometry"
+            P = False
+        else:
+            pred_molecule = self.molecule
+            encoding = self.encoding_type
+
+        
         datastructure_NPL = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_240418.csv", 
-                                        target = "PEAK_POS",                                                   # "PLQY", "FWHM", "PEAK_POS"
-                                        wavelength_unit= "NM",                                                 # "NM", "EV"
-                                        exclude_no_star= False,
+                                        target = "PEAK_POS",
+                                        wavelength_unit= "NM",     
                                         wavelength_filter= [400, 550],
-                                        encoding= self.encoding_type,
-                                        #monodispersity_only= True,
-                                        molecule= self.molecule,
+                                        encoding= encoding,
+                                        monodispersity_only= True,
+                                        molecule= pred_molecule,
+                                        P_only= False,
+                                        add_baseline= True,
                                         )
         
-        datastructure_NPL.synthesis_training_selection = ["AS_Pb_ratio",]
+        datastructure_NPL.synthesis_training_selection = ["AS_Pb_ratio", "Cs_Pb_ratio"]	
 
 
         datastructure_PLQY = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_240418.csv",
-                                        target = "PLQY",                                                       # "PLQY", "FWHM", "PEAK_POS"
-                                        wavelength_unit= "NM",                                                 # "NM", "EV"
-                                        exclude_no_star= True,
+                                        target = "PLQY",
+                                        wavelength_unit= "NM",         
                                         wavelength_filter= [400, 510],
-                                        encoding= self.encoding_type,       
-                                        monodispersity_only= True,   
-                                        P_only= True,                              
+                                        encoding= encoding,    
+                                        monodispersity_only= True,  
+                                        PLQY_criteria = True, 
+                                        P_only= True,                      
                                         )
-        datastructure_PLQY.synthesis_training_selection = ["V (antisolvent)", "c (PbBr2)", "V (PbBr2 prec.)", "V (Cs-OA)"]
+        datastructure_PLQY.synthesis_training_selection = ["AS_Pb_ratio", "Cs_Pb_ratio", "V (antisolvent)", 
+                                                           "c (PbBr2)", "V (PbBr2 prec.)", "V (Cs-OA)"]
 
 
         datastructure_FWHM = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_240418.csv",
-                                        target = "FWHM",                                                       # "PLQY", "FWHM", "PEAK_POS"
-                                        wavelength_unit= "NM",                                                 # "NM", "EV"
-                                        exclude_no_star= False,
+                                        target = "FWHM",
+                                        wavelength_unit= "EV",             
                                         wavelength_filter= [400, 550],
                                         monodispersity_only= True,
-                                        encoding= self.encoding_type,
+                                        encoding= encoding,
+                                        PLQY_criteria = True,
                                         P_only= True,
                                         )
-        datastructure_FWHM.synthesis_training_selection = ["AS_Pb_ratio", "V (antisolvent)", "c (PbBr2)", "V (PbBr2 prec.)", "V (Cs-OA)"]
+        datastructure_FWHM.synthesis_training_selection = ["AS_Pb_ratio", "Cs_Pb_ratio", "V (antisolvent)", 
+                                                           "c (PbBr2)", "V (PbBr2 prec.)", "V (Cs-OA)"]
     
+
         return datastructure_NPL, datastructure_PLQY, datastructure_FWHM
             
 
@@ -308,26 +454,27 @@ class Synthesizer:
         V_Cs = self.datastructure_NPL.denormalize(x[3], "V (Cs-OA)")
         c_Cs = 0.02
 
-        results["As_Pb_ratio"] =  V_As / (c_Pb * V_Pb * 100)
-        results["Cs_Pb_ratio"] =  (c_Cs * V_Cs) / (c_Cs * V_Pb)
+        results["As_Pb_ratio"] =  (V_As  * self.datastructure_NPL.densities[self.molecule] 
+                                   / (c_Pb * V_Pb * 10000))
+        results["Cs_Pb_ratio"] =  (c_Cs * V_Cs) / (c_Pb * V_Pb)
 
 
         # get initial input that leads to the best plqy value
-        encoding =                  np.array(self.encoding)
-        input_NPL =                 np.append(encoding, results["As_Pb_ratio"])
-        input_FWHM =                np.append(input_NPL, x)
-        input_PLQY =                np.append(encoding, x)
+        encoding =        np.array(self.encoding)
+        input_NPL =       np.append(encoding, results["As_Pb_ratio"])
+        input_NPL =       np.append(input_NPL, results["Cs_Pb_ratio"])
+        input_PLQY_FWHM = np.append(input_NPL, x)
 
-        results["input_NPL"] =      [value for value in input_NPL]
-        results["input_PLQY"] =     [value for value in input_PLQY]
-        results["input_FWHM"] =     [value for value in input_FWHM]
+        results["input_NPL"] =  [value for value in input_NPL]
+        results["input_PLQY"] = [value for value in input_PLQY_FWHM]
+        results["input_FWHM"] = [value for value in input_PLQY_FWHM]
 
 
         # denormalize the parameters
         results["results_string"] = []
         denorm = {}
 
-        for i, parameter in enumerate(self.parameters_PLQY):
+        for i, parameter in enumerate(self.parameters_PLQY[2:]):
             denorm[parameter] = self.datastructure_PLQY.denormalize(x[i], parameter)
             results["results_string"].append(f"{parameter} :  {denorm[parameter]}")
 
@@ -335,68 +482,92 @@ class Synthesizer:
 
 
 
-    def print_results(self, results_string, input_PLQY, input_NPL, input_FWHM, As_Pb_ratio, Cs_Pb_ratio):
-        """
-            Print the results to a file
-        """
+    def print_results(self, results_string, input_PLQY, input_NPL, 
+                      input_FWHM, As_Pb_ratio, Cs_Pb_ratio):
+        """ Print the results to a file """
 
-        # write to file
-        with open("suggestions.txt", "a") as file:
+        # for GP
+        if self.model_type == "GP":
+            input_NPL = input_NPL
+        else:
+            input_NPL = [input_NPL]
 
-            file.write(f"\n")
-            file.write(f"----------------------------------------------------   {str(date.today())}   ----------------------------------------------------\n")
-            file.write(f"L-SYNTH-{np.random.randint(10000)}\n")
-            file.write(f"THE SYNTHESIZER RECOMMENDS: \n")
-            file.write(f"\n")
-            file.write(f"When using -{self.molecule_names[self.encoding.index(1)]}- as an antisolvent \n")
-            file.write(f"to make NPLs around {self.peak}nm:\n")
-            file.write(f"Choose the following synthesis parameters:\n")
-            file.write(f"{results_string}\n")
-            file.write(f"with the following As/Pb ratio: {As_Pb_ratio}\n")
-            file.write(f" and the following Cs/Pb ratio: {Cs_Pb_ratio}\n")
-            file.write(f"KRR predicted PLQY for this sample:   {self.PLQY_model.predict([input_PLQY])}\n")
-            file.write(f"KRR predicted peak position:          {self.NPL_model.predict([input_NPL])}\n")
+        print("----------------------------------------------------")
 
-            if "FWHM" in self.obj:
-                file.write(f"KRR predicted FWHM:               {self.FWHM_model.predict([input_FWHM])}\n")
+        print(f"As_Pb_ratio (old): {As_Pb_ratio}")
+        print(f"Cs_Pb_ratio (old): {Cs_Pb_ratio}")
+        print(f"KRR predicted peak position:    {self.NPL_model.predict(input_NPL)}\n")
+        print("----------------------------------------------------")
 
-            file.write(f"\n")
-            file.write(f"[ DEV -->   KRR_PLQY range: {self.datastructure_PLQY.wavelength_filter},  Opt. Iterations: {self.iterations}]\n")
-            file.write(f"\n")
-            file.write(f"THANK YOU FOR USING THE SYNTHESIZER MODULE!\n")
+        print("Do you want to print the results? (y/n)")
+        if input() == "y":
+
+            print("writing to file ...")
+
+            # write to file
+            with open("suggestions.txt", "a") as file:
+
+                file.write(f"\n")
+                file.write(f"----------------------------------------------------   {str(date.today())}   ----------------------------------------------------\n")
+                file.write(f"L-SYNTH 2.0-{np.random.randint(10000)}\n")
+                file.write(f"THE SYNTHESIZER RECOMMENDS: \n")
+                file.write(f"\n")
+                file.write(f"When using -{self.molecule_names[self.encoding.index(1)]}- as an antisolvent \n")
+                file.write(f"to make NPLs around {self.peak}nm:\n")
+                file.write(f"Choose the following synthesis parameters:\n")
+                file.write(f"{results_string}\n")
+
+                file.write(f"with the following As/Pb ratio: {As_Pb_ratio*10}\n")
+                file.write(f" and the following Cs/Pb ratio: {Cs_Pb_ratio}\n")
+
+                if "PLQY" in self.obj:
+                    file.write(f"GP predicted rel. PLQY for this sample:   +{self.PLQY_model.predict([input_PLQY])}\n")
+
+                file.write(f"GP predicted peak position: {self.NPL_model.predict(input_NPL)}\n")
+
+                if "FWHM" in self.obj:
+                    file.write(f"GP predicted rel. FWHM: {self.FWHM_model.predict([input_FWHM])}\n")
+
+                file.write(f"\n")
+                file.write(f"[ DEV --> Opt. Iterations: {self.iterations}, fixed c_Pb: {self.c_Pb_fixed}, fixed V_As: {self.V_As_fixed}, Cs_Pb_opt: {self.Cs_Pb_opt}, Cs_As_opt: {self.Cs_As_opt}\n")
+                file.write(f"model type: {self.model_type}, encoding: {self.encoding_type}, geometry: {self.geometry}, c_Pb_max: {self.c_Pb_max} ]\n")
+                file.write(f"\n")
+                file.write(f"THANK YOU FOR USING THE SYNTHESIZER MODULE!\n")
+            
+            print("done writing to file ...")
 
 
     def test_results(self, x):
-        """
-            Test the results against a Gaussian Process model
+
+        """ Test the results against a different Gaussian Process model 
+        (ideally with different hyperparameters)
         """
 
         print("testing results...")
 
         gp_PLQY = GaussianProcess(training_data = np.array(self.inputs_PLQY),
-                            parameter_selection = self.parameters_PLQY,              # for running "iterate_and_ignore()"
+                            parameter_selection = self.parameters_PLQY,
                             targets = np.array(self.PLQY), 
-                            kernel_type = "LIN",                                    # "RBF", "MLP", "EXP", "LIN"
+                            kernel_type = "LIN",
                             model_type  = "GPRegression",
                             )
 
-        
         gp_PLQY.train()
 
         print(f"GP predicted PLQY for this sample:   {gp_PLQY.predict(x)}")
+    
 
-
-
-    def plot_suggestions(self, opt_x, datastructure, parameters):
+    def print_logo(self):
         """
-            Plot the prediction in relation to all relevant data points with correct wavelength filter and molecule
-            -> good first impression of the prediction
+            Print the logo to the console
+            -> ASCII image from ascii-art-generator.org
         """
-        
-        fig, ax = datastructure.plot_data(parameters[0], parameters[1], parameters[2])                  # plot data distribution
-        ax.scatter(opt_x[0], opt_x[1], opt_x[2], color='red', marker="x", s=200)
 
-        #plt.show()
+        # read in from file (ascii-art.txt)
+        with open("ascii-art.txt", "r") as file:
+            for line in file:
+                print(line, end="")
+                time.sleep(0.02)	
 
-        return fig, ax
+        print("\n")
         
