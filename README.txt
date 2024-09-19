@@ -24,6 +24,8 @@ molecule and target peak position
 - KRR:              implements the Kernel Ridge Regression model from sklearn 
   with extra logic
 - GaussianProcess:  implements the GPy Gaussian Process with some extra logic
+- Preprocessor:     a set of Data selection methods and target transformations
+- MoleculeEncoder:  implements Fingerprints, geometric Encoding, etc. (unfinished)
 
 
 
