@@ -28,29 +28,33 @@ datastructure = Datastructure(
                             monodispersity_only = True,
                             encoding            = "one_hot", 
                             P_only              = False,
-                            molecule            = "Toluene",
-                            add_baseline        = True,
+                            molecule            = "all",
+                            add_baseline        = False,
                             )
 
 #%%
 
 # adjust the selection of training parameters
-#datastructure.synthesis_training_selection = ["Cs_Pb_ratio", "AS_Pb_ratio",  "V (antisolvent)", "c (PbBr2)", "V (Cs-OA)", "V (PbBr2 prec.)",]
 datastructure.synthesis_training_selection  = ["AS_Pb_ratio", "Cs_Pb_ratio", ]
 
-#datastructure.save_data_as_file(datastructure.get_data(), "data_objects")
 
+# get data objects (either from file or from datastructure)
+#datastructure.save_data_as_file(datastructure.get_data(), "data_objects")
 data_objects = datastructure.load_data_from_file("data_objects")
-#datastructure.plot_data("Cs_As_ratio", "AS_Pb_ratio", molecule= "all")
+
 
 # use Preprocessor to select data points
 # ds = Preprocessor(selection_method= ["PEAK_SHAPE",], fwhm_margin=-0.01, peak_error_threshold=0.00010)
 # data_objects = ds.select_data(data_objects)                           
 # datastructure.data  = data_objects
 
+
 # get parameter selection
 parameter_selection = datastructure.total_training_parameter_selection
 
+
+# plot the parameters
+#datastructure.plot_data("Cs_As_ratio", "AS_Pb_ratio", molecule= "all")
 #datastructure.plot_parameters(data_objects,)
 
 
@@ -69,7 +73,6 @@ for data in data_objects:
 
             # TARGETS
     targets.append(data["y"])
-
 
 
 # convert to numpy arrays

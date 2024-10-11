@@ -41,14 +41,13 @@ datastructure = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_2
 
 #%%
 
-# datastructure.synthesis_training_selection  = ["AS_Pb_ratio", "V (Cs-OA)",  
-#                                                "c (PbBr2)",  "V (PbBr2 prec.)","V (antisolvent)", ] 
+# adjust the selection of training parameters
 datastructure.synthesis_training_selection    = ["AS_Pb_ratio", "Cs_Pb_ratio", "c (PbBr2)"]
 
-#datastructure.synthesis_training_selection  = []
-data_objects = datastructure.get_data()
 
-#datastructure.write_to_file(data_objects, "PLQY.txt")
+# get data objects (either from file or from datastructure)
+#datastructure.save_data_as_file(datastructure.get_data(), "data_objects")
+data_objects = datastructure.load_data_from_file("data_objects")
 
 
 
@@ -66,12 +65,13 @@ data_objects = datastructure.get_data()
 """ ---------------------------------------------- """
 
 
-
+# plot the parameters
 #datastructure.plot_correlation()
 datastructure.plot_benchmark(data_objects, highest_lowest= "lowest", color= "blue")
 datastructure.plot_benchmark(data_objects, max_sample= 100, highest_lowest= "lowest", color= "red")
 plt.show()
-datastructure.plot_parameters( data_objects,)
+#datastructure.plot_parameters( data_objects,)
+
 
 
 #%%
@@ -90,26 +90,6 @@ for data in data_objects:
     targets.append(data["y"])
     #targets.append(data["y_res"])
 
-
-
-
-### Some extra plotting
-
-# x = [input[-1] for input in inputs]
-# y = [input[-2] for input in inputs]
-# z = [target for target in targets]
-
-
-#3d plot with plotly
-# fig = plotly.graph_objs.Figure(data=[plotly.graph_objs
-#                                      .Scatter3d(x=x, y=y, z=z, 
-#                                                 mode='markers', marker=dict(size=8))])
-# plotly.offline.plot(fig, filename='3d-scatter.html')
-
-#2d plot with matplotlib
-# plt.scatter(x, z, c=z)
-# plt.colorbar()
-# plt.show()
 
 
 
