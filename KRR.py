@@ -152,7 +152,7 @@ class Ridge:
         """ Optimize the hyperparameters of the kernel ridge regression """
 
 
-        krr = KernelRidge()
+        krr = KernelRidge() 
         param_grid = {
             'alpha':  [0.1, 0.01, 0.001],
             'gamma':  [0.01,],
@@ -163,7 +163,7 @@ class Ridge:
         gs_krr = GridSearchCV(estimator=krr, 
                               param_grid=param_grid, 
                               scoring='neg_root_mean_squared_error', 
-                              cv= int(self.num_data))
+                              cv= int(self.num_data)) 
 
 
         gs_krr.fit(self.training_data[:int(self.num_data)], self.targets[:int(self.num_data)])

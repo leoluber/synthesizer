@@ -50,7 +50,7 @@ class GaussianProcess:
     def __init__(self, 
                  training_data, parameter_selection = None,
                  targets = None,
-                 kernel_type: Literal["RBF", "MLP", "EXP", "LIN"] = "RBF",
+                 kernel_type: Literal["RBF", "MLP", "EXP", "LIN"] = "EXP",
                  model_type  = "GPRegression",
                  ):
         
@@ -238,7 +238,7 @@ class GaussianProcess:
             case "MLP":
                 return GPy.kern.MLP(input_dim, ARD = True) + GPy.kern.MLP(input_dim, ARD=True)
             case "EXP":
-                return GPy.kern.Exponential(input_dim, ARD = True)
+                return GPy.kern.Exponential(input_dim, ARD = True, lengthscale=0.1)
             case "LIN":
                 return GPy.kern.Linear(input_dim)
             case "POLY":
@@ -255,8 +255,8 @@ class GaussianProcess:
         """ Plots the regression results """
 
         plt.figure(figsize=(10, 6))
-        plt.scatter(self.targets, self.loo_predictions, c='r', label='Predictions')
+        error = np.mean(np.abs(np.array(self.targets) - np.array(self.loo_predictions)))
+        plt.scatter(self.targets, self.loo_predictions, c='r', label= f'err: {error}')
         plt.plot([self.targets.min(), self.targets.max()], [self.targets.min(), self.targets.max()], 'k--', lw=2)
 
-        plt.legend()
         plt.show()

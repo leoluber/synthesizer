@@ -29,6 +29,21 @@ class Preprocessor:
       (Details in the add_residual_targets_avg() method)
 
       
+    RESIDUAL TARGETS
+    ----------------
+    A lot of targets (PLQY, FWHM, ...) mainly depend on the #MLs in the NPLs. However, the goal
+    of the optimization is to find the subtle dependencies on synthesis parameters independently
+    of the peak position. By converting the target values to residuals, we represent the offset 
+    to the expected target value for a given peak position. This way, we prevent the #MLs from
+    overshadowing the other relationships in the data. The residual targets are calculated by:
+
+    (1) fitting a trendline to the peak_pos - target relationship assigning the y-offset as new
+        target
+    (2) subtracting the average target value for each NPL ML number from the target value
+
+    If the model shows signs of overfitting, (1) is discouraged!
+
+
     PARAMETERS
     ----------
     selection_method: selection method (str)
@@ -139,7 +154,6 @@ class Preprocessor:
                 counter -= 1
 
         print(f"fit_fwhm_trendline() removed {counter} data points")
-        
         return new_data_objects + baseline_data
 
 
@@ -270,8 +284,10 @@ class Preprocessor:
         """
         
         # write the average target values for each NPL ML number to a dictionary
+        new_data_objects = data_objects.copy()
+
         avg_targets  = {}
-        for object in data_objects:
+        for object in new_data_objects:
             peak_pos = object["peak_pos"]
             ml       = self.characterize_NPL(peak_pos)
             object["ml"] = ml
@@ -286,27 +302,25 @@ class Preprocessor:
             avg_targets[key] = np.mean(value)
 
 
-        data_objects = [object for object in data_objects if object["ml"] is not None]
+        new_data_objects = [object for object in new_data_objects if object["ml"] is not None]
 
         # plot the average targets
         # plt.scatter([object["ml"] for object in data_objects], [object["y"] for object in data_objects], c="blue")
         # plt.scatter(avg_targets.keys(), avg_targets.values(), c="red", marker="x", s=100)
         # plt.show()
         
-        
 
         # loop through the data objects and calculate the residual targets
-        for object in data_objects:
+        for object in new_data_objects:
             peak_pos = object["peak_pos"]
             ml = self.characterize_NPL(peak_pos)
             object["y_res"] = (object["y"] - avg_targets[ml])
 
 
-
         # avg. residual target
         #self.plot_avg_residuals(data_objects)
         
-        return data_objects    
+        return new_data_objects    
 
 
 #### ---------------------------- HELPERS ------------------------------ ####

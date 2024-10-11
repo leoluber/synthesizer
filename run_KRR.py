@@ -27,15 +27,15 @@ from helpers import *
 
 datastructure = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_240418.csv", 
                               
-                              target = "PEAK_POS",
-                              #wavelength_filter= [464, 495],                
+                              target = "FWHM",
+                              #wavelength_filter= [420, 440],                
                               PLQY_criteria = False,
                               wavelength_unit= "NM",
                               monodispersity_only = True,
                               encoding= "one_hot",
                               P_only=False, 
-                              molecule="Butanol",
-                              add_baseline= True,
+                              molecule="all",
+                              add_baseline= False,
                               )
 
 
@@ -43,20 +43,22 @@ datastructure = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_2
 
 # datastructure.synthesis_training_selection  = ["AS_Pb_ratio", "V (Cs-OA)",  
 #                                                "c (PbBr2)",  "V (PbBr2 prec.)","V (antisolvent)", ] 
-datastructure.synthesis_training_selection  = ["AS_Pb_ratio", "Cs_Pb_ratio",]
+datastructure.synthesis_training_selection    = ["AS_Pb_ratio", "Cs_Pb_ratio", "c (PbBr2)"]
 
 #datastructure.synthesis_training_selection  = []
 data_objects = datastructure.get_data()
+
+#datastructure.write_to_file(data_objects, "PLQY.txt")
 
 
 
 """ --- use Preprocessor to select data points --- """
 
-ds = Preprocessor(selection_method= ["PEAK_SHAPE",], 
-                  fwhm_margin= 0, 
-                  peak_error_threshold=0.0002, 
-                  mode=datastructure.wavelength_unit)
-data_objects = ds.select_data(data_objects)   
+# ds = Preprocessor(selection_method= ["PEAK_SHAPE",], 
+#                   fwhm_margin= 0, 
+#                   peak_error_threshold=0.0002, 
+#                   mode=datastructure.wavelength_unit)
+#data_objects = ds.select_data(data_objects)   
 
 #data_objects = ds.add_residual_targets(data_objects) 
 #data_objects  = ds.add_residual_targets_avg(data_objects) 
@@ -66,8 +68,10 @@ data_objects = ds.select_data(data_objects)
 
 
 #datastructure.plot_correlation()
-#datastructure.plot_parameters( data_objects,)
-
+datastructure.plot_benchmark(data_objects, highest_lowest= "lowest", color= "blue")
+datastructure.plot_benchmark(data_objects, max_sample= 100, highest_lowest= "lowest", color= "red")
+plt.show()
+datastructure.plot_parameters( data_objects,)
 
 
 #%%
@@ -79,8 +83,7 @@ peak_pos = []
 for data in data_objects:
 
         # INPUTS
-    input = (data["encoding"] + data["total_parameters"] )
-    #input = data["total_parameters"]
+    input =  data["total_parameters"]
     inputs.append(input)
 
         # TARGETS
@@ -92,9 +95,9 @@ for data in data_objects:
 
 ### Some extra plotting
 
-x = [input[-1] for input in inputs]
-y = [input[-2] for input in inputs]
-z = [target for target in targets]
+# x = [input[-1] for input in inputs]
+# y = [input[-2] for input in inputs]
+# z = [target for target in targets]
 
 
 #3d plot with plotly
@@ -114,7 +117,7 @@ z = [target for target in targets]
 
 rk = Ridge(inputs, 
            targets, 
-           datastructure.total_training_parameter_selection, 
+           datastructure.synthesis_training_selection, 
            kernel_type= "laplacian", 
            alpha=0.1, gamma=0.1)
 
@@ -125,8 +128,8 @@ rk.optimize_hyperparameters()
 
 
 rk.fit()
-datastructure.plot_data("AS_Pb_ratio", "Cs_Pb_ratio", "target", kernel=rk, molecule = datastructure.flags["molecule"])
-#datastructure.plot_2D_contour("AS_Pb_ratio", "Cs_Pb_ratio", kernel=rk, molecule = datastructure.flags["molecule"])
+#datastructure.plot_data("AS_Pb_ratio", "Cs_Pb_ratio", "target", kernel=rk, molecule = datastructure.flags["molecule"])
+datastructure.plot_2D_contour("AS_Pb_ratio", "Cs_Pb_ratio", kernel=rk,)
 
 
 #loo regression

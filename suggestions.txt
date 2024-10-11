@@ -1,535 +1,4 @@
 
-----------------------------------------------------   2024-08-14   ----------------------------------------------------
-L-SYNTH-8719
-THE SYNTHESIZER RECOMMENDS: 
-
-When using -Ethanol- as an antisolvent 
-to make NPLs around 480nm:
-Choose the following synthesis parameters:
-['V (antisolvent) :  3874.8576688869266', 'c (PbBr2) :  0.010000000000000002', 'V (PbBr2 prec.) :  2623.6123970281146', 'V (Cs-OA) :  133.96138853189615']
-with the following As/Pb ratio: 1.47691696886177
-KRR predicted PLQY for this sample:   [0.18611673]
-KRR predicted peak position:          [481.66190296]
-KRR predicted FWHM:               [25.2603688]
-
-[ DEV -->   KRR_PLQY range: [400, 510],  Opt. Iterations: 100]
-
-THANK YOU FOR USING THE SYNTHESIZER MODULE!
-
-----------------------------------------------------   2024-08-19   ----------------------------------------------------
-L-SYNTH-5301
-THE SYNTHESIZER RECOMMENDS: 
-
-When using -Isopropanol- as an antisolvent 
-to make NPLs around 480nm:
-Choose the following synthesis parameters:
-['V (antisolvent) :  4500.0', 'c (PbBr2) :  0.0033817599173
-KRR predicted PLQY for this sample:   [0.62691822]
-KRR predicted peak position:          [477.82716726]
-KRR predicted FWHM:               [23.13926907]
-
-[ DEV -->   KRR_PLQY range: [400, 510],  Opt. Iterations: 100]
-
-THANK YOU FOR USING THE SYNTHESIZER MODULE!
-
-----------------------------------------------------   2024-08-19   ----------------------------------------------------
-L-SYNTH-8036
-THE SYNTHESIZER RECOMMENDS: 
-
-When using -Isopropanol- as an antisolvent 
-to make NPLs around 460nm:
-Choose the following synthesis parameters:
-['V (antisolvent) :  3572.342617981693', 'c (PbBr2) :  0.029061019642369054', 'V (PbBr2 prec.) :  3663.085153774625', 'V (Cs-OA) :  153.98759774811205']
-with the following As/Pb ratio: 0.33557936054401105
-KRR predicted PLQY for this sample:   [0.56448261]
-KRR predicted peak position:          [467.98523276]
-KRR predicted FWHM:               [11.03084608]
-
-[ DEV -->   KRR_PLQY range: [400, 510],  Opt. Iterations: 60]
-
-THANK YOU FOR USING THE SYNTHESIZER MODULE!
-
-
-----------------------------------------------------   2024-08-19   ----------------------------------------------------
-L-SYNTH-2146
-THE SYNTHESIZER RECOMMENDS: 
-
-When using -Isopropanol- as an antisolvent 
-to make NPLs around 500nm:
-Choose the following synthesis parameters:
-['V (antisolvent) :  4263.158031599628', 'c (PbBr2) :  0.013230518584544729', 'V (PbBr2 prec.) :  807.7240785790194', 'V (Cs-OA) :  603.4886037793591']
-with the following As/Pb ratio: 3.9892525850440186
-KRR predicted PLQY for this sample:   [0.39700574]
-KRR predicted peak position:          [499.14790934]
-KRR predicted FWHM:               [28.09542799]
-
-[ DEV -->   KRR_PLQY range: [400, 510],  Opt. Iterations: 150]
-
-THANK YOU FOR USING THE SYNTHESIZER MODULE!
-
-----------------------------------------------------   2024-08-22   ----------------------------------------------------
-L-SYNTH-8887
-THE SYNTHESIZER RECOMMENDS: 
-
-When using -Isopropanol- as an antisolvent 
-to make NPLs around 500nm:
-Choose the following synthesis parameters:
-['V (antisolvent) :  2794.9341522210016', 'c (PbBr2) :  0.00695305275410521', 'V (PbBr2 prec.) :  1080.4131961305254', 'V (Cs-OA) :  393.41682849287724']
-with the following As/Pb ratio: 3.7205416959719204
-KRR predicted PLQY for this sample:   [0.3380524]
-KRR predicted peak position:          [493.77213758]
-KRR predicted FWHM:               [27.37773176]
-
-[ DEV -->   KRR_PLQY range: [400, 510],  Opt. Iterations: 70]
-
-THANK YOU FOR USING THE SYNTHESIZER MODULE!
-
-----------------------------------------------------   2024-08-22   ----------------------------------------------------
-L-SYNTH-8230
-THE SYNTHESIZER RECOMMENDS: 
-
-When using -Isopropanol- as an antisolvent 
-to make NPLs around 500nm:
-Choose the following synthesis parameters:
-['V (antisolvent) :  1408.407674597668', 'c (PbBr2) :  0.001', 'V (PbBr2 prec.) :  3754.6209480288894', 'V (Cs-OA) :  587.1556292527159']
-with the following As/Pb ratio: 3.751131456657582
-KRR predicted PLQY for this sample:   [0.23594694]
-KRR predicted peak position:          [488.81614014]
-KRR predicted FWHM:               [23.89316355]
-
-[ DEV -->   KRR_PLQY range: [400, 510],  Opt. Iterations: 70]
-
-THANK YOU FOR USING THE SYNTHESIZER MODULE!
-
-----------------------------------------------------   2024-08-30   ----------------------------------------------------
-L-SYNTH 2.0-5135
-THE SYNTHESIZER RECOMMENDS: 
-
-When using -Methanol- as an antisolvent 
-to make NPLs around 480nm:
-Choose the following synthesis parameters:
-['V (antisolvent) :  1391.6140089777148', 'c (PbBr2) :  0.0062770770453315266', 'V (PbBr2 prec.) :  4705.797139605031', 'V (Cs-OA) :  68.0']
-with the following As/Pb ratio: 1.1617727980612684
- and the following Cs/Pb ratio: 0.046041371034901024
-KRR predicted peak position:          [478.67246868]
-KRR predicted FWHM:               [18.12267539]
-
-[ DEV -->   KRR_PLQY range: [400, 510],  Opt. Iterations: 100]
-
-THANK YOU FOR USING THE SYNTHESIZER MODULE!
-
-----------------------------------------------------   2024-08-30   ----------------------------------------------------
-L-SYNTH 2.0-5784
-THE SYNTHESIZER RECOMMENDS: 
-
-When using -Cyclopentanone- as an antisolvent 
-to make NPLs around 480nm:
-Choose the following synthesis parameters:
-['V (antisolvent) :  2519.0093464411366', 'c (PbBr2) :  0.007180305957309345', 'V (PbBr2 prec.) :  2250.2324488682766', 'V (Cs-OA) :  68.0']
-with the following As/Pb ratio: 1.760165026697808
- and the following Cs/Pb ratio: 0.08417217998303923
-KRR predicted peak position:          [480.17433205]
-KRR predicted FWHM:               [19.53129181]
-
-[ DEV -->   KRR_PLQY range: [400, 510],  Opt. Iterations: 100]
-
-THANK YOU FOR USING THE SYNTHESIZER MODULE!
-
-----------------------------------------------------   2024-08-30   ----------------------------------------------------
-L-SYNTH 2.0-7065
-THE SYNTHESIZER RECOMMENDS: 
-
-When using -Ethanol- as an antisolvent 
-to make NPLs around 480nm:
-Choose the following synthesis parameters:
-['V (antisolvent) :  3612.81589573945', 'c (PbBr2) :  0.010000000000000002', 'V (PbBr2 prec.) :  2614.0240163212466', 'V (Cs-OA) :  125.04377270167298']
-with the following As/Pb ratio: 2.3675198050059225
- and the following Cs/Pb ratio: 0.09567147961987651
-KRR predicted peak position:          [477.29768552]
-KRR predicted FWHM:               [25.57019074]
-
-[ DEV -->   KRR_PLQY range: [400, 510],  Opt. Iterations: 140]
-
-THANK YOU FOR USING THE SYNTHESIZER MODULE!
-
-----------------------------------------------------   2024-08-30   ----------------------------------------------------
-L-SYNTH 2.0-6165
-THE SYNTHESIZER RECOMMENDS: 
-
-When using -Butanol- as an antisolvent 
-to make NPLs around 480nm:
-Choose the following synthesis parameters:
-['V (antisolvent) :  4500.0', 'c (PbBr2) :  0.010000000000000002', 'V (PbBr2 prec.) :  1740.0370489383156', 'V (Cs-OA) :  68.0']
-with the following As/Pb ratio: 2.8189054957150406
- and the following Cs/Pb ratio: 0.07815925533481051
-KRR predicted peak position:          [478.43787437]
-KRR predicted FWHM:               [20.50809491]
-
-[ DEV -->   KRR_PLQY range: [400, 510],  Opt. Iterations: 150]
-
-THANK YOU FOR USING THE SYNTHESIZER MODULE!
-
-----------------------------------------------------   2024-08-30   ----------------------------------------------------
-L-SYNTH 2.0-628
-THE SYNTHESIZER RECOMMENDS: 
-
-When using -Methanol- as an antisolvent 
-to make NPLs around 480nm:
-Choose the following synthesis parameters:
-['V (antisolvent) :  2660.827994017275', 'c (PbBr2) :  0.010000000000000002', 'V (PbBr2 prec.) :  4645.3597686571575', 'V (Cs-OA) :  68.0']
-with the following As/Pb ratio: 1.4125067077728992
- and the following Cs/Pb ratio: 0.02927652685107611
-KRR predicted peak position:          [480.08225263]
-KRR predicted FWHM:               [19.99872749]
-
-[ DEV -->   KRR_PLQY range: [400, 510],  Opt. Iterations: 150]
-
-THANK YOU FOR USING THE SYNTHESIZER MODULE!
-
-----------------------------------------------------   2024-09-02   ----------------------------------------------------
-L-SYNTH 2.0-7414
-THE SYNTHESIZER RECOMMENDS: 
-
-When using -Ethanol- as an antisolvent 
-to make NPLs around 480nm:
-Choose the following synthesis parameters:
-['V (antisolvent) :  3853.1527307150113', 'c (PbBr2) :  0.010000000000000002', 'V (PbBr2 prec.) :  2759.16466716788', 'V (Cs-OA) :  150.13867354343805']
-with the following As/Pb ratio: 2.392191631857111
- and the following Cs/Pb ratio: 0.10882907811192473
-KRR predicted peak position:          [478.61570287]
-KRR predicted FWHM:               [25.89141759]
-
-[ DEV -->   KRR_PLQY range: [400, 510],  Opt. Iterations: 120]
-
-THANK YOU FOR USING THE SYNTHESIZER MODULE!
-
-----------------------------------------------------   2024-09-02   ----------------------------------------------------
-L-SYNTH 2.0-4529
-THE SYNTHESIZER RECOMMENDS: 
-
-When using -Ethanol- as an antisolvent 
-to make NPLs around 460nm:
-Choose the following synthesis parameters:
-['V (antisolvent) :  3163.713841758399', 'c (PbBr2) :  0.05', 'V (PbBr2 prec.) :  964.04999227041', 'V (Cs-OA) :  68.0']
-with the following As/Pb ratio: 1.124307215265662
- and the following Cs/Pb ratio: 0.028214304463549614
-KRR predicted PLQY for this sample:   [0.46674353]
-KRR predicted peak position:          [460.59383284]
-KRR predicted FWHM:               [19.7574121]
-
-[ DEV -->   KRR_PLQY range: [400, 510],  Opt. Iterations: 150]
-
-THANK YOU FOR USING THE SYNTHESIZER MODULE!
-
-----------------------------------------------------   2024-09-03   ----------------------------------------------------
-L-SYNTH 2.0-2370
-THE SYNTHESIZER RECOMMENDS: 
-
-When using -Acetone- as an antisolvent 
-to make NPLs around 480nm:
-Choose the following synthesis parameters:
-['V (antisolvent) :  2815.3474303520074', 'c (PbBr2) :  0.05', 'V (PbBr2 prec.) :  150.0', 'V (Cs-OA) :  66.79503235838474']
-with the following As/Pb ratio: 4.136683824330549
- and the following Cs/Pb ratio: 0.17812008628902598
-KRR predicted PLQY for this sample:   [0.30784274]
-KRR predicted peak position:          (array([[479.72416298]]), array([[186.52370033]]))
-KRR predicted FWHM:               [20.14214149]
-
-[ DEV -->   KRR_PLQY range: [400, 510],  Opt. Iterations: 150]
-
-THANK YOU FOR USING THE SYNTHESIZER MODULE!
-
-----------------------------------------------------   2024-09-04   ----------------------------------------------------
-L-SYNTH 2.0-4763
-THE SYNTHESIZER RECOMMENDS: 
-
-When using -Ethanol- as an antisolvent 
-to make NPLs around 480nm:
-Choose the following synthesis parameters:
-['V (antisolvent) :  3733.5605327682015', 'c (PbBr2) :  0.05', 'V (PbBr2 prec.) :  476.918481709473', 'V (Cs-OA) :  49.99999999999999']
-with the following As/Pb ratio: 2.682047116189539
- and the following Cs/Pb ratio: 0.04193588792850243
-KRR predicted peak position:          (array([[481.16838142]]), array([[69.83803121]]))
-KRR predicted FWHM:               [27.67061979]
-
-[ DEV -->   KRR_PLQY range: [400, 510],  Opt. Iterations: 110]
-
-THANK YOU FOR USING THE SYNTHESIZER MODULE!
-
-----------------------------------------------------   2024-09-04   ----------------------------------------------------
-L-SYNTH 2.0-643
-THE SYNTHESIZER RECOMMENDS: 
-
-When using -Ethanol- as an antisolvent 
-to make NPLs around 500nm:
-Choose the following synthesis parameters:
-['V (antisolvent) :  1763.6731104605858', 'c (PbBr2) :  0.05', 'V (PbBr2 prec.) :  150.0', 'V (Cs-OA) :  49.99999999999999']
-with the following As/Pb ratio: 4.028229384291977
- and the following Cs/Pb ratio: 0.13333333333333333
-KRR predicted peak position:          (array([[499.24384912]]), array([[121.48273687]]))
-KRR predicted FWHM:               [21.79954811]
-
-[ DEV -->   KRR_PLQY range: [400, 510],  Opt. Iterations: 110]
-
-THANK YOU FOR USING THE SYNTHESIZER MODULE!
-
-----------------------------------------------------   2024-09-04   ----------------------------------------------------
-L-SYNTH 2.0-1932
-THE SYNTHESIZER RECOMMENDS: 
-
-When using -Ethanol- as an antisolvent 
-to make NPLs around 490nm:
-Choose the following synthesis parameters:
-['V (antisolvent) :  3692.6809489393377', 'c (PbBr2) :  0.05', 'V (PbBr2 prec.) :  385.4410534109852', 'V (Cs-OA) :  49.99999999999999']
-with the following As/Pb ratio: 3.282246356248052
- and the following Cs/Pb ratio: 0.05188860870685341
-KRR predicted peak position:          (array([[486.61374225]]), array([[74.47945879]]))
-KRR predicted FWHM:               [26.94727907]
-
-[ DEV -->   KRR_PLQY range: [400, 510],  Opt. Iterations: 110]
-
-THANK YOU FOR USING THE SYNTHESIZER MODULE!
-
-----------------------------------------------------   2024-09-04   ----------------------------------------------------
-L-SYNTH 2.0-6987
-THE SYNTHESIZER RECOMMENDS: 
-
-When using -Ethanol- as an antisolvent 
-to make NPLs around 459nm:
-Choose the following synthesis parameters:
-['V (antisolvent) :  2480.3057770944583', 'c (PbBr2) :  0.05', 'V (PbBr2 prec.) :  700.8351758219532', 'V (Cs-OA) :  49.99999999999999']
-with the following As/Pb ratio: 1.2124858861942178
- and the following Cs/Pb ratio: 0.02853738038554302
-KRR predicted peak position:          (array([[461.10004139]]), array([[56.59601667]]))
-KRR predicted FWHM:               [20.37907869]
-
-[ DEV -->   KRR_PLQY range: [400, 510],  Opt. Iterations: 110]
-
-THANK YOU FOR USING THE SYNTHESIZER MODULE!
-
-----------------------------------------------------   2024-09-10   ----------------------------------------------------
-L-SYNTH 2.0-330
-THE SYNTHESIZER RECOMMENDS: 
-
-When using -Cyclopentanol- as an antisolvent 
-to make NPLs around 470nm:
-Choose the following synthesis parameters:
-['V (antisolvent) :  933.346070618266', 'c (PbBr2) :  0.05', 'V (PbBr2 prec.) :  216.55449745020957', 'V (Cs-OA) :  354.54088005685537']
-with the following As/Pb ratio: 0.9499201188909167
- and the following Cs/Pb ratio: 0.6548760413315761
-KRR predicted peak position:          (array([[469.86841613]]), array([[265.38051728]]))
-
-[ DEV -->   KRR_PLQY range: [400, 510],  Opt. Iterations: 110]
-
-THANK YOU FOR USING THE SYNTHESIZER MODULE!
-
-----------------------------------------------------   2024-09-10   ----------------------------------------------------
-L-SYNTH 2.0-9452
-THE SYNTHESIZER RECOMMENDS: 
-
-When using -Cyclopentanol- as an antisolvent 
-to make NPLs around 480nm:
-Choose the following synthesis parameters:
-['V (antisolvent) :  4366.839992070678', 'c (PbBr2) :  0.05', 'V (PbBr2 prec.) :  268.2337682826619', 'V (Cs-OA) :  110.35746925836918']
-with the following As/Pb ratio: 3.588107270812212
- and the following Cs/Pb ratio: 0.16456909204970144
-KRR predicted peak position:          (array([[479.33761008]]), array([[187.42108396]]))
-
-[ DEV -->   KRR_PLQY range: [400, 510],  Opt. Iterations: 110]
-
-THANK YOU FOR USING THE SYNTHESIZER MODULE!
-
-----------------------------------------------------   2024-09-10   ----------------------------------------------------
-L-SYNTH 2.0-3709
-THE SYNTHESIZER RECOMMENDS: 
-
-When using -Cyclopentanol- as an antisolvent 
-to make NPLs around 500nm:
-Choose the following synthesis parameters:
-['V (antisolvent) :  4241.160648369674', 'c (PbBr2) :  0.05', 'V (PbBr2 prec.) :  187.42505665763997', 'V (Cs-OA) :  72.99258517376967']
-with the following As/Pb ratio: 4.987336397652213
- and the following Cs/Pb ratio: 0.15577977987671435
-KRR predicted peak position:          (array([[487.4745241]]), array([[183.94645539]]))
-
-[ DEV -->   KRR_PLQY range: [400, 510],  Opt. Iterations: 110]
-
-THANK YOU FOR USING THE SYNTHESIZER MODULE!
-
-----------------------------------------------------   2024-09-12   ----------------------------------------------------
-L-SYNTH 2.0-6220
-THE SYNTHESIZER RECOMMENDS: 
-
-When using -Cyclopentanol- as an antisolvent 
-to make NPLs around 500nm:
-Choose the following synthesis parameters:
-['V (antisolvent) :  4273.5352162803665', 'c (PbBr2) :  0.05', 'V (PbBr2 prec.) :  150.0', 'V (Cs-OA) :  78.48605563888381']
-with the following As/Pb ratio: 6.279247744454618
- and the following Cs/Pb ratio: 0.20929614837035684
-KRR predicted peak position:          (array([[487.11398295]]), array([[180.74486905]]))
-
-[ DEV -->   KRR_PLQY range: [400, 510],  Opt. Iterations: 110]
-
-THANK YOU FOR USING THE SYNTHESIZER MODULE!
-
-----------------------------------------------------   2024-09-12   ----------------------------------------------------
-L-SYNTH 2.0-2150
-THE SYNTHESIZER RECOMMENDS:
-(Old-PbBr-prec.-disposal-method)
-
-When using -Cyclopentanol- as an antisolvent 
-to make NPLs around 450nm:
-Choose the following synthesis parameters:
-['V (antisolvent) :  5000.0', 'c (PbBr2) :  0.05', 'V (PbBr2 prec.) :  3581.094359197583', 'V (Cs-OA) :  25.0']
-with the following As/Pb ratio: 0.30772716088020796
- and the following Cs/Pb ratio: 0.002792442476226933
-KRR predicted PLQY for this sample:   [0.63110189]
-KRR predicted peak position:          (array([[441.60978744]]), array([[177.5418318]]))
-
-[ DEV -->   KRR_PLQY range: [400, 510],  Opt. Iterations: 110]
-
-THANK YOU FOR USING THE SYNTHESIZER MODULE!
-
-----------------------------------------------------   2024-09-12   ----------------------------------------------------
-L-SYNTH 2.0-7903
-THE SYNTHESIZER RECOMMENDS: 
-
-When using -Cyclopentanol- as an antisolvent 
-to make NPLs around 460nm:
-Choose the following synthesis parameters:
-['V (antisolvent) :  3471.236082229325', 'c (PbBr2) :  0.05', 'V (PbBr2 prec.) :  428.053972648902', 'V (Cs-OA) :  25.0']
-with the following As/Pb ratio: 1.7872989889311464
- and the following Cs/Pb ratio: 0.02336153999019696
-KRR predicted PLQY for this sample:   [0.76978398]
-KRR predicted peak position:          (array([[454.01968625]]), array([[170.84787637]]))
-
-[ DEV -->   KRR_PLQY range: [400, 510],  Opt. Iterations: 110]
-
-THANK YOU FOR USING THE SYNTHESIZER MODULE!
-
-----------------------------------------------------   2024-09-12   ----------------------------------------------------
-L-SYNTH 2.0-5927
-THE SYNTHESIZER RECOMMENDS: 
-
-When using -Cyclopentanol- as an antisolvent 
-to make NPLs around 490nm:
-Choose the following synthesis parameters:
-['V (antisolvent) :  1722.3209341334316', 'c (PbBr2) :  0.05', 'V (PbBr2 prec.) :  150.0', 'V (Cs-OA) :  213.25587890206054']
-with the following As/Pb ratio: 2.5306635592200557
- and the following Cs/Pb ratio: 0.5686823437388282
-KRR predicted PLQY for this sample:   [0.54097463]
-KRR predicted peak position:          (array([[488.75068182]]), array([[170.21494231]]))
-
-[ DEV -->   KRR_PLQY range: [400, 510],  Opt. Iterations: 110]
-
-THANK YOU FOR USING THE SYNTHESIZER MODULE!
-
-----------------------------------------------------   2024-09-16   ----------------------------------------------------
-L-SYNTH 2.0-9622
-THE SYNTHESIZER RECOMMENDS: 
-
-When using -Cyclopentanone- as an antisolvent 
-to make NPLs around 480nm:
-Choose the following synthesis parameters:
-['V (antisolvent) :  5000.0', 'c (PbBr2) :  0.010000000000000002', 'V (PbBr2 prec.) :  2590.112881990313', 'V (Cs-OA) :  403.1217643009842']
-with the following As/Pb ratio: 2.1794416912293904
- and the following Cs/Pb ratio: 0.31127737103968567
-KRR predicted peak position:          (array([[479.77463278]]), array([[42.40969727]]))
-
-[ DEV --> Opt. Iterations: 110, fixed c_Pb: 0.01, fixed V_As: None, Cs_Pb_opt: False,
-model type: GP, encoding: one_hot, geometry: None, c_Pb_max: 0.01 ]
-
-THANK YOU FOR USING THE SYNTHESIZER MODULE!
-
-----------------------------------------------------   2024-09-16   ----------------------------------------------------
-L-SYNTH 2.0-6389
-THE SYNTHESIZER RECOMMENDS: 
-
-When using -Cyclopentanone- as an antisolvent 
-to make NPLs around 495nm:
-Choose the following synthesis parameters:
-['V (antisolvent) :  1973.9652256297984', 'c (PbBr2) :  0.010000000000000002', 'V (PbBr2 prec.) :  678.2204874223521', 'V (Cs-OA) :  152.4698596232155']
-with the following As/Pb ratio: 3.2859619859112406
- and the following Cs/Pb ratio: 0.4496173809278252
-KRR predicted peak position:          (array([[495.05402171]]), array([[46.11345502]]))
-
-[ DEV --> Opt. Iterations: 110, fixed c_Pb: 0.01, fixed V_As: None, Cs_Pb_opt: False,
-model type: GP, encoding: one_hot, geometry: None, c_Pb_max: None ]
-
-THANK YOU FOR USING THE SYNTHESIZER MODULE!
-
-----------------------------------------------------   2024-09-16   ----------------------------------------------------
-L-SYNTH 2.0-9245
-THE SYNTHESIZER RECOMMENDS: 
-
-When using -Cyclopentanone- as an antisolvent 
-to make NPLs around 495nm:
-Choose the following synthesis parameters:
-['V (antisolvent) :  4949.361700964107', 'c (PbBr2) :  0.010000000000000002', 'V (PbBr2 prec.) :  1653.435597543901', 'V (Cs-OA) :  37.95503201858516']
-with the following As/Pb ratio: 3.37952646519098
- and the following Cs/Pb ratio: 0.045910505465063804
-KRR predicted rel. PLQY for this sample:   +[[0.09232302]]
-KRR predicted peak position:          (array([[496.00037169]]), array([[45.71409807]]))
-KRR predicted rel. FWHM:               [[-0.54105528]]
-
-[ DEV --> Opt. Iterations: 110, fixed c_Pb: 0.01, fixed V_As: None, Cs_Pb_opt: False,
-model type: GP, encoding: one_hot, geometry: None, c_Pb_max: None ]
-
-THANK YOU FOR USING THE SYNTHESIZER MODULE!
-
-----------------------------------------------------   2024-09-16   ----------------------------------------------------
-L-SYNTH 2.0-1110
-THE SYNTHESIZER RECOMMENDS: 
-
-When using -Cyclopentanone- as an antisolvent 
-to make NPLs around 480nm:
-Choose the following synthesis parameters:
-['V (antisolvent) :  4900.0', 'c (PbBr2) :  0.010000000000000002', 'V (PbBr2 prec.) :  2422.762329571631', 'V (Cs-OA) :  25.0']
-with the following As/Pb ratio: 2.28338534592377
- and the following Cs/Pb ratio: 0.020637600060770506
-KRR predicted rel. PLQY for this sample:   +[[0.14251835]]
-KRR predicted peak position:          (array([[480.79524411]]), array([[45.93461899]]))
-KRR predicted rel. FWHM:               [[-0.89646491]]
-
-[ DEV --> Opt. Iterations: 110, fixed c_Pb: 0.01, fixed V_As: 4900, Cs_Pb_opt: True,
-model type: GP, encoding: one_hot, geometry: None, c_Pb_max: None ]
-
-THANK YOU FOR USING THE SYNTHESIZER MODULE!
-
-
-----------------------------------------------------   2024-09-16   ----------------------------------------------------
-L-SYNTH 2.0-7025
-THE SYNTHESIZER RECOMMENDS: 
-
-When using -Cyclopentanone- as an antisolvent 
-to make NPLs around 480nm:
-Choose the following synthesis parameters:
-['V (antisolvent) :  4708.176326920861', 'c (PbBr2) :  0.010000000000000002', 'V (PbBr2 prec.) :  2417.3310832986413', 'V (Cs-OA) :  100.0']
-with the following As/Pb ratio: 2.1989255463675192
- and the following Cs/Pb ratio: 0.08273587403140657
-KRR predicted peak position:          (array([[480.11932345]]), array([[44.65350702]]))
-
-[ DEV --> Opt. Iterations: 110, fixed c_Pb: 0.01, fixed V_As: None, Cs_Pb_opt: False, Cs_As_opt: False
-model type: GP, encoding: one_hot, geometry: None, c_Pb_max: None ]
-
-THANK YOU FOR USING THE SYNTHESIZER MODULE!
-
-----------------------------------------------------   2024-09-16   ----------------------------------------------------
-L-SYNTH 2.0-3694
-THE SYNTHESIZER RECOMMENDS: 
-
-When using -Cyclopentanone- as an antisolvent 
-to make NPLs around 495nm:
-Choose the following synthesis parameters:
-['V (antisolvent) :  4321.576136471051', 'c (PbBr2) :  0.010000000000000002', 'V (PbBr2 prec.) :  1476.2218916381803', 'V (Cs-OA) :  100.0']
-with the following As/Pb ratio: 3.305098973069331
- and the following Cs/Pb ratio: 0.1354809877382713
-KRR predicted peak position:          (array([[495.22319955]]), array([[46.15507405]]))
-
-[ DEV --> Opt. Iterations: 110, fixed c_Pb: 0.01, fixed V_As: None, Cs_Pb_opt: False, Cs_As_opt: False
-model type: GP, encoding: one_hot, geometry: None, c_Pb_max: None ]
-
-THANK YOU FOR USING THE SYNTHESIZER MODULE!
-
 ----------------------------------------------------   2024-09-17   ----------------------------------------------------
 L-SYNTH 2.0-5294
 THE SYNTHESIZER RECOMMENDS: 
@@ -659,5 +128,130 @@ KRR predicted peak position:          (array([[496.42006001]]), array([[131.0075
 
 [ DEV --> Opt. Iterations: 110, fixed c_Pb: 0.05, fixed V_As: None, Cs_Pb_opt: False, Cs_As_opt: False
 model type: GP, encoding: one_hot, geometry: None, c_Pb_max: None ]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-09-24   ----------------------------------------------------
+L-SYNTH 2.0-9431
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Cyclopentanol- as an antisolvent 
+to make NPLs around 460nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  2842.651606314522', 'c (PbBr2) :  0.05', 'V (PbBr2 prec.) :  562.2466545256925', 'V (Cs-OA) :  152.12990054465288']
+with the following As/Pb ratio: 1.1143159483274274
+ and the following Cs/Pb ratio: 0.10823000853459139
+GP predicted peak position: (array([[463.4669958]]), array([[46.57103104]]))
+
+[ DEV --> Opt. Iterations: 100, fixed c_Pb: 0.05, fixed V_As: None, Cs_Pb_opt: False, Cs_As_opt: False
+model type: GP, encoding: geometry, geometry: [0.5, 1, 0], c_Pb_max: None ]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-09-24   ----------------------------------------------------
+L-SYNTH 2.0-8626
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Cyclopentanol- as an antisolvent 
+to make NPLs around 480nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  3869.031993012397', 'c (PbBr2) :  0.05', 'V (PbBr2 prec.) :  340.39706198053693', 'V (Cs-OA) :  338.70946511342214']
+with the following As/Pb ratio: 2.505117542138744
+ and the following Cs/Pb ratio: 0.3980169078342853
+GP predicted peak position: (array([[482.26455145]]), array([[70.48135776]]))
+GP predicted rel. FWHM: [-0.12580591]
+
+[ DEV --> Opt. Iterations: 110, fixed c_Pb: 0.05, fixed V_As: None, Cs_Pb_opt: False, Cs_As_opt: False
+model type: GP, encoding: geometry, geometry: [0.5, 1, 0], c_Pb_max: None ]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-09-24   ----------------------------------------------------
+L-SYNTH 2.0-7762
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Cyclopentanol- as an antisolvent 
+to make NPLs around 470nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  4776.167447706283', 'c (PbBr2) :  0.05', 'V (PbBr2 prec.) :  696.6884234148202', 'V (Cs-OA) :  153.15972193321355']
+with the following As/Pb ratio: 1.510958514732903
+ and the following Cs/Pb ratio: 0.08793585010785782
+GP predicted peak position: (array([[469.64143396]]), array([[44.51484392]]))
+GP predicted rel. FWHM: [-1.73574682]
+
+[ DEV --> Opt. Iterations: 110, fixed c_Pb: 0.05, fixed V_As: None, Cs_Pb_opt: False, Cs_As_opt: False
+model type: GP, encoding: geometry, geometry: [0.5, 1, 0], c_Pb_max: None ]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-09-24   ----------------------------------------------------
+L-SYNTH 2.0-9999
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Cyclopentanol- as an antisolvent 
+to make NPLs around 495nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  1880.5168965566215', 'c (PbBr2) :  0.05', 'V (PbBr2 prec.) :  263.4002648870811', 'V (Cs-OA) :  442.50039355321417']
+with the following As/Pb ratio: 1.5735212877586122
+ and the following Cs/Pb ratio: 0.6719816986409072
+GP predicted peak position: (array([[494.83021923]]), array([[72.09207139]]))
+GP predicted rel. FWHM: [-2.10628103]
+
+[ DEV --> Opt. Iterations: 110, fixed c_Pb: 0.05, fixed V_As: None, Cs_Pb_opt: False, Cs_As_opt: False
+model type: GP, encoding: geometry, geometry: [0.5, 1, 0], c_Pb_max: None ]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-09-24   ----------------------------------------------------
+L-SYNTH 2.0-2440
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Cyclopentanol- as an antisolvent 
+to make NPLs around 480nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  1967.6914037314566', 'c (PbBr2) :  0.05', 'V (PbBr2 prec.) :  150.0', 'V (Cs-OA) :  81.37394952967476']
+with the following As/Pb ratio: 2.8911945692160868
+ and the following Cs/Pb ratio: 0.21699719874579937
+GP predicted peak position: (array([[480.61422115]]), array([[58.78078349]]))
+GP predicted rel. FWHM: [-0.85637286]
+
+[ DEV --> Opt. Iterations: 110, fixed c_Pb: 0.05, fixed V_As: None, Cs_Pb_opt: False, Cs_As_opt: False
+model type: GP, encoding: geometry, geometry: [0.5, 1, 0], c_Pb_max: None ]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-09-24   ----------------------------------------------------
+L-SYNTH 2.0-6465
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Cyclopentanol- as an antisolvent 
+to make NPLs around 505nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  4803.499658353139', 'c (PbBr2) :  0.05', 'V (PbBr2 prec.) :  150.0', 'V (Cs-OA) :  50.699952824364125']
+with the following As/Pb ratio: 7.057942164673545
+ and the following Cs/Pb ratio: 0.13519987419830434
+GP predicted peak position: (array([[487.62993518]]), array([[174.7858479]]))
+GP predicted rel. FWHM: [-0.14250868]
+
+[ DEV --> Opt. Iterations: 110, fixed c_Pb: 0.05, fixed V_As: None, Cs_Pb_opt: False, Cs_As_opt: False
+model type: GP, encoding: geometry, geometry: [0.5, 1, 0], c_Pb_max: None ]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-09-24   ----------------------------------------------------
+L-SYNTH 2.0-4846
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Cyclopentanol- as an antisolvent 
+to make NPLs around 462nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  610.1281308510132', 'c (PbBr2) :  0.05', 'V (PbBr2 prec.) :  150.0', 'V (Cs-OA) :  119.18628738127406']
+with the following As/Pb ratio: 0.8964816002637555
+ and the following Cs/Pb ratio: 0.3178300996833975
+GP predicted peak position: (array([[461.8724897]]), array([[52.72869307]]))
+GP predicted rel. FWHM: [-2.27826002]
+
+[ DEV --> Opt. Iterations: 110, fixed c_Pb: 0.05, fixed V_As: None, Cs_Pb_opt: False, Cs_As_opt: False
+model type: GP, encoding: geometry, geometry: [0.5, 1, 0], c_Pb_max: None ]
 
 THANK YOU FOR USING THE SYNTHESIZER MODULE!

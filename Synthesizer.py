@@ -74,6 +74,7 @@ class Synthesizer:
                  Cs_Pb_opt =    False,
                  Cs_As_opt =    False,
                  c_Pb_max =     None,
+                 V_As_max =     None,
                 ):
         
 
@@ -88,6 +89,8 @@ class Synthesizer:
         self.model_type =       model_type
         self.geometry =         geometry
         self.encoding_type =    encoding_type
+        if self.encoding_type == "one_hot" and self.geometry is not None:
+            raise ValueError("one hot encoding and geometry setting are not compatible")
         self.datastructure_NPL, self.datastructure_PLQY, self.datastructure_FWHM= self.get_datastructures()
         self.iterations =       iterations
         self.molecule_names =   self.datastructure_NPL.molecule_names
@@ -101,20 +104,19 @@ class Synthesizer:
 
         # data
         self.inputs_NPL, self.peak_pos =   self.get_data(self.datastructure_NPL)
-        if "PLQY" in self.obj:
-            self.inputs_PLQY, self.PLQY =  self.get_data(self.datastructure_PLQY)
+        self.inputs_PLQY, self.PLQY =  self.get_data(self.datastructure_PLQY)
         if "FWHM" in self.obj:
             self.inputs_FWHM, self.FWHM =  self.get_data(self.datastructure_FWHM)
 
         self.parameters_NPL  =      self.datastructure_NPL.synthesis_training_selection
-        if "PLQY" in self.obj:
-            self.parameters_PLQY =  self.datastructure_PLQY.synthesis_training_selection
+        self.parameters_PLQY =  self.datastructure_PLQY.synthesis_training_selection
         if "FWHM" in self.obj:  
             self.parameters_FWHM =  self.datastructure_FWHM.synthesis_training_selection
         
 
         # extra constraints
         self.c_Pb_max = c_Pb_max
+        self.V_As_max = V_As_max
         self.c_Pb_fixed = c_Pb_fixed
         self.V_As_fixed = V_As_fixed
         self.V_Cs_fixed = V_Cs_fixed
@@ -193,7 +195,7 @@ class Synthesizer:
 
 
             # hard constraints (not ideal, but simpler than adding them to the bounds)
-            if Cs_Pb_ratio > 0.5: return 1000
+            if Cs_Pb_ratio > 0.7: return 1000
             if As_Pb_ratio > 0.8: return 1000
 
 
@@ -241,13 +243,13 @@ class Synthesizer:
 
 
             # construct the objective function
-            output = abs(NPL - self.peak)
+            output = abs(NPL - self.peak) * 10
 
             if "FWHM" in self.obj:
-                output += FWHM[0]*10
+                output += FWHM[0]
 
             if "PLQY" in self.obj:
-                output -= PLQY[0]*10
+                output -= PLQY[0]*5
             
             if self.Cs_Pb_opt:
                 output += Cs_Pb_ratio * 20
@@ -316,18 +318,21 @@ class Synthesizer:
 
         # adding the residual targets to the data (-> see Datastructure.py)
         if datastructure.target in ["PLQY", "FWHM"]:
-            ds = Preprocessor()
+            ds = Preprocessor(mode = datastructure.wavelength_unit)
             data_objects = ds.add_residual_targets_avg(data_objects)
+
 
         inputs =  [data["encoding"] + data["total_parameters"] 
                    for data in data_objects]     # including one hot encoding
         
+
         # set the target values for the optimization
         if datastructure.target in ["PLQY", "FWHM"]:
-            target  = [data["y_res"] for data in data_objects]
+            targets  = [data["y_res"] for data in data_objects]
         else:
-            target  = [data["y"] for data in data_objects]
-        return inputs, target
+            targets  = [data["y"] for data in data_objects]
+
+        return inputs, targets
 
 
 
@@ -341,6 +346,7 @@ class Synthesizer:
 
         # exclude the one hot encoded molecule and ratios; +2 for the As/Pb and Cs/Pb ratios
         samples = [input[len(self.encoding)+2:] for input in self.inputs_PLQY]
+
         
         for i, parameter in enumerate(self.parameters_PLQY[2:]):
             limits[parameter] = [min([sample[i] for sample in samples]), 
@@ -355,20 +361,23 @@ class Synthesizer:
         if self.V_As_fixed is not None:
             norm_V_As_fixed = Norm(self.V_As_fixed, "V (antisolvent)")
             limits["V (antisolvent)"] = [norm_V_As_fixed, norm_V_As_fixed]
+        elif self.V_As_max is not None:
+            max_V_As = self.V_As_max
+            norm_max_V_As   = Norm(max_V_As, "V (antisolvent)")
+            limits["V (antisolvent)"] = [0, norm_max_V_As]
 
         if self.c_Pb_fixed is not None:
             norm_c_Pb_fixed = Norm(self.c_Pb_fixed, "c (PbBr2)")
             limits["c (PbBr2)"] = [norm_c_Pb_fixed, norm_c_Pb_fixed]
+        elif self.c_Pb_max is not None:
+            max_c_Pb = self.c_Pb_max
+            norm_max_c_Pb   = Norm(max_c_Pb, "c (PbBr2)")
+            limits["c (PbBr2)"] = [0, norm_max_c_Pb]
 
         if self.V_Cs_fixed is not None:
             norm_V_Cs_fixed = Norm(self.V_Cs_fixed, "V (Cs-OA)")
             limits["V (Cs-OA)"] = [norm_V_Cs_fixed, norm_V_Cs_fixed]
 
-        elif self.c_Pb_max is not None:
-            max_c_Pb = self.c_Pb_max
-            norm_max_c_Pb   = Norm(max_c_Pb, "c (PbBr2)")
-            limits["c (PbBr2)"] = [0, norm_max_c_Pb]
-        
 
         return limits
     
@@ -422,7 +431,7 @@ class Synthesizer:
 
         datastructure_FWHM = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_240418.csv",
                                         target = "FWHM",
-                                        wavelength_unit= "EV",             
+                                        wavelength_unit= "NM",             
                                         wavelength_filter= [400, 550],
                                         monodispersity_only= True,
                                         encoding= encoding,
@@ -512,7 +521,7 @@ class Synthesizer:
                 file.write(f"L-SYNTH 2.0-{np.random.randint(10000)}\n")
                 file.write(f"THE SYNTHESIZER RECOMMENDS: \n")
                 file.write(f"\n")
-                file.write(f"When using -{self.molecule_names[self.encoding.index(1)]}- as an antisolvent \n")
+                file.write(f"When using -{self.molecule}- as an antisolvent \n")
                 file.write(f"to make NPLs around {self.peak}nm:\n")
                 file.write(f"Choose the following synthesis parameters:\n")
                 file.write(f"{results_string}\n")

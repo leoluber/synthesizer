@@ -22,11 +22,11 @@ from helpers import *
 ### -------------------- choose molecule and target peak -------------------- ###
 
 #molecule_name = input("Enter the molecule name: (e.g. Ethanol, Methanol, ...):     ")
-#target_peak = int(input("Enter the target peak position in nm: (e.g. 470):         "))
+#target_peak   = int(input("Enter the target peak position in nm: (e.g. 470):         "))
 
 molecule_name =  "Methanol"
 geometry =        [0.5, 1, 0]
-target_peak   =   496
+target_peak   =   462
 
 ### ------------------------------------------------------------------------- ###
 
@@ -38,19 +38,21 @@ def main():
 
     # initialize synthesizer object and optimize (specify As molecule and NPL type)
     synthesizer = Synthesizer(molecule_name, 
-                              iterations =       10, 
+                              iterations =       110, 
                               peak =             target_peak,
-                              obj =              ["PEAK_POS", "PLQY",], 
+                              obj =              ["PEAK_POS", "FWHM"], 
                               encoding_type =    "one_hot", 
-                              #geometry =        geometry,
+                              geometry =         None,
                               Cs_Pb_opt =        False,
                               Cs_As_opt=         False,
                               c_Pb_fixed =       0.05, 
                               #V_As_fixed=       5000,
                               #V_Cs_fixed=       100,  
                               c_Pb_max =         None,
+                              V_As_max=          2000,
                               model_type=       "GP",
                               )
+    
     
     synthesizer.print_logo()
     
