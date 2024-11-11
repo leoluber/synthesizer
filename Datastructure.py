@@ -11,6 +11,7 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import plotly
+import plotly.figure_factory as ff
 import pickle
 
 
@@ -92,21 +93,20 @@ class Datastructure:
 
 
     def __init__(
-                 self,
-                 synthesis_file_path:   str, 
+        self,
+        synthesis_file_path:   str, 
 
-                 target:          Literal["FWHM", "PEAK_POS", "PLQY", "NR", "MONO", "HM"] = "FWHM",
-                 encoding:        Literal["one_hot", "geometry"] = "one_hot",
-                 wavelength_unit: Literal["NM", "EV"] = "NM",
+        target:          Literal["FWHM", "PEAK_POS", "PLQY", "MONO",] = "PEAK_POS",
+        encoding:        Literal["one_hot", "geometry"] = "one_hot",
+        wavelength_unit: Literal["NM", "EV"] = "NM",
 
-                 wavelength_filter =    [400, 600],
-                 molecule =            "all",
-                 add_baseline =         False,
-                 PLQY_criteria =        True,
-                 monodispersity_only =  False,
-                 P_only =               False,
-
-                 ):
+        wavelength_filter =    [400, 600],
+        molecule =            "all",
+        add_baseline =         False,
+        PLQY_criteria =        True,
+        monodispersity_only =  False,
+        P_only =               False,
+        ):
         
 
         # main stettings
@@ -114,6 +114,7 @@ class Datastructure:
         self.encoding        = encoding
         self.add_baseline    = add_baseline
         self.wavelength_unit = wavelength_unit
+
 
         # selection flags
         self.flags = {"PLQY_criteria"      : PLQY_criteria,
@@ -149,16 +150,12 @@ class Datastructure:
             self.wavelength_filter = wavelength_filter
         self.molecule_geometry = self.get_molecule_geometry()
 
-
         # ------- Training parameter selection ------- #
 
-        """ Can be adjusted after initialization BUT before calling get_data()! """
-
-        self.global_attribute_selection =       [] # "dielectric constant (-)", 'relative polarity (-)',"Hansen parameter hydrogen bonding (MPa)1/2",]
-        self.synthesis_training_selection =     ["c (PbBr2)", "V (antisolvent)", "V (Cs-OA)", "V (PbBr2 prec.)", "AS_Pb_ratio",  "Cs_Pb_ratio",]
-        self.total_training_parameter_selection = self.synthesis_training_selection + self.global_attribute_selection
-
-        # ------------------------------------------- #
+        self.total_training_parameter_selection  =   ["c (PbBr2)", "V (antisolvent)", 
+                                                      "V (Cs-OA)", "V (PbBr2 prec.)", 
+                                                      "AS_Pb_ratio",  "Cs_Pb_ratio",]
+    
 
 
         # read in the data
@@ -174,7 +171,6 @@ class Datastructure:
 
 
 
-
     def get_data(self)-> list:
         
         """ Data collection function
@@ -187,8 +183,16 @@ class Datastructure:
         - molecule specific data is read in during the loop
         """
 
-
         for index, sample_number in enumerate(self.synthesis_data["sample_numbers"]):
+
+            # TEMPORARY FIX
+            if self.synthesis_data["Age of prec"][index] != "-":
+                continue
+            ##############################
+
+
+            # initialize the baseline label, set to False if the data is of type "baseline"
+            baseline = False
 
 
             # check if the molecule is in the molecule dictionary, skip if not
@@ -211,6 +215,7 @@ class Datastructure:
             # the "molecule" == "all" case is handled outside the loop
             if molecule_name == "Toluene" and self.add_baseline and self.flags["molecule"] != "all":
                 molecule_name = self.flags["molecule"]
+                baseline = True
 
 
             # check flags (more elegant to do this during the csv reading, but this allows
@@ -246,17 +251,17 @@ class Datastructure:
                                                         * self.densities[molecule_name] / 10000)
             self.synthesis_data['Cs_As_ratio'][index] = (self.synthesis_data['Cs_As_ratio'][index] 
                                                          * self.densities[molecule_name]) 
+            self.synthesis_data['n_As'][index] = (self.synthesis_data['V (antisolvent)'][index]
+                                                  * self.densities[molecule_name])
+                                                  
 
 
             # read selected attributes to a list format
-            global_attributes = [global_attributes_df[attribute]
-                                 .to_numpy()
-                                 .astype(float)[0] for attribute in self.global_attribute_selection]
-            
+ 
             synthesis_parameters = [self.synthesis_data[key][index] 
                                     for key in self.synthesis_training_selection]
 
-            total_parameters = synthesis_parameters + global_attributes
+            total_parameters = synthesis_parameters
 
 
             # encode the molecules (one_hot or geometry)
@@ -281,22 +286,26 @@ class Datastructure:
             # ( this is the final output format of the data,
             # good practice to exclude everything you don't need)
 
-            data_point = {  "y": target,
+            data_point = {  "baseline":    baseline,
+                            "artificial":  False,
+                            "y": target,
                             "spectrum": (wavelength, spectrum),
                             "peak_pos": peak_pos,
+                            "AS_Pb_ratio": self.synthesis_data["AS_Pb_ratio"][index],
                             "Cs_Pb_ratio": self.synthesis_data["Cs_Pb_ratio"][index],
+                            "amount_substance": {"Cs": self.synthesis_data["n_Cs"][index],
+                                                 "Pb": self.synthesis_data["n_Pb"][index],
+                                                 "As": self.synthesis_data["n_As"][index]},
                             "suggestion":  self.synthesis_data["suggestion"][index],
                             "S/P":         self.synthesis_data["S/P"][index],
                             "fwhm": fwhm,
-                            "hm": hm_,
                             "sample_number": sample_number,
+                            "index": index,
                             "plqy": self.synthesis_data["PLQY"][index],
                             "total_parameters": total_parameters,
                             "encoding": encoding,
                             "molecule_name": molecule_name,
                             "monodispersity": self.synthesis_data["monodispersity"][index],
-                            "index" : index,
-                            "As_Pb_ratio": self.synthesis_data["AS_Pb_ratio"][index],
                             }
             
 
@@ -327,8 +336,7 @@ class Datastructure:
             encoding = None
             for molecule in self.molecule_geometry:
                 if molecule['molecule'] == molecule_name:
-                    encoding =  ([molecule['chainlength']] + molecule['group'] )
-                                # + [molecule['group_pos']] + [molecule['cycles']])
+                    encoding =  list(molecule['encoding'])
             
             if encoding is None: 
                 raise ValueError(f"Geometry encoding not found for {molecule_name}")
@@ -364,10 +372,8 @@ class Datastructure:
                 if line == '': break
                 x, A, y  = line.split(",")
 
-                if self.wavelength_unit == "EV":
-                    wavelength.append(nm_to_ev(float(x)))           
-                else:
-                    wavelength.append(float(x)) 
+                # default is EV, later converted to nm if necessary
+                wavelength.append(nm_to_ev(float(x)))     
                 spectrum.append(float(y))
 
 
@@ -389,13 +395,26 @@ class Datastructure:
         while spectrum[right_index] > half_max:
             right_index += 1
 
-        fwhm = abs(wavelength[left_index] - wavelength[right_index])
+        # add extrapolation
+        extra_left  = (spectrum[left_index]  - half_max) / (spectrum[left_index] - spectrum[left_index - 1])
+        extra_left *= abs(wavelength[left_index] - wavelength[left_index - 1])
+        extra_right = (spectrum[right_index] - half_max) / (spectrum[right_index] - spectrum[right_index + 1])
+        extra_right *= abs(wavelength[right_index] - wavelength[right_index + 1])
+
+
+        fwhm = abs(wavelength[left_index] - wavelength[right_index]) + abs(extra_left) + abs(extra_right)
         
         # position of the high energy shoulder (HM)
         if self.wavelength_unit == "EV":
             hm_high_energy = abs(wavelength[right_index] - wavelength[max_index])*2
         else:
             hm_high_energy = abs(wavelength[left_index] - wavelength[max_index])*2
+
+
+        # if the mode is NM, convert the peak position to nm
+        if self.wavelength_unit == "NM":
+            peak_pos = ev_to_nm(peak_pos)
+            wavelength = [ev_to_nm(x) for x in wavelength]
 
         return fwhm, peak_pos, spectrum, wavelength, hm_high_energy
 
@@ -478,10 +497,7 @@ class Datastructure:
 
         # dataframe
         df = pd.read_csv( self.global_attributes_path, delimiter= ';', header= 0)
-        
-        # normalize the columns
-        for column in self.global_attribute_selection + ["relative polarity (-)"]:
-            df[column] = self.normalize(df[column], column)
+
         return df
     
     
@@ -523,6 +539,10 @@ class Datastructure:
             AS_Pb_ratio = (df["V (antisolvent)"]) / ((df["V (PbBr2 prec.)"] * df["c (PbBr2)"]))
             Cs_As_ratio = (df["c (Cs-OA)"] * df["V (Cs-OA)"]) / (df["V (antisolvent)"] + 0.0001)
 
+            n_Cs = df["c (Cs-OA)"] * df["V (Cs-OA)"]
+            n_Pb = df["c (PbBr2)"] * df["V (PbBr2 prec.)"]
+            
+
             # normalize the columns
             for key in synthesis_selection:
                 df[key] = self.normalize(df[key], key)
@@ -534,6 +554,9 @@ class Datastructure:
             synthesis_data["AS_Pb_ratio"] = AS_Pb_ratio.to_numpy().astype(float)
             synthesis_data["Cs_Pb_ratio"] = Cs_Pb_ratio.to_numpy().astype(float)
             synthesis_data["Cs_As_ratio"] = Cs_As_ratio.to_numpy().astype(float)
+            synthesis_data["n_Cs"] = n_Cs.to_numpy().astype(float)
+            synthesis_data["n_Pb"] = n_Pb.to_numpy().astype(float)
+            synthesis_data["n_As"] = np.zeros(len(n_Cs))
 
             # add target related data (seperate since they need different data typing)
             synthesis_data["monodispersity"] = df["monodispersity"].to_numpy().astype(int)
@@ -561,7 +584,6 @@ class Datastructure:
     def check_flags(self, index, molecule_name, peak_pos) -> bool:
 
         """ check the flags for the data selection """
-
 
         if self.flags["molecule"] != "all" and self.flags["molecule"] != molecule_name:
             return False
@@ -598,8 +620,8 @@ class Datastructure:
     
 
         # get the 515nm baseline in an L-shape
-        inputs  = [[i/10, 1] for i in range(0, 8)]
-        inputs += [[1, i/10] for i in range(7, 10)]
+        inputs  = [[i/10, 1] for i in range(0, 9)]
+        #inputs += [[1, i/10] for i in range(6, 10)]
         
         peak  = 515
         if self.wavelength_unit == "EV":
@@ -615,8 +637,11 @@ class Datastructure:
                 data_objects.append({"molecule_name": molecule, "y": peak, 
                                      "encoding": self.encode(molecule, self.encoding),
                                     "total_parameters": input, "spectra": None, 
+                                    "Cs_Pb_ratio": input[1], "AS_Pb_ratio": input[0],
                                     "peak_pos": peak, "index": -1, 
-                                    "sample_number": "baseline"})
+                                    "sample_number": "baseline",
+                                    "baseline": True, "artificial": True,
+                                    "monodispersity": 1,})
 
         return data_objects
 
@@ -630,7 +655,7 @@ class Datastructure:
         new_data_objects = data_objects.copy()
 
         # get Toluene data (the last constraint is a workaround to exclude the other baselines)
-        toluene_data = [data for data in data_objects if data["molecule_name"] == "Toluene" and "As_Pb_ratio" in data.keys()]
+        toluene_data = [data for data in data_objects if data["molecule_name"] == "Toluene" and "AS_Pb_ratio" in data.keys()]
 
 
         # define the molecule selection
@@ -647,6 +672,8 @@ class Datastructure:
                 new_data_point = data.copy()
                 new_data_point["molecule_name"] = molecule
                 new_data_point["encoding"] = self.encode(molecule, self.encoding)
+                new_data_point["baseline"] = True
+                new_data_point["artificial"] = False
                 new_data_objects.append(new_data_point)
 
 
@@ -658,62 +685,70 @@ class Datastructure:
 #### ----------------------------------  PLOTTING  -------------------------------- ####
     """            < don't put this on the final .git, it's a mess >              """
 
-    def plot_spectrum(self, wavelength, spectrum, peak_pos, fwhm) -> None:
-            
-        """ Plot the spectrum of the data for visualization """
 
-
-        plt.plot(wavelength, spectrum, label = f"peak pos: {peak_pos}, FWHM: {fwhm}")
-        plt.xlabel("Wavelength")
-        plt.ylabel("Intensity")
-        #plt.show()
-
-
-
-    def plot_data(self, var1, var2, var3 = None, 
+    def plot_data(self, var1=None, var2 = None, 
                   kernel = None, 
-                  model = "KRR", 
-                  molecule = "all") -> None:
+                  model = "GP", 
+                  molecule = "all",
+                  library = "plotly") -> None:
 
         """
             Scatter plot of the data in parameter space, for visualization;
             kernel can be plotted as well
-            -> var1, var2, var3: parameters to be plotted
         """
 
-        # get the indices of the parameters
-        index1 = self.synthesis_training_selection.index(var1)
-        index2 = self.synthesis_training_selection.index(var2)
 
         # get the data
-        if molecule == "all":
-            x =     [data["total_parameters"][index1] for data in self.data]
-            y =     [data["total_parameters"][index2] for data in self.data]
-            t =     [data["y"] for data in self.data]
-            #monodispersity = [data["monodispersity"] for data in self.data]
-            molecules = [self.molecule_names.index(data["molecule_name"]) for data in self.data]
+        Cs_Pb =      [data["Cs_Pb_ratio"] for data in self.data
+                 if data["molecule_name"] == molecule and not data["artificial"]]
+        As_Pb =      [data["AS_Pb_ratio"] for data in self.data
+                 if data["molecule_name"] == molecule and not data["artificial"]]
+        peak =       [data["peak_pos"] for data in self.data
+                 if data["molecule_name"] == molecule and not data["artificial"]]
+        sample_no =  [data["sample_number"] for data in self.data
+                 if data["molecule_name"] == molecule and not data["artificial"]]
+        #monodispersity = [data["monodispersity"] for data in self.data
+        #         if data["molecule_name"] == molecule and not data["artificial"]]
 
-        else:
-            x = [data["total_parameters"][index1] for data in self.data 
-                 if data["molecule_name"] == molecule]
-            y = [data["total_parameters"][index2] for data in self.data 
-                 if data["molecule_name"] == molecule]
-            t = [data["y"] for data in self.data 
-                 if data["molecule_name"] == molecule]
-            #monodispersity = [data["monodispersity"] for data in self.data 
-            #                  if data["molecule_name"] == molecule]
-            molecules = [1 for data in self.data if data["molecule_name"] == molecule]
+        Cs_Pb_base = [data["Cs_Pb_ratio"] for data in self.data
+                    if data["molecule_name"] == molecule and data["artificial"]]
+        As_Pb_base = [data["AS_Pb_ratio"] for data in self.data
+                    if data["molecule_name"] == molecule and data["artificial"]]
+        peak_base = [data["y"] for data in self.data
+                    if data["molecule_name"] == molecule and data["artificial"]]
+
 
 
         # plot data with plotly
-        fig = plotly.graph_objects.Figure()
-        fig.add_trace(plotly.graph_objects
-                      .Scatter3d(x=x, y=y, z=t, mode='markers', 
-                                marker=dict(size=16, color=molecules, 
-                                            colorscale='Viridis', opacity=0.8)))
-        fig.update_layout(scene = dict(xaxis_title=var1, 
-                                       yaxis_title=var2, 
-                                       zaxis_title="Peak Position"))
+        if library == "plotly":
+            fig = plotly.graph_objects.Figure()
+            fig.add_trace(plotly.graph_objects
+                            .Scatter3d(x=As_Pb, y=Cs_Pb, z=peak, mode='markers', 
+                                    marker=dict(size=13, opacity=0.7),
+                                    text = sample_no,
+                                    ))
+            # fig.update_traces(marker=dict(cmin=410, cmax=600, colorbar=dict(title='PEAK POS'), 
+            #                         colorscale='rainbow', color=peak, showscale=True, opacity=1),
+            #                  textposition='top center')
+            fig.update_traces(marker=dict(cmin=-500, cmax=1000, colorbar=dict(title='PEAK POS'), 
+                                    colorscale='greys', color=peak, showscale=True, opacity=1),
+                             textposition='top center')
+            fig.add_trace(plotly.graph_objects
+                            .Scatter3d(x=As_Pb_base, y=Cs_Pb_base, z=peak_base, mode='markers', 
+                                        marker=dict(size=13, opacity=1, color="black"),
+                                        ))
+            fig.update_layout(scene = dict(xaxis_title=var1+ "[10^4]", 
+                                    yaxis_title=var2 ,
+                                    zaxis_title="Peak Position [nm]",),
+                                    )
+
+        elif library == "matplotlib":
+            fig = plt.figure(figsize=(10, 10))
+            ax = fig.add_subplot(111, projection='3d')
+            ax.set_xlabel(var1)
+            ax.set_ylabel(var2)
+            ax.set_zlabel("Peak Position [nm]")
+
 
         # plot model
         if kernel is not None:
@@ -723,41 +758,52 @@ class Datastructure:
             input = np.c_[X.ravel(), Y.ravel()]
             
             # add self.encode(molecule, self.encoding) to the input
-            if molecule != "all":
-                encoding = self.encode(molecule, self.encoding)
-                input = [np.append(encoding, row ) for row in input]
-            else:
-                fig.show()
-                return fig
+            encoding = self.encode(molecule, self.encoding)
+            input = [np.append(encoding, row ) for row in input]
 
-            if model == "GP":
-                input = np.array(input)
-                Z = kernel.model.predict(input)[0].reshape(X.shape)
-                err = kernel.model.predict(input)[1].reshape(X.shape)
+            input = np.array(input)
+            print(input.shape)
+            Z = kernel.model.predict(input)[0].reshape(X.shape)
+            err = kernel.model.predict(input)[1].reshape(X.shape)
 
-            elif model == "KRR":
-                Z = kernel.predict(input).reshape(X.shape)
 
-            # add the surface plot of the kernel
-            #fig.add_trace(plotly.graph_objects.Surface(x=x_vec, y=y_vec, z=Z, colorscale='viridis', cmin = 430, cmax = 550))
-            
+            # add the surface plot of the kernel with a unifomr color
+            if library == "plotly":
+                #fig.add_trace(plotly.graph_objects.Surface(x=x_vec, y=y_vec, z=Z, opacity=0.9, colorscale='greys', cmin = -420, cmax = 550))
+                fig.add_trace(plotly.graph_objects.Surface(x=x_vec, y=y_vec, z=Z, opacity=1, colorscale='Viridis', cmin = 430, cmax = 540))
+            elif library == "matplotlib":
+                ax.plot_surface(X, Y, Z, alpha=0.7, color = "gray", lw=0.5, rstride=8, cstride=8,)
+                ax.contourf(X, Y, Z, zdir='z', offset=420, cmap='gist_rainbow_r', alpha=0.8, vmin = 410, vmax = 600, levels = 20)
+                
+                ax.scatter(As_Pb, Cs_Pb, peak, c = peak, cmap = "gist_rainbow_r", 
+                           edgecolors='black', vmin = 410, vmax = 600, s = 100, alpha=1)
+                ax.scatter(As_Pb_base, Cs_Pb_base,  peak_base, c = "black", edgecolors='black', s = 100, alpha=1)
+
             # add confidence intervals
-            #if model == "GP":
-                #fig.add_trace(plotly.graph_objects.Surface(x=x_vec, y=y_vec, z=Z + 1.96 * err, opacity=0.5, colorscale='gray'))
-                #fig.add_trace(plotly.graph_objects.Surface(x=x_vec, y=y_vec, z=Z - 1.96 * err, opacity=0.5, colorscale='gray'))
+            # if model == "GP":
+            #     if library == "plotly":
+            #         #fig.add_trace(plotly.graph_objects.Surface(x=x_vec, y=y_vec, z=Z + 1.96 * err, opacity=0.5, colorscale='gray'))
+            #         # fig.add_trace(plotly.graph_objects.Surface(x=x_vec, y=y_vec, z=Z - 1.96 * err, opacity=0.5, colorscale='gray'))
+            #         fig.add_trace(plotly.graph_objects.Surface(x=x_vec, y=y_vec, z= err/10 + 410, opacity=0.5, colorscale='gray'))
+            #     # elif library == "matplotlib":
+            #         # ax.plot_surface(X, Y, Z + 1.96 * err, alpha=0.5, color = "gray")
+            #         # ax.plot_surface(X, Y, Z - 1.96 * err, alpha=0.5, color = "gray")
+
 
         # save the plot as interactive html
-        #molecules = list(set(molecules))
-        #molecule_str = "_".join([self.molecule_names[mol] for mol in molecules])
-        #fig.write_html(f"data/{var1}_{var2}_{var3}_{molecule_str}.html")
+        molecule_str = molecule
+        if library == "plotly":
+            fig.write_html(f"plots/{molecule_str}.html")
+            fig.show()
+        
+        elif library == "matplotlib":
+            plt.show()
 
-
-        fig.show()
         return fig
         
 
 
-    def plot_2D_contour(self, var1, var2, kernel = None) -> None:
+    def plot_2D_contour(self, var1 = None, var2 = None, kernel = None) -> None:
 
         """
             2D contour plot of the data in parameter space, for visualization 
@@ -765,8 +811,89 @@ class Datastructure:
         """
 
         # get the data
-        x = [data["total_parameters"][0] for data in self.data]
-        y = [data["total_parameters"][1] for data in self.data]
+        x = [data["AS_Pb_ratio"] for data in self.data if not data["baseline"]]
+        y = [data["Cs_Pb_ratio"] for data in self.data if not data["baseline"]]
+        
+        y_vec   = np.linspace(0, 1, 100)
+        x_vec   = np.linspace(0, 1, 100)
+        X, Y    = np.meshgrid(x_vec, y_vec)
+        input   = np.c_[X.ravel(), Y.ravel()]
+
+        # output string
+        molecules = list(set([data["molecule_name"] for data in self.data if not data["baseline"]]))
+        mol_str   = "_".join(molecules)
+
+       
+
+
+        # evaluate the kernel on the grid
+        encoding = self.encode(molecules[0], self.encoding)
+        input = np.array([np.append(encoding, row ) for row in input])
+
+        if kernel is not None:
+            print(input.shape)
+            Z = kernel.model.predict(input)[0].reshape(X.shape)
+
+
+            # a contour plot of the kernel with matplotlib
+            # fig, ax = plt.subplots()
+            #c = ax.contourf(X, Y, Z, 50, colors = "k", alpha = 0.4, linestyles = "dashed", xlim = (0, 1), ylim = (0, 1))
+            #fig.colorbar(c, ax=ax, label = "PEAK POS")
+
+            # contour plot with plotly, figure size is set
+            fig = plotly.graph_objects.Figure( layout = dict(width = 580, height = 500))
+            fig.add_trace(plotly.graph_objects.Contour(x=x_vec, y=y_vec, z=Z, contours = dict(start=400, 
+                                                                                              end=600, 
+                                                                                              size=3,
+                                                                                              coloring='lines',
+                                                                                              ), 
+                                                       line = dict(width=1),
+                                                       colorscale= [[0, 'rgb(0, 0, 0)'], [1, 'rgb(0, 0, 0)']],
+                                                       showscale=False,
+                                                       ))
+            
+            fig.update_layout(scene = dict(xaxis_title=var1, yaxis_title=var2, zaxis_title="PEAK POS")) #, coloraxis_showscale=False)
+
+
+        # plot the data
+        #c = [data["monodispersity"] for data in self.data if not data["baseline"]]
+        c = [data["fwhm"]*1000 for data in self.data if not data["baseline"]]
+        # ax.scatter(x, y, c = c, s = 50,
+        #            cmap = "bwr_r",
+        #            edgecolors='black')
+        #plt.show()
+
+        # plot with plotly
+        fig.add_trace(plotly.graph_objects.Scatter(x=x, y=y, mode='markers',
+                                                    marker=dict(size=12, opacity=1, color = c, 
+                                                                colorscale='RdBu_r', cmin=70, cmax=150,
+                                                                showscale=True, colorbar=dict(title='FWHM [mev]]',
+                                                                tickfont=dict(size=16),),
+                                                                line=dict(width=1, color='Black'),
+                                                                ),
+                                                    ))
+        # remove the gridlines, set x limit to 1, label size to 12
+        fig.update_xaxes(showgrid=False, range=[0, 1], zeroline=False, tickfont=dict(size=16))
+        fig.update_yaxes(showgrid=False, range=[0, 1], zeroline=False, tickfont=dict(size=16))
+
+        # save the plot as svg and png
+        fig.write_image(f"plots/Contour_Monodisp_{mol_str}.svg")
+        fig.write_image(f"plots/Contour_Monodisp_{mol_str}.png")
+        fig.show()
+
+
+    def plot_2D_contour_old(self, kernel = None, molecule = None) -> None:
+
+        """
+            2D contour plot of the data in parameter space, for visualization 
+            purposes color coded by the target value (PEAK_POS)
+        """
+
+        # get the data
+        x = [data["total_parameters"][0] for data in self.data if data["molecule_name"] == molecule]
+        y = [data["total_parameters"][1] for data in self.data if data["molecule_name"] == molecule]
+        color = [data["y"] for data in self.data if data["molecule_name"] == molecule]
+        print(color)
 
         # output string
         molecules = list(set([data["molecule_name"] for data in self.data]))
@@ -778,26 +905,49 @@ class Datastructure:
         y_vec   = np.linspace(0, 1, 100)
         x_vec   = np.linspace(0, 1, 100)
         X, Y    = np.meshgrid(x_vec, y_vec)
+        input   = np.c_[X.ravel(), Y.ravel()]
+
+        
+        # evaluate the kernel on the grid
+        encoding = self.encode(molecules[0], self.encoding)
+        input = np.array([np.append(encoding, row ) for row in input])
 
 
         # evaluate the kernel on the grid
         if kernel is not None:
-            Z = kernel.predict(np.c_[X.ravel(), Y.ravel()]).reshape(X.shape)
-            c = ax.contourf(X, Y, Z, 20, cmap='viridis', vmin = 440, vmax = 540)
+            print(input.shape)
+            Z = kernel.model.predict(input)[0].reshape(X.shape)
+            c = ax.contourf(X, Y, Z, 20, cmap='viridis', vmin = 450, vmax = 530)
             
-            fig.colorbar(c, ax=ax, label = "PEAK POS")
+            # colorbar with text size 12
+            cbar = fig.colorbar(c, ax=ax, label = "PEAK POS",)
+            cbar.ax.tick_params(labelsize=12,)
+            cbar.set_label("PEAK POS", fontsize = 12)
+
 
         # plot the data
-        ax.scatter(x, y, c = [data["y"] for data in self.data], 
-                   cmap = "viridis", vmin = 440, vmax = 540, 
+        ax.scatter(x, y, c = color, s = 80,
+                   vmin = 450, vmax = 530,
+                   cmap = "viridis",
                    edgecolors='black')
         
-        ax.set_xlabel(var1)
-        ax.set_ylabel(var2)
+        # layout
+        # ticks inside, label size 12
+        ax.xaxis.set_tick_params(direction='in', which='both', labelsize = 12, top=True, bottom=True,)
+        ax.yaxis.set_tick_params(direction='in', which='both', labelsize = 12, right=True, left=True,)
 
-        plt.legend()
+        # set x and y range to -0.1, 1.1
+        ax.set_xlim(-0.1, 1.1)
+        ax.set_ylim(-0.1, 1.1)
+
+        # set labels
+        ax.set_xlabel("AS/Pb Ratio [10^4]", fontsize = 12)
+        ax.set_ylabel("Cs/Pb Ratio", fontsize = 12)
+
+        # save the plot as png
+        plt.savefig(f"plots/Contour_{mol_str}.png")
+        
         plt.show()
-
 
 
     def plot_parameters(self, data_objects,) -> None:
@@ -808,35 +958,58 @@ class Datastructure:
         """
 
 
-        total_1 =     	    [data["total_parameters"][0] for data in data_objects]
-        total_2 =           [data["total_parameters"][1] for data in data_objects]
-        peak_pos =          [data["peak_pos"]            for data in data_objects]
+        Cs_Pb_ratio =     	[data["Cs_Pb_ratio"] for data in data_objects]
+        AS_Pb_ratio =       [data["AS_Pb_ratio"] for data in data_objects]
         target =            [data["y"]                   for data in data_objects]
+        peak_pos =          [data["peak_pos"]            for data in data_objects]
         monodispersity =    [data["monodispersity"]      for data in data_objects]
-        fwhm =              [data["fwhm"]                for data in data_objects]
-        hm =                [data["hm"]                  for data in data_objects]
-        #target =           [data["y_res"]               for data in data_objects]
+        index =             [data["index"]               for data in data_objects]
+        fwhm =              [round(data["fwhm"]*1000)                for data in data_objects]
+        suggestion =        [1 if "L" in data["suggestion"] or "l" in data["suggestion"]
+                             else 0 for data in data_objects]
 
         molecule_name =     [self.molecule_names.index(data["molecule_name"]) 
                              for data in data_objects]
         
+        # lowest values for each peak position
+        lowest_x, lowest_y = find_lowest(data_objects=data_objects)
+        lowest_y = [y * 1000 for y in lowest_y]
+        
 
-        if len(total_1) == 0:
+        if len(Cs_Pb_ratio) == 0:
             raise ValueError(f"Not enough data found for molecule: {molecule_name}")
 
         
         """ basic scatter plot """
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize = (4, 4))
         sign = -1 if self.wavelength_unit == "EV" else 1
-        a = [sign*(fwhm - t) for fwhm, t in zip(fwhm, target)]
-        b = [t for t in target]
-        cbar = plt.colorbar(ax.scatter(peak_pos, target,
-                                       c = molecule_name, cmap = "viridis_r",))
+        cbar = plt.colorbar(ax.scatter(AS_Pb_ratio, peak_pos,
+                                       c = molecule_name, cmap = "Paired", alpha = 1 )) #s = 50, vmin = nm_to_ev(400), vmax = nm_to_ev(600)))
         
-        # plot f(x) = x
-        x = np.linspace(2.38, 2.9, 100)
-        #ax.plot(x, x, color = "black", linestyle = "dashed", linewidth = 1)
+        # scatters lower limits
+        #ax.scatter(lowest_x, lowest_y, c = "red", s = 50, label = "lowest")
+        cbar.remove()
+        
+        # settings
+        ax.xaxis.set_tick_params(direction='in', which='both', labelsize = 12, top=True, bottom=True, ) # labeltop=True, bottom=False, labelbottom=False)
+        ax.yaxis.set_tick_params(direction='in', which='both', labelsize = 12, right=True, left=True, ) #labelleft=True, labelright=False)
 
+
+        """ plot lines at ml boundaries """
+        for ml in self.ml_dictionary.keys():
+            peak_range = self.ml_dictionary[ml]
+            peak_range = [ev_to_nm(peak_range[0]), ev_to_nm(peak_range[1])] if self.wavelength_unit == "EV" else peak_range
+            #ax.axvline(x = peak_range[0], color = "black", linestyle = "dashed", linewidth = 1)
+            #ax.axvline(x = peak_range[1], color = "black", linestyle = "dashed", linewidth = 1)
+
+            #ax.axhline(y = peak_range[0], color = "black", linestyle = "dashed", linewidth = 1, alpha = 0.3)
+            #ax.axhline(y = peak_range[1], color = "gray", linestyle = "dashed", linewidth = 1, alpha = 0.3)
+
+            # fill between the lines
+            #ax.fill_between([-0.05, 0.4], peak_range[0], peak_range[1], color = "gray", alpha = 0.1)
+
+        
+        #plt.show()
         
         """ synthesis screening plot """
         # translate to As volume
@@ -856,19 +1029,21 @@ class Datastructure:
 
 
         """plot surface proportions"""
-        # x_vec = np.linspace(min(peak_pos), max(peak_pos), 100)
-        # if self.wavelength_unit == "EV":
-        #     y = [surface_proportion(ev_to_nm(x)) for x in x_vec]
-        # else:
-        #     y = [surface_proportion(x) for x in x_vec]
-        # plt.rc('legend', fontsize=2)
-        # ax.plot(x_vec, y, color = "red",  
-        #         linestyle = "dashed", linewidth = 1)
+        # plt.tight_layout()
+        # x = np.linspace(min(peak_pos), max(peak_pos), 300)
+        # prop = [surface_proportion(x, "EV") for x in x]
+        # plt.plot(x, prop, "--", color = "black")
 
     
-        ax.legend(fontsize = 15)
+
         plt.show()
+        fig.show()
         #plt.savefig(f"data/{molecule_name}_As_Pb_peak_pos.png")
+
+
+        # save as csv
+        #df = pd.DataFrame({"AS_Pb_ratio": AS_Pb_ratio, "Cs_Pb_ratio": Cs_Pb_ratio, "peak_pos": peak_pos, "monodispersity": monodispersity, "fwhm": fwhm, "suggestion": suggestion, "molecule_name": molecule_name})
+        #df.to_csv("data/parameters.csv", index = False)
 
         return fig, ax
 
@@ -909,46 +1084,44 @@ class Datastructure:
 
 
 
-    def plot_benchmark(self, data_objects,
-                       max_sample = 10000, 
-                       highest_lowest: Literal["highest", "lowest"] = "lowest", 
-                       color = "red") -> None:
+    def plot_ternary(self, data_objects, kernel= None) -> None:
 
         """
-            Plots the highest or lowest target for each type of NPL
+            Ternary plot of the data in parameter space, for visualization
         """
 
-        benchmarks, peak_pos = [], []
+        # amount of each substance
+        Cs = np.array([data["amount_substance"]["Cs"] for data in data_objects])
+        print(np.mean(Cs))
+        Pb = np.array([data["amount_substance"]["Pb"]/4 for data in data_objects])
+        print(np.mean(Pb))
+        As = np.array([data["amount_substance"]["As"] for data in data_objects])
+        print(np.mean(As))
+        total = Cs + Pb + As
 
-        # cut the data
-        data_objects = data_objects[:max_sample]
+        # normalize the data
+        Cs = Cs / total
+        Pb = Pb / total
+        As = As / total
 
-        # get the highest or lowest target for each NPL type
-        for ml in self.ml_dictionary.keys():
+        #TODO: fix
 
-            peak_range = self.ml_dictionary[ml]
+        # plot the data
+        fig = go.Figure(go.Scatterternary(a=Cs, b=Pb, c=As, 
+                        mode='markers', 
+                        marker=dict(size=10, opacity=0.7, cmin=430, cmax=520, 
+                                    color = [data["peak_pos"] for data in data_objects],
+                                    colorscale='rainbow',),
+                        ))
+        fig.update_layout({
+            'ternary': {'sum': 1, 'aaxis': {'title': 'Cs'}, 'baxis': {'title': 'Pb'}, 'caxis': {'title': 'As'}},
+            'annotations': [{'showarrow': False, 'text': f'{self.flags["molecule"]}', 
+                             'x': 0.5, 'y': -0.2, 'font': {'size': 16}}],
+            'width': 400,
+            'height': 400,
+                        })
 
-            targets  = [data["y"] for data in data_objects 
-                        if data["peak_pos"] > peak_range[0] and data["peak_pos"] < peak_range[1]]
-            peaks    = [data["peak_pos"] for data in data_objects 
-                        if data["peak_pos"] > peak_range[0] and data["peak_pos"] < peak_range[1]]
-
-            if len(targets) == 0:
-                continue
-
-            if highest_lowest == "highest":
-                index = targets.index(max(targets))
-            elif highest_lowest == "lowest":
-                index = targets.index(min(targets))
-            
-            benchmarks.append(targets[index])
-            peak_pos.append(peaks[index])
-
-        # plotting
-        plt.scatter(peak_pos, benchmarks, c = color)
-        plt.xlabel("Peak position")
-        plt.ylabel("Target value")
-        #plt.show()
+        fig.show()
 
 
 
@@ -963,9 +1136,9 @@ class Datastructure:
             Should be moved to a separate file in the future, but this is fine for now
         """
 
-        ml_dictionary = {"1": (402, 407),
+        ml_dictionary = {#"1": (402, 407),
                          "2": (430, 437),
-                         "3": (456, 463),
+                         "3": (456, 465),
                          "4": (472, 481),
                          "5": (484, 489),
                          "6": (491, 497),
@@ -993,13 +1166,25 @@ class Datastructure:
 
 
     def get_molecule_geometry(self) -> list:
-
         """
             Geometry of the molecules (chainlength, group, cycles, group_pos) 
+            TODO: move to a csv file (or just use fingerprints)
         """
-
-        # read from csv
-        molecule_geometry = pd.read_csv("molecule_geometry.csv").to_dict(orient = "records")
-
+        
+        molecule_geometry = [
+            # {'molecule',       ['group': [, ], 'chainlength' , 'cycles' , 'group_pos'},
+            {'molecule': "Methanol",       'encoding': [1,0, 0.1, 0, 0]},
+            {'molecule': "Ethanol",        'encoding': [1,0, 0.2, 0, 0]},
+            {'molecule': "Propanol",       'encoding': [1,0, 0.3, 0, 0]},
+            {'molecule': "Isopropanol",    'encoding': [1,0, 0.3, 0, 1]},
+            {'molecule': "Butanol",        'encoding': [1,0, 0.4, 0, 0]},
+            {'molecule': "Acetone",        'encoding': [0,1, 0.3, 0, 1]},
+            {'molecule': "Butanone",       'encoding': [0,1, 0.4, 0, 1]},
+            {'molecule': "Cyclopentanone", 'encoding': [0,1, 0.5, 1, 0]},
+            {'molecule': "Cyclopentanol",  'encoding': [1,0, 0.5, 1, 0]},
+            {'molecule': "Hexanol",        'encoding': [1,0, 0.6, 1, 0]},
+            {'molecule': "Octanol",        'encoding': [1,0, 0.8, 1, 0]},
+            {'molecule': "Toluene",        'encoding': [0,0, 0.7, 1, 0]},
+        ]
 
         return molecule_geometry

@@ -1,0 +1,3 @@
+# exclude the data folder from git
+data/
+plots/

@@ -26,7 +26,7 @@ from helpers import *
 
 molecule_name =  "Methanol"
 geometry =        [0.5, 1, 0]
-target_peak   =   462
+target_peak   =   475
 
 ### ------------------------------------------------------------------------- ###
 
@@ -41,16 +41,16 @@ def main():
                               iterations =       110, 
                               peak =             target_peak,
                               obj =              ["PEAK_POS", "FWHM"], 
-                              encoding_type =    "one_hot", 
+                              encoding_type =    "geometry", 
                               geometry =         None,
                               Cs_Pb_opt =        False,
                               Cs_As_opt=         False,
-                              c_Pb_fixed =       0.05, 
+                              c_Pb_fixed =       0.01, 
                               #V_As_fixed=       5000,
-                              #V_Cs_fixed=       100,  
+                              V_Cs_fixed=        100,  
                               c_Pb_max =         None,
-                              V_As_max=          2000,
-                              model_type=       "GP",
+                              V_As_max=          5000,
+                              model_type=        "GP",
                               )
     
     

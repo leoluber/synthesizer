@@ -216,14 +216,14 @@ class Preprocessor:
             Apply hard constraints on the FWHM values
         """
         
-        constraints = {"2": 13,
-                       "3": 16,
+        constraints = {"2": 16,
+                       "3": 20,
                        "4": 25,
                        "5": 25,
                        "6": 25,
                        "7": 25,
                        "8": 24,
-                       "9": 19}
+                       "9": 22}
 
         if self.mode == "EV":
             constraints = {key: self.nm_to_meV(value) for key, value in constraints.items()}
@@ -237,8 +237,12 @@ class Preprocessor:
             ml = self.characterize_NPL(data["peak_pos"])
 
             if ml is not None:
-                if data["fwhm"] <= constraints[str(ml)]:
+                if "fwhm" not in data:
                     new_data_objects.append(data)
+                elif data["fwhm"] <= constraints[str(ml)]:
+                    new_data_objects.append(data)
+
+        print(f"hard_FWHM_constraints() removed {len(data_objects) - len(new_data_objects)} data points")
 
         return new_data_objects
 

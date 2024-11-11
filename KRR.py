@@ -189,7 +189,7 @@ class Ridge:
         if predictions == None: predictions = self.predictions
 
 
-        plt.scatter(targets, predictions, color='blue', label='krr', s=10)
+        plt.scatter(targets, predictions, color='blue', label='krr', s=50)
         plt.plot([min(targets), max(targets)], 
                  [min(targets), max(targets)], 
                  color='black', linestyle='--')

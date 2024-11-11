@@ -48,7 +48,7 @@ class GaussianProcess:
 
 
     def __init__(self, 
-                 training_data, parameter_selection = None,
+                 training_data = None, parameter_selection = None,
                  targets = None,
                  kernel_type: Literal["RBF", "MLP", "EXP", "LIN"] = "EXP",
                  model_type  = "GPRegression",
@@ -109,9 +109,13 @@ class GaussianProcess:
 
 
 
+
+
 ### ------------------ CROSS VALIDATION -------------------- ###
 
-    def leave_one_out_cross_validation(self, training_data, targets) -> float:
+
+    def leave_one_out_cross_validation(self, training_data, targets, 
+                                       baseline_list, include_sample) -> float:
 
         """LOO cross validation on the training data, returns the mean squared error"""
 
@@ -120,6 +124,13 @@ class GaussianProcess:
         predictions, uncertainty, error = [], [], []
 
         for i in range(len(training_data)):
+
+            # we dont want to test against the baseline, as it is not a real molecule
+            if baseline_list[i] == True:
+                continue
+            
+            if include_sample[i] == False:
+                continue
 
             print("step: "+ str(i) + "  / " + str(len(training_data)-1))
 
@@ -161,12 +172,150 @@ class GaussianProcess:
         
 
         self.loo_predictions, self.loo_uncertainty, self.loo_error = np.array(predictions), np.array(uncertainty), np.array(error)
+        self.targets = np.array([t for i, t in enumerate(targets) if baseline_list[i] == False and include_sample[i] == True])
 
         print(f"Mean squared error: {np.mean(self.loo_error)}")
+        print(f"Median squared error: {np.median(self.loo_error)}")
         print(f"Fitting time: {self.fitting_time}")
 
         return np.mean(self.loo_error)
+        #return np.median(self.loo_error)
     
+
+
+    def molecular_cross_validation(self, data_objects, 
+                                   transfer_molecule,) -> float:
+
+        """
+        Cross validation on the training data for a specific molecule
+        """
+
+        # training
+        x_train = [data["encoding"] + data["total_parameters"] for data in data_objects if data["molecule_name"] != transfer_molecule]
+        y_train = [data["y"] for data in data_objects if data["molecule_name"] != transfer_molecule]
+
+        # testing (we dont want to test against the baseline, as it is not a real molecule)
+        x_test = [data["encoding"] + data["total_parameters"] for data in data_objects if data["molecule_name"] == transfer_molecule and data["baseline"] == False]
+        y_test = [data["y"] for data in data_objects if data["molecule_name"] == transfer_molecule and data["baseline"] == False]
+
+        # reshape
+        x_train = np.array(x_train)
+        y_train = np.array(y_train)
+        x_test = np.array(x_test)
+        y_test = np.array(y_test)
+
+        # reshape for GPy
+        y_train = np.reshape(y_train, (y_train.shape[0], 1))
+        y_test = np.reshape(y_test, (y_test.shape[0], 1))
+        x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1]))
+        x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1]))
+
+
+        # select the kernel
+        self.kernel = self.get_kernel(self.kernel_type, input_dim = x_train.shape[1])
+
+        # train the model
+        model = GPy.models.GPRegression(x_train, y_train, self.kernel)
+        model.optimize()
+
+        # predict the test data
+        predictions, _ = model.predict(x_test)
+
+        # calculate the error
+        error = np.mean(np.abs(predictions - y_test))
+        #error = np.median(np.abs(predictions - y_test))
+        print(f"Mean squared error: {error}")
+
+        # regression plot
+        self.loo_predictions = predictions
+        self.targets = y_test
+        self.regression_plot()
+
+        return error
+
+
+
+    def active_learning_simulation(self, data_objects,
+                                   measured_molecule: str = "Methanol",
+                                   resolution = 5,	
+                                   ) -> float:
+
+
+        """ Active learning simulation 
+        
+        - samples from the data to train a new model from scratch
+        - tests against the fully trained model
+
+        TODO: implement different versions of this
+        
+        """
+
+        # seperate into baseline and real molecules
+        starting_data = [data["encoding"] + data["total_parameters"]
+                         for data in data_objects if data["baseline"] == True or data["molecule_name"] != measured_molecule]
+        self.targets = np.array([data["y"] for data in data_objects if data["baseline"] == True or data["molecule_name"] != measured_molecule])
+
+        measured_data = [data["encoding"] + data["total_parameters"]
+                         for data in data_objects if data["baseline"] == False and data["molecule_name"] == measured_molecule]
+        measured_targets = np.array([data["y"] for data in data_objects if data["baseline"] == False and data["molecule_name"] == measured_molecule])
+        
+        
+        #shuffle the data
+        zip_list = list(zip(measured_data, measured_targets))
+        np.random.shuffle(zip_list)
+        measured_data, measured_targets = zip(*zip_list)
+
+        # train the model on the starting data
+        self.training_data = np.array(starting_data)
+        self.targets = np.array(self.targets)
+        self.train()
+
+
+        # main loop
+        error_list, num_exp = [], []
+        for n in range(0, len(measured_data), resolution):
+
+            print(f"Step: {n} / {int(len(measured_data))}")
+
+
+            # get the set of new experiments
+            new_data    = measured_data[n:n+resolution]
+            new_targets = measured_targets[n:n+resolution]
+
+            if len(new_data) < resolution:
+                break
+
+
+            # predict the experiment
+            predictions =[self.predict(sample)[0][0][0] for sample in new_data]
+            error = np.mean(np.abs(np.array(predictions) - np.array(new_targets)))
+            #error = np.median(np.abs(np.array(predictions) - np.array(new_targets)))
+            error_list.append(error)
+            num_exp.append(n)
+            print(f"Error: {error}")
+
+
+            # add the experiment to the training data
+            self.training_data = np.vstack((self.training_data, new_data))
+            self.targets = np.append(self.targets, new_targets)
+
+
+            # train the model on the new data
+            self.train()
+
+
+
+        # plot the results
+        self.plot_error(error_list, num_exp, molecule = measured_molecule)
+
+        return self.model
+
+
+
+
+
+
+
 
 
 ### --------------------- OPTIMIZATION ----------------------- ###
@@ -234,15 +383,15 @@ class GaussianProcess:
 
         match kernel:
             case "RBF":
-                return GPy.kern.RBF(input_dim)
+                return GPy.kern.RBF(input_dim, lengthscale= 0.1)
             case "MLP":
                 return GPy.kern.MLP(input_dim, ARD = True) + GPy.kern.MLP(input_dim, ARD=True)
             case "EXP":
-                return GPy.kern.Exponential(input_dim, ARD = True, lengthscale=0.1)
+                return GPy.kern.Exponential(input_dim,)
             case "LIN":
                 return GPy.kern.Linear(input_dim)
             case "POLY":
-                return GPy.kern.Poly(input_dim)
+                return GPy.kern.Poly(input_dim, order = 3,)
             case _:
                 raise ValueError("Kernel not supported")
             
@@ -254,9 +403,52 @@ class GaussianProcess:
 
         """ Plots the regression results """
 
-        plt.figure(figsize=(10, 6))
-        error = np.mean(np.abs(np.array(self.targets) - np.array(self.loo_predictions)))
-        plt.scatter(self.targets, self.loo_predictions, c='r', label= f'err: {error}')
-        plt.plot([self.targets.min(), self.targets.max()], [self.targets.min(), self.targets.max()], 'k--', lw=2)
+        fig, ax = plt.subplots(figsize = (4, 4))
 
+        error = np.mean(np.abs(np.array(self.targets) - np.array(self.loo_predictions)))
+        error = round(error, 2)
+        ax.scatter(self.targets, self.loo_predictions, c='blue', label= f'err: {error}')
+        ax.plot([440, 520], [440, 520], 'k--', lw=2)
+
+
+        # settings
+        ax.xaxis.set_tick_params(direction='in', which='both', labelsize = 12)
+        ax.yaxis.set_tick_params(direction='in', which='both', labelsize = 12)
+
+        ax.xaxis.set_label_text("True Peak Pos. [nm]", fontsize = 12)
+        ax.yaxis.set_label_text("Predicted Peak Pos. [nm]", fontsize = 12)
+
+        ax.set_xlim(430, 530)
+        ax.set_ylim(430, 530)
+
+        plt.tight_layout()
         plt.show()
+
+        # save as svg
+        fig.savefig("regression_plot.svg", format = "svg")
+
+
+    def plot_error(self, error_list, num_exp, molecule = None):
+
+        """ Plots the error over the number of experiments """
+
+        fig, ax = plt.subplots(figsize = (5, 3))
+
+        #ax.scatter(num_exp, error_list, c='red', label= f'Error', marker = 's',s = 20)
+        ax.plot(num_exp, error_list, c='red', label= f'Error', marker = 's', markersize = 10, linestyle = '-')
+
+
+        # graphic settings
+        ax.xaxis.set_tick_params(direction='in', which='both', labelsize = 12)
+        ax.yaxis.set_tick_params(direction='in', which='both', labelsize = 12)
+
+        # set sizte of axis labels
+        ax.xaxis.set_label_text("Number of Experiments", fontsize = 12)
+        ax.yaxis.set_label_text("avg. Error [nm]", fontsize = 12)
+
+
+        plt.tight_layout()
+        plt.show()
+
+        # save as svg
+        fig.savefig(f"data/active_learning_error_{molecule}.svg", format = "svg")

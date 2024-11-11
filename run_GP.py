@@ -3,6 +3,8 @@
 
 
 import numpy as np
+import warnings
+warnings.filterwarnings("ignore")
 
 # custom
 from Datastructure import *
@@ -28,9 +30,10 @@ datastructure = Datastructure(
                             monodispersity_only = True,
                             encoding            = "one_hot", 
                             P_only              = False,
-                            molecule            = "all",
-                            add_baseline        = False,
+                            molecule            = "Methanol",
+                            add_baseline        = True,
                             )
+                            
 
 #%%
 
@@ -40,13 +43,15 @@ datastructure.synthesis_training_selection  = ["AS_Pb_ratio", "Cs_Pb_ratio", ]
 
 # get data objects (either from file or from datastructure)
 #datastructure.save_data_as_file(datastructure.get_data(), "data_objects")
-data_objects = datastructure.load_data_from_file("data_objects")
+#data_objects = datastructure.load_data_from_file("data_objects")
+data_objects = datastructure.get_data()
 
 
-# use Preprocessor to select data points
-# ds = Preprocessor(selection_method= ["PEAK_SHAPE",], fwhm_margin=-0.01, peak_error_threshold=0.00010)
-# data_objects = ds.select_data(data_objects)                           
-# datastructure.data  = data_objects
+# # use Preprocessor to select data points
+#ds = Preprocessor(selection_method= ["PEAK_SHAPE",], fwhm_margin=-0.01, peak_error_threshold=0.00010)
+#data_objects = ds.select_data(data_objects)                           
+#datastructure.data  = data_objects
+#data_objects  = ds.add_residual_targets_avg(data_objects)
 
 
 # get parameter selection
@@ -69,7 +74,6 @@ molecule, peak_pos = [], []
 for data in data_objects:
 
     inputs.append(data["encoding"] + data["total_parameters"])
-    print(data["encoding"] + data["total_parameters"])
 
             # TARGETS
     targets.append(data["y"])
@@ -95,12 +99,13 @@ gp = GaussianProcess(
 
     # (1) LOO cross validation
 #gp.choose_best_kernel()
-gp.leave_one_out_cross_validation(inputs, targets)
-gp.regression_plot()
+#gp.leave_one_out_cross_validation(inputs, targets)
+#gp.regression_plot()
 
 
     # (2) 3D MAP
 gp.train()
 datastructure.plot_data("AS_Pb_ratio", "Cs_Pb_ratio", kernel= gp, model = "GP", molecule= datastructure.flags["molecule"],)
+datastructure.plot_2D_contour("AS_Pb_ratio", "Cs_Pb_ratio", kernel = gp)
 
 

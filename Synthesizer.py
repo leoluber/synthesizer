@@ -8,6 +8,7 @@ import time
 from GPyOpt.methods import BayesianOptimization
 from datetime import date
 from typing import Literal
+import matplotlib.animation as animation
 
 # custom modules
 from Datastructure import *
@@ -148,7 +149,10 @@ class Synthesizer:
                                          kernel = self.NPL_model,
                                          model = model_type ,  
                                          molecule = self.molecule)
+        
 
+        # animation
+        self.animation_data = []
 
 
 ### ------------------------- OPTIMIZATION ------------------------- ###
@@ -195,7 +199,8 @@ class Synthesizer:
 
 
             # hard constraints (not ideal, but simpler than adding them to the bounds)
-            if Cs_Pb_ratio > 0.7: return 1000
+            if Cs_Pb_ratio < 0.1: return 1000
+            if Cs_Pb_ratio > 0.6: return 1000
             if As_Pb_ratio > 0.8: return 1000
 
 
@@ -238,8 +243,13 @@ class Synthesizer:
             # print the current NPL value and ratios (for real-time feedback)
             print(f"NPL: {NPL}, As_Pb: {As_Pb_ratio}, Cs_Pb: {Cs_Pb_ratio}")
 
-            # plot the optimization process
-            plt.scatter(NPL_input[-2], NPL_input[-1], c = NPL, vmin=450, vmax = 500)
+
+            # add to the animation
+            if "FWHM" and "PLQY" in self.obj:
+                animation_dict = {"NPL": NPL, "FWHM": FWHM, "PLQY": PLQY, "As_Pb": As_Pb_ratio, "Cs_Pb": Cs_Pb_ratio,}
+            else:
+                animation_dict = {"NPL": NPL, "As_Pb": As_Pb_ratio, "Cs_Pb": Cs_Pb_ratio}
+            self.animation_data.append(animation_dict)
 
 
             # construct the objective function
@@ -268,9 +278,6 @@ class Synthesizer:
         optimizer = BayesianOptimization(f = f, domain = bounds)
         optimizer.run_optimization(max_iter = self.iterations)
 
-        # show the optimization process
-        plt.colorbar() 
-        plt.show()
 
         self.results = self.return_results(optimizer.x_opt)
 
@@ -408,7 +415,7 @@ class Synthesizer:
                                         wavelength_filter= [400, 550],
                                         encoding= encoding,
                                         monodispersity_only= True,
-                                        molecule= pred_molecule,
+                                        molecule= "all",
                                         P_only= False,
                                         add_baseline= True,
                                         )
@@ -419,7 +426,7 @@ class Synthesizer:
         datastructure_PLQY = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_240418.csv",
                                         target = "PLQY",
                                         wavelength_unit= "NM",         
-                                        wavelength_filter= [400, 510],
+                                        wavelength_filter= [400, 550],
                                         encoding= encoding,    
                                         monodispersity_only= True,  
                                         PLQY_criteria = True, 
@@ -435,7 +442,7 @@ class Synthesizer:
                                         wavelength_filter= [400, 550],
                                         monodispersity_only= True,
                                         encoding= encoding,
-                                        PLQY_criteria = True,
+                                        PLQY_criteria = False,
                                         P_only= True,
                                         )
         datastructure_FWHM.synthesis_training_selection = ["AS_Pb_ratio", "Cs_Pb_ratio", "V (antisolvent)", 
@@ -579,4 +586,18 @@ class Synthesizer:
                 time.sleep(0.02)	
 
         print("\n")
+    
+
+
+
+
+### ------------------------------- ANIMATION ----------------------------- ###
+
+
+    def run_animation(self, mode = "NPL"):
+        """ Run the animation of the optimization process 
         
+        Scatter Plot with the NPL values and the As/Pb and Cs/Pb ratios
+        """
+
+        pass

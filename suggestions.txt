@@ -255,3 +255,22 @@ GP predicted rel. FWHM: [-2.27826002]
 model type: GP, encoding: geometry, geometry: [0.5, 1, 0], c_Pb_max: None ]
 
 THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+
+----------------------------------------------------   2024-11-08   ----------------------------------------------------
+L-SYNTH 2.0-8027
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Methanol- as an antisolvent 
+to make NPLs around 475nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  545.6726081635119', 'c (PbBr2) :  0.010000000000000002', 'V (PbBr2 prec.) :  1167.7815365416334', 'V (Cs-OA) :  100.0']
+with the following As/Pb ratio: 1.1522948510697284
+ and the following Cs/Pb ratio: 0.17126491020940168
+GP predicted peak position: (array([[475.63761027]]), array([[42.04924398]]))
+GP predicted rel. FWHM: [-0.00342576]
+
+[ DEV --> Opt. Iterations: 110, fixed c_Pb: 0.01, fixed V_As: None, Cs_Pb_opt: False, Cs_As_opt: False
+model type: GP, encoding: geometry, geometry: None, c_Pb_max: None ]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!

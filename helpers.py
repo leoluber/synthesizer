@@ -5,6 +5,7 @@
 import numpy as np
 from plotly import graph_objects as go
 from scipy.optimize import curve_fit
+from typing import Literal
 
 # for plotting
 import matplotlib.pyplot as plt
@@ -37,7 +38,7 @@ molecule_dictionary = {"Tol" : 'Toluene',
                        "CyPen" : "Cyclopentanone"}
 
 
-ml_dictionary = {"1": (402, 407),
+ml_dictionary = {#"1": (402, 407),
                     "2": (430, 437),
                     "3": (457, 466),
                     "4": (472, 481),
@@ -76,11 +77,11 @@ def get_avg_sample(inputs) -> list:
 #### ------------------------------------ OTHER ------------------------------------ ###
 
 def nm_to_ev(nm) -> float:
-    return 1240/nm
+    return 1239.840/nm
 
 
 def ev_to_nm(ev) -> float:
-    return 1240/ev
+    return 1239.840/ev
 
 
 def surface_proportion(nm) -> float:
@@ -120,6 +121,49 @@ def compress_spectrum(spectrum, factor = 1) -> list:
         spectrum = spectrum[factor:]
 
     return compressed_spectrum
+
+
+def find_lowest(data_objects) ->  list:
+        
+    """ Find the lowest target value for each peak_pos
+    in a list of data objects """
+
+    x = [None for _ in ml_dictionary]
+    y = [float("inf") for _ in ml_dictionary]
+    sample_numbers = [None for _ in ml_dictionary]
+
+    for data in data_objects:
+        for i, key in enumerate(ml_dictionary):
+            if ev_to_nm(data["peak_pos"]) in range(ml_dictionary[key][0], ml_dictionary[key][1]):
+                if data["y"] <= y[i]:
+                    y[i] = data["y"]
+                    x[i] = data["peak_pos"]
+                    sample_numbers[i] = data["sample_number"]
+
+    # clean up
+    x = [i for i in x if i is not None]
+    y = [i for i in y if i != float("inf")]
+
+    print(y, sample_numbers)
+
+
+    return x, y
+
+
+def get_ml_from_peak_pos(peak_pos) -> int:
+
+    """ Get the ML from a peak position """
+
+    if peak_pos < 10:
+        peak_pos = ev_to_nm(peak_pos)
+
+    for key in ml_dictionary:
+        #if peak_pos in range(ml_dictionary[key][0], ml_dictionary[key][1]):
+        if peak_pos <= ml_dictionary[key][1]:
+            return int(key)
+        
+    return None
+
 
 
 
@@ -169,3 +213,38 @@ def viz_regression_scatter(true_values, pred_values):
 
     plt.show()
 
+
+
+
+### ---------------- PHYSICS ----------------- ###
+
+def surface_proportion(peak_pos, mode: Literal['EV', 'NM'], l = 20) -> float:	
+
+    """ Get the surface proportion for NPLs from a given wavelength (estimation) """
+
+    if mode == 'EV':
+        nm = ev_to_nm(peak_pos)
+    else:	
+        nm = peak_pos	
+
+
+    prop = 0
+    # for key, value in ml_dictionary.items():
+    #     if value[0] <= nm:
+    #         surface = 2*l**2 + 40*int(key)
+    #         full_layer   = l**2*4 + 2 * l
+    #         half_layer   = l**2*3 + 2 * l
+
+    #         prop = 1 -(surface / (full_layer + half_layer * (int(key)-1)))
+
+    for key, value in ml_dictionary.items():
+        if value[1] > nm:
+            total = l**2 * int(key)
+            surf  = total - (l-2)**2 * (int(key)-2)
+            internal = (l-2)**2 * (int(key)-2)
+
+            prop = internal / total
+            return prop
+
+        
+    return prop
