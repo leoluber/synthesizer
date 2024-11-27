@@ -24,9 +24,9 @@ from helpers import *
 #molecule_name = input("Enter the molecule name: (e.g. Ethanol, Methanol, ...):     ")
 #target_peak   = int(input("Enter the target peak position in nm: (e.g. 470):         "))
 
-molecule_name =  "Methanol"
+molecule_name =  "Cyclopentanone"
 geometry =        [0.5, 1, 0]
-target_peak   =   475
+target_peak   =   488
 
 ### ------------------------------------------------------------------------- ###
 
@@ -54,7 +54,7 @@ def main():
                               )
     
     
-    synthesizer.print_logo()
+    #synthesizer.print_logo()
     
     # optimize NPL
     opt_x, opt_delta = synthesizer.optimize_NPL()

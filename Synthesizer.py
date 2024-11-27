@@ -199,8 +199,9 @@ class Synthesizer:
 
 
             # hard constraints (not ideal, but simpler than adding them to the bounds)
-            if Cs_Pb_ratio < 0.1: return 1000
-            if Cs_Pb_ratio > 0.6: return 1000
+            #if Cs_Pb_ratio < 0.1: return 1000
+            if Cs_Pb_ratio > 0.2: return 1000
+            if Cs_Pb_ratio < 0.15: return 1000
             if As_Pb_ratio > 0.8: return 1000
 
 
@@ -282,6 +283,33 @@ class Synthesizer:
         self.results = self.return_results(optimizer.x_opt)
 
         return optimizer.x_opt, optimizer.fx_opt
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

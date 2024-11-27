@@ -107,6 +107,9 @@ class Preprocessor:
         if "hard_FWHM"   in self.selection_method:
             selection =  self.hard_FWHM_constraints(data_objects=selection)
 
+        if "IDEAL"      in self.selection_method and self.mode == "EV":
+            selection =  self.ideal_only(data_objects=selection)
+
         if selection is None:
             raise ValueError("Selection method not recognized")
         
@@ -202,6 +205,7 @@ class Preprocessor:
         return data_objects
 
 
+
     def set_Cs_Pb_limit(self,
                         data_objects: list,
                         )-> list:
@@ -211,14 +215,15 @@ class Preprocessor:
         pass
 
 
+
     def hard_FWHM_constraints(self, data_objects: list):
         """
             Apply hard constraints on the FWHM values
         """
         
         constraints = {"2": 16,
-                       "3": 20,
-                       "4": 25,
+                       "3": 6,
+                       "4": 16,
                        "5": 25,
                        "6": 25,
                        "7": 25,
@@ -247,6 +252,43 @@ class Preprocessor:
         return new_data_objects
 
 
+
+    def ideal_only(self, data_objects: list):
+
+        """
+            Keep only the ideal data points, that is the points with the 5 lowest FWHM values
+            for each peak position
+        """
+
+        res = 1
+        cut_off = 4
+
+
+        # fill a matrix with the FWHM values for each peak position (in 10meV steps)
+        indexing_array = np.array(range(2350, 2900, res))
+        matrix = [[] for _ in range(2350, 2900, res)]
+
+        for data in data_objects:
+            if "fwhm" in data:
+
+                # get index from indexing array
+                index = np.argmin(np.abs(indexing_array - (data["peak_pos"]*1000)))
+                matrix[index].append(data)
+
+        
+        # keep only the ideal data points (lowest 5 values)
+        new_data_objects = []
+        for data in matrix:
+            if len(data) > cut_off:
+                data = sorted(data, key = lambda x: x["fwhm"])
+                new_data_objects += data[:cut_off]
+            else:
+                new_data_objects += data
+            
+
+        
+        print(f"ideal_only() removed {len(data_objects) - len(new_data_objects)} data points")
+        return new_data_objects
 
 
 

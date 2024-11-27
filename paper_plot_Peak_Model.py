@@ -10,9 +10,8 @@ from GaussianProcess import GaussianProcess
 from helpers import *
 
 
-
-# settings
-TRANSFER_MOLECULE = "Methanol"
+# transfer molecule
+TRANSFER_MOLECULE = "Ethanol"
 
 
 datastructure = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_240418.csv", 
@@ -23,7 +22,7 @@ datastructure = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_2
                               wavelength_unit= "NM",
                               monodispersity_only = True,
                               encoding= "geometry",
-                              P_only= True, 
+                              P_only= False, 
                               molecule="all",
                               add_baseline= True,
                               )
@@ -63,11 +62,6 @@ for data in data_objects:
 
         # BASELINE
     baseline.append(data["baseline"])
-    if data["molecule_name"] == TRANSFER_MOLECULE:
-        include.append(True)
-    else:
-        include.append(False)
-
 
 
 
@@ -102,20 +96,59 @@ ________________________________________________________________________________
 ...
 
 # """
+
+# shuffle data objects
+np.random.shuffle(data_objects)
+
 # molecule loo with histogram
 names  = []
 errors = []
-improved_errors = []
+errors_5 = []
+errors_max = []
 
-for transfer_molecule in ["Methanol", "Ethanol", "Butanol", "Cyclopentanone" ]:
+# distribution = datastructure.get_molecule_distribution()
+# min = min(distribution["Methanol"], distribution["Ethanol"], distribution["Butanol"], distribution["Cyclopentanone"])
+# print(min)
+
+
+for transfer_molecule in ["Methanol",  "Ethanol",  "Butanol",  "Cyclopentanone"]:
+
     error = gp.molecular_cross_validation(data_objects, transfer_molecule = transfer_molecule)
     names.append(transfer_molecule)
     errors.append(error)
 
+
+
 for transfer_molecule in ["Methanol", "Ethanol",  "Butanol", "Cyclopentanone" ]:
-    include = [True if data["molecule_name"] == transfer_molecule else False for data in data_objects]
+
+    # seperate in and out of sample
+    old_data = [data for data in data_objects if data["molecule_name"] != transfer_molecule]
+    new_data = [data for data in data_objects if data["molecule_name"] == transfer_molecule][:10]
+    data = old_data + new_data
+    inputs   = np.array([data["encoding"] + data["total_parameters"] for data in data])
+    targets  = np.array([data["y"] for data in data])
+    baseline = np.array([data["baseline"] for data in data])
+
+    include = [True if item["molecule_name"] == transfer_molecule else False for item in data]
     error = gp.leave_one_out_cross_validation(inputs, targets, baseline, include)
-    improved_errors.append(error)
+    errors_5.append(error)
+
+
+
+for transfer_molecule in ["Methanol", "Ethanol",  "Butanol", "Cyclopentanone" ]:
+
+    # seperate in and out of sample
+    old_data = [data for data in data_objects if data["molecule_name"] != transfer_molecule]
+    new_data = [data for data in data_objects if data["molecule_name"] == transfer_molecule]
+    data = old_data + new_data
+    inputs   = np.array([data["encoding"] + data["total_parameters"] for data in data])
+    targets  = np.array([data["y"] for data in data])
+    baseline = np.array([data["baseline"] for data in data])
+
+    include = [True if item["molecule_name"] == transfer_molecule else False for item in data]
+    error = gp.leave_one_out_cross_validation(inputs, targets, baseline, include)
+    errors_max.append(error)
+
 
 
 
@@ -124,8 +157,10 @@ fig, ax = plt.subplots()
 barWidth = 0.25
 r1 = np.arange(len(errors))
 r2 = [x + barWidth for x in r1]
+r3 = [x + barWidth for x in r2]
 plt.bar(r1, errors, color='cornflowerblue', width=barWidth, edgecolor='grey', label='Errors')
-plt.bar(r2, improved_errors, color='coral', width=barWidth, edgecolor='grey', label='Improved Errors')
+plt.bar(r2, errors_5, color='coral', width=barWidth, edgecolor='grey', label='Improved Errors')
+plt.bar(r3, errors_max, color='lightgreen', width=barWidth, edgecolor='grey', label='Min Errors')
 plt.xlabel('Molecule', fontweight='bold')
 plt.xticks([r + barWidth for r in range(len(errors))], names)
 plt.ylabel('Error', fontweight='bold')
@@ -140,8 +175,7 @@ plt.show()
 
 
 
-
-#gp.regression_plot()
+gp.regression_plot()
 
 
 
@@ -157,7 +191,7 @@ ________________________________________________________________________________
 
 """
 
-#datastructure.plot_data("AS_Pb_ratio", "Cs_Pb_ratio", kernel= gp, model = "GP", molecule= TRANSFER_MOLECULE, library= "plotly")
+datastructure.plot_data("AS_Pb_ratio", "Cs_Pb_ratio", kernel= gp, model = "GP", molecule= TRANSFER_MOLECULE, library= "plotly")
 datastructure.plot_2D_contour_old(kernel= gp, molecule= TRANSFER_MOLECULE,)
 
 # write data to csv

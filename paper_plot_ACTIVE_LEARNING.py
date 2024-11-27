@@ -10,7 +10,7 @@ from helpers import *
 
 
 # SETTINGS
-NEW_MOLECULE = "Methanol"
+#NEW_MOLECULE = "Cyclopentanone"
 
 
 
@@ -77,7 +77,9 @@ ________________________________________________________________________________
 ...
 
 # """
+# for molecule in ["Methanol", "Ethanol", "Butanol", "Cyclopentanone"]:
+#     gp.active_learning_simulation(data_objects, measured_molecule = molecule, resolution=5)
 
-gp.active_learning_simulation(data_objects, measured_molecule = NEW_MOLECULE, resolution=8)
+# plt.show()
 
 #datastructure.plot_data(var1="Cs_Pb_tratio", var2= "AS_Pb_ration", kernel =  gp, molecule= NEW_MOLECULE, library= "plotly",)

@@ -274,3 +274,91 @@ GP predicted rel. FWHM: [-0.00342576]
 model type: GP, encoding: geometry, geometry: None, c_Pb_max: None ]
 
 THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-11-12   ----------------------------------------------------
+L-SYNTH 2.0-4913
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Methanol- as an antisolvent 
+to make NPLs around 478nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  711.7067206272508', 'c (PbBr2) :  0.010000000000000002', 'V (PbBr2 prec.) :  1378.4232691348382', 'V (Cs-OA) :  100.0']
+with the following As/Pb ratio: 1.2732437215517711
+ and the following Cs/Pb ratio: 0.14509331384512186
+GP predicted peak position: (array([[478.01481961]]), array([[43.10721548]]))
+GP predicted rel. FWHM: [-0.00190866]
+
+[ DEV --> Opt. Iterations: 110, fixed c_Pb: 0.01, fixed V_As: None, Cs_Pb_opt: False, Cs_As_opt: False
+model type: GP, encoding: geometry, geometry: None, c_Pb_max: None ]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-11-21   ----------------------------------------------------
+L-SYNTH 2.0-241
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Cyclopentanone- as an antisolvent 
+to make NPLs around 485nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  1933.669905572815', 'c (PbBr2) :  0.010000000000000002', 'V (PbBr2 prec.) :  1028.984407518662', 'V (Cs-OA) :  100.0']
+with the following As/Pb ratio: 2.121619440916663
+ and the following Cs/Pb ratio: 0.19436640491209067
+GP predicted peak position: (array([[484.9671205]]), array([[52.76560442]]))
+
+[ DEV --> Opt. Iterations: 110, fixed c_Pb: 0.01, fixed V_As: None, Cs_Pb_opt: False, Cs_As_opt: False
+model type: GP, encoding: geometry, geometry: None, c_Pb_max: None ]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-11-21   ----------------------------------------------------
+L-SYNTH 2.0-2728
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Cyclopentanone- as an antisolvent 
+to make NPLs around 487nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  3644.4504056207566', 'c (PbBr2) :  0.010000000000000002', 'V (PbBr2 prec.) :  1965.0477120691721', 'V (Cs-OA) :  100.0']
+with the following As/Pb ratio: 2.093885294832472
+ and the following Cs/Pb ratio: 0.10177869919982875
+GP predicted peak position: (array([[486.9932786]]), array([[42.06488708]]))
+
+[ DEV --> Opt. Iterations: 110, fixed c_Pb: 0.01, fixed V_As: None, Cs_Pb_opt: False, Cs_As_opt: False
+model type: GP, encoding: geometry, geometry: None, c_Pb_max: None ]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-11-21   ----------------------------------------------------
+L-SYNTH 2.0-2581
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Cyclopentanone- as an antisolvent 
+to make NPLs around 487nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  2470.8828585685956', 'c (PbBr2) :  0.010000000000000002', 'V (PbBr2 prec.) :  1268.5017792810386', 'V (Cs-OA) :  100.0']
+with the following As/Pb ratio: 2.1991508351726936
+ and the following Cs/Pb ratio: 0.15766631412480633
+GP predicted peak position: (array([[486.82715208]]), array([[55.33263339]]))
+GP predicted rel. FWHM: [0.00205562]
+
+[ DEV --> Opt. Iterations: 110, fixed c_Pb: 0.01, fixed V_As: None, Cs_Pb_opt: False, Cs_As_opt: False
+model type: GP, encoding: geometry, geometry: None, c_Pb_max: None ]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2024-11-21   ----------------------------------------------------
+L-SYNTH 2.0-1330
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Cyclopentanone- as an antisolvent 
+to make NPLs around 488nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  2323.7105473257643', 'c (PbBr2) :  0.010000000000000002', 'V (PbBr2 prec.) :  1128.0968408331114', 'V (Cs-OA) :  100.0']
+with the following As/Pb ratio: 2.325570919951631
+ and the following Cs/Pb ratio: 0.17728974389494598
+GP predicted peak position: (array([[487.86831994]]), array([[57.67137811]]))
+GP predicted rel. FWHM: [0.00171797]
+
+[ DEV --> Opt. Iterations: 110, fixed c_Pb: 0.01, fixed V_As: None, Cs_Pb_opt: False, Cs_As_opt: False
+model type: GP, encoding: geometry, geometry: None, c_Pb_max: None ]
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
