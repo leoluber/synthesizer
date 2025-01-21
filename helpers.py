@@ -248,3 +248,33 @@ def surface_proportion(peak_pos, mode: Literal['EV', 'NM'], l = 20) -> float:
 
         
     return prop
+
+
+
+
+
+
+
+
+############### ---------------- VIZ ----------------- ################
+
+def plot_covariance():
+
+    """ Plot the covariance matrix of a kernel """
+
+    x = np.linspace(0, 1, 20)
+    y = np.linspace(0, 1, 20)
+    X, Y = np.meshgrid(x, y)
+
+    kernel = lambda x, y, sigma, l: sigma**2 * np.exp(- abs(x-y) / (2*l**2))
+
+    Z = kernel(X, Y, 1, 0.3)
+
+    # heatmap matplotlib
+    plt.imshow(Z, cmap='Greys', interpolation='nearest')
+    
+    # no ticks or labels
+    plt.axis('off')
+    plt.show()
+
+    

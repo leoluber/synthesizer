@@ -10,15 +10,15 @@ from helpers import *
 
 
 
-datastructure = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_240418.csv", 
+datastructure = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_240418_new.csv", 
                               
                               target = "PEAK_POS",         
                               PLQY_criteria = False,
                               wavelength_unit= "NM",
-                              monodispersity_only =True,
-                              encoding= "one_hot",
+                              monodispersity_only =False,
+                              encoding= "geometry",
                               P_only= False, 
-                              molecule="Butanol",
+                              molecule="Octanol",
                               add_baseline= True,
                               )
 
@@ -42,6 +42,7 @@ for data in data_objects:
 
     if data["monodispersity"] == 0:
         continue
+
 
         # INPUTS
     input = data["encoding"] + data["total_parameters"]
@@ -97,5 +98,6 @@ ________________________________________________________________________________
 """
 
 
-datastructure.plot_data("AS_Pb_ratio", "Cs_Pb_ratio", kernel= gp, model = "GP", molecule= datastructure.flags["molecule"], library= "plotly")
-datastructure.plot_2D_contour(kernel=gp)
+#datastructure.plot_data("AS_Pb_ratio", "Cs_Pb_ratio", kernel= gp, model = "GP", molecule= datastructure.flags["molecule"], library= "plotly")
+#datastructure.plot_2D_contour(kernel=gp)
+datastructure.plot_2D_contour_old(kernel=gp, molecule= datastructure.flags["molecule"])

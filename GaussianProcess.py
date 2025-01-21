@@ -64,7 +64,7 @@ class GaussianProcess:
 
         # model specific
         self.kernel_type = kernel_type
-        self.kernel = self.kernel = self.get_kernel(self.kernel_type, input_dim = self.input_dim)   
+        self.kernel = self.get_kernel(self.kernel_type, input_dim = self.input_dim)   
         self.model_type = model_type
         self.model = None
 
@@ -131,7 +131,14 @@ class GaussianProcess:
         # LOO loop
         predictions, uncertainty, error = [], [], []
 
+        if include_sample is None:
+            include_sample = np.ones(len(training_data))
+
+        step = 0
+
         for i, data in enumerate(training_data):
+
+            step += 1
 
             if baseline_list is not None and include_sample is not None:
                 # we dont want to test against the baseline, as it is not a real molecule
@@ -142,7 +149,7 @@ class GaussianProcess:
                 if include_sample[i] == False:
                     continue
 
-            print("step: "+ str(i) + "  / " + str(len(training_data)-1))
+            print("step: "+ str(step) + "  / " + str(len([inc for inc in include_sample if inc == True])))
 
             # Split the data into training and test data and reshape so it fits the GPy standard
             X_train = np.delete(training_data, i, axis=0)
@@ -434,11 +441,21 @@ class GaussianProcess:
             case "MLP":
                 return GPy.kern.MLP(input_dim, ARD = True) + GPy.kern.MLP(input_dim, ARD=True)
             case "EXP":
-                return GPy.kern.Exponential(input_dim,)
+                return GPy.kern.Exponential(input_dim, lengthscale= 0.5)
             case "LIN":
                 return GPy.kern.Linear(input_dim)
             case "POLY":
                 return GPy.kern.Poly(input_dim, order = 3,)
+            case "SPECIAL":
+                parameter_kernel = GPy.kern.Exponential(2, active_dims= [5,6])
+                parameter_kernel.lengthscale.constrain_bounded(100, 600)
+                parameter_kernel.variance.constrain_bounded(100, 600)
+                geometry_kernel = GPy.kern.Exponential(5, active_dims=[0,1,2,3,4,],)
+                geometry_kernel.lengthscale.constrain_bounded(10, 200)
+                geometry_kernel.variance.constrain_bounded(0.1, 200)
+
+                return parameter_kernel * geometry_kernel 
+                #return exp * rbf
             case _:
                 raise ValueError("Kernel not supported")
             
@@ -446,7 +463,7 @@ class GaussianProcess:
 
 ### ------------- PLOTTING FUNCTIONS --------------- ###
 
-    def regression_plot(self):
+    def regression_plot(self, TRANSFER_MOLECULE = None):
 
         """ Plots the regression results """
 
@@ -455,10 +472,17 @@ class GaussianProcess:
         print(len(self.targets), len(self.loo_predictions))
 
         error = np.mean(np.abs(np.array(self.targets) - np.array(self.loo_predictions)))
-        error = round(error, 2)
-        ax.scatter(self.targets, self.loo_predictions, c='blue', label= f'err: {error}', marker = 's',s = 40)
-        #ax.plot([440, 520], [440, 520], 'k--', lw=2)
-        ax.plot([0.06, 0.15],[0.06, 0.15] ,'k--', lw=2)
+        error_median = np.median(np.abs(np.array(self.targets) - np.array(self.loo_predictions)))
+        error_median = round(error_median, 4)
+        error = round(error, 4)
+        ax.scatter(self.targets, self.loo_predictions, c='blue', label= f'med err: {error_median}', marker = 's',s = 40)
+        
+        if TRANSFER_MOLECULE is None:
+            #ax.plot([0.06, 0.18],[0.06, 0.18] ,'k--', lw=2)
+            ax.plot([0.0, 1],[0.0, 1] ,'k--', lw=2)
+            #ax.plot([440, 520], [440, 520], 'k--', lw=2)
+        else:
+            ax.plot([420, 520], [420, 520], 'k--', lw=2)
 
 
         # settings
@@ -472,10 +496,11 @@ class GaussianProcess:
         #ax.set_ylim(430, 530)
 
         plt.tight_layout()
+        plt.legend()
         plt.show()
 
         # save as svg
-        fig.savefig("regression_plot.svg", format = "svg")
+        #fig.savefig(f"regression_plot_{TRANSFER_MOLECULE}_err_med_{error_median}_.svg", format = "svg")
 
 
     def plot_error(self, error_list, num_exp, molecule = None):
@@ -502,3 +527,10 @@ class GaussianProcess:
 
         # save as svg
         #fig.savefig(f"data/active_learning_error_{molecule}.svg", format = "svg")
+
+    
+    def print_parameters(self):
+
+        """ Prints the parameters of the model """
+
+        print(self.model)

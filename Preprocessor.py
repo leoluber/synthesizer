@@ -261,7 +261,7 @@ class Preprocessor:
         """
 
         res = 1
-        cut_off = 4
+        cut_off = 1
 
 
         # fill a matrix with the FWHM values for each peak position (in 10meV steps)

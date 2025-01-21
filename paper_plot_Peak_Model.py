@@ -1,4 +1,4 @@
-
+#%%
 import warnings
 import pandas as pd
 warnings.filterwarnings('ignore')
@@ -11,21 +11,22 @@ from helpers import *
 
 
 # transfer molecule
-TRANSFER_MOLECULE = "Ethanol"
+#TRANSFER_MOLECULE = "Cyclopentanone"
 
 
-datastructure = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_240418.csv", 
-                               
-                              target = "PEAK_POS",
-                              #wavelength_filter= [470, 480],                
-                              PLQY_criteria = False,
-                              wavelength_unit= "NM",
-                              monodispersity_only = True,
-                              encoding= "geometry",
-                              P_only= False, 
-                              molecule="all",
-                              add_baseline= True,
-                              )
+#def iterate(TRANSFER_MOLECULE):
+datastructure = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_240418_new.csv", 
+                            
+                            target = "PEAK_POS",
+                            #wavelength_filter= [470, 480],                
+                            PLQY_criteria = False,
+                            wavelength_unit= "NM",
+                            monodispersity_only = True,
+                            encoding= "geometry",
+                            P_only= True, 
+                            molecule= "all",
+                            add_baseline= True,
+                            )
 
 
 #%%
@@ -55,6 +56,7 @@ for data in data_objects:
     
         # INPUTS
     input = data["encoding"] + data["total_parameters"]
+    #input = data["total_parameters"]
     inputs.append(input)
 
         # TARGETS
@@ -63,11 +65,21 @@ for data in data_objects:
         # BASELINE
     baseline.append(data["baseline"])
 
+    # if data["molecule_name"] == TRANSFER_MOLECULE:
+    #     include.append(True)
+    # else:
+    #     include.append(False)
+
 
 
 # convert to numpy arrays
 inputs = np.array(inputs)
 targets = np.array(targets)
+
+
+# # save data to file as csv
+# df = pd.DataFrame({"AS_Pb_ratio": inputs[:, 0], "Cs_Pb_ratio": inputs[:, 1], "peak_pos": targets})
+# df.to_csv(f"{TRANSFER_MOLECULE}_data.csv")
 
 
 
@@ -82,10 +94,20 @@ gp = GaussianProcess(
                     model_type  = "GPRegression",   
                     )
 gp.train()
-# gp.leave_one_out_cross_validation(inputs, targets, baseline, include)
-# gp.regression_plot()
 
-# exit()
+
+# gp.leave_one_out_cross_validation(inputs, targets, baseline, include)
+# gp.regression_plot(TRANSFER_MOLECULE)
+
+#datastructure.plot_data("AS_Pb_ratio", "Cs_Pb_ratio", kernel= gp, model = "GP", molecule= TRANSFER_MOLECULE, library= "plotly")
+
+
+
+# molecules = ["Isopropanol"]
+
+# for TRANSFER_MOLECULE in molecules:
+#     iterate(TRANSFER_MOLECULE)
+
 
 """
 _____________________________________________________________________________________
@@ -111,7 +133,7 @@ errors_max = []
 # print(min)
 
 
-for transfer_molecule in ["Methanol",  "Ethanol",  "Butanol",  "Cyclopentanone"]:
+for transfer_molecule in ["Methanol",  "Ethanol",  "Butanol",  "Cyclopentanone", "Isopropanol"]:
 
     error = gp.molecular_cross_validation(data_objects, transfer_molecule = transfer_molecule)
     names.append(transfer_molecule)
@@ -119,7 +141,7 @@ for transfer_molecule in ["Methanol",  "Ethanol",  "Butanol",  "Cyclopentanone"]
 
 
 
-for transfer_molecule in ["Methanol", "Ethanol",  "Butanol", "Cyclopentanone" ]:
+for transfer_molecule in ["Methanol", "Ethanol",  "Butanol", "Cyclopentanone" , "Isopropanol"]:
 
     # seperate in and out of sample
     old_data = [data for data in data_objects if data["molecule_name"] != transfer_molecule]
@@ -135,7 +157,7 @@ for transfer_molecule in ["Methanol", "Ethanol",  "Butanol", "Cyclopentanone" ]:
 
 
 
-for transfer_molecule in ["Methanol", "Ethanol",  "Butanol", "Cyclopentanone" ]:
+for transfer_molecule in ["Methanol", "Ethanol",  "Butanol", "Cyclopentanone", "Isopropanol" ]:
 
     # seperate in and out of sample
     old_data = [data for data in data_objects if data["molecule_name"] != transfer_molecule]
@@ -175,7 +197,7 @@ plt.show()
 
 
 
-gp.regression_plot()
+# gp.regression_plot()
 
 
 
@@ -191,8 +213,9 @@ ________________________________________________________________________________
 
 """
 
-datastructure.plot_data("AS_Pb_ratio", "Cs_Pb_ratio", kernel= gp, model = "GP", molecule= TRANSFER_MOLECULE, library= "plotly")
-datastructure.plot_2D_contour_old(kernel= gp, molecule= TRANSFER_MOLECULE,)
+#datastructure.plot_data("AS_Pb_ratio", "Cs_Pb_ratio", kernel= gp, model = "GP", molecule= TRANSFER_MOLECULE, library= "plotly")
+# datastructure.plot_2D_contour_old(kernel= gp, molecule= TRANSFER_MOLECULE,)
+# datastructure.plot_2D_contour(kernel= gp,)
 
 # write data to csv
 # Cs_Pb_ratio = [data["Cs_Pb_ratio"] for data in data_objects if data["molecule_name"] == TRANSFER_MOLECULE]
@@ -201,19 +224,3 @@ datastructure.plot_2D_contour_old(kernel= gp, molecule= TRANSFER_MOLECULE,)
 
 # df = pd.DataFrame({"Cs_Pb_ratio": Cs_Pb_ratio, "AS_Pb_ratio": AS_Pb_ratio, "peak_pos": peak_pos})
 # df.to_csv("3D_MAP.csv")
-
-
-
-"""
-_____________________________________________________________________________________
-
-    ON THE BEST ANTISOLVENT
-_____________________________________________________________________________________
-
-...
-
-"""
-
-# histogram of the best Antisolvent with regards to FWHM, PLQY, etc
-
-#TODO

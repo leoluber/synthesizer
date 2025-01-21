@@ -7,7 +7,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 # custom
-from Datastructure import *
+from Datastructure import Datastructure
 from GaussianProcess import *
 from Preprocessor import *
 
@@ -20,17 +20,18 @@ from Preprocessor import *
     and plots the result
 """
 
-
+TRANSFER_MOLECULE = "Methanol"
 
 datastructure = Datastructure(
-                            synthesis_file_path = "Perovskite_NC_synthesis_NH_240418.csv", 
+                            synthesis_file_path = "Perovskite_NC_synthesis_NH_240418_new.csv", 
                             target              = "PEAK_POS",
+                            PLQY_criteria       = False,
                             #wavelength_filter  = [455, 464],                                        
                             wavelength_unit     = "NM",
                             monodispersity_only = False,
                             encoding            = "geometry", 
-                            P_only              = True,
-                            molecule            = "Isopropanol",
+                            P_only              = False,
+                            molecule            = TRANSFER_MOLECULE,
                             add_baseline        = True,
                             )
                             
@@ -84,16 +85,33 @@ molecule, peak_pos = [], []
 
 for data in data_objects:
 
+
+    # if not data["baseline"]:
+    #     continue
+
+    # INPUTS
+
+
+    # if data["molecule_name"] == TRANSFER_MOLECULE:
+    #     continue
+    
     inputs.append(data["encoding"] + data["total_parameters"])
     #inputs.append(data["encoding"] + [data["peak_pos"]])
+
+    peak_pos.append(data["peak_pos"])
+
 
             # TARGETS
     targets.append(data["y"])
 
 
+
 # convert to numpy arrays
 inputs = np.array(inputs)
 targets = np.array(targets)
+
+# plt.plot(peak_pos, targets, "o")
+# plt.show()
 
 
 
@@ -120,14 +138,15 @@ gp = GaussianProcess(
 # gp.train()
 
 
-
-
     # (2) 3D MAP
 gp.train()
-datastructure.plot_data("AS_Pb_ratio", "Cs_Pb_ratio", kernel= gp, model = "GP", molecule= datastructure.flags["molecule"],)
-# datastructure.plot_2D_contour("AS_Pb_ratio", "Cs_Pb_ratio", kernel = gp)
+gp.print_parameters()
 
+#datastructure.plot_data("AS_Pb_ratio", "Cs_Pb_ratio", kernel= gp, model = "GP", molecule= TRANSFER_MOLECULE,)
+#datastructure.plot_2D_contour_old(kernel = gp, molecule= TRANSFER_MOLECULE,)
+datastructure.plot_2D_contour(kernel = gp,)
 
+exit()
 
 
 ### -------------------- SCREENING ------------------- ###

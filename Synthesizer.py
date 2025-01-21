@@ -285,31 +285,6 @@ class Synthesizer:
         return optimizer.x_opt, optimizer.fx_opt
 
 
- 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -437,7 +412,7 @@ class Synthesizer:
             encoding = self.encoding_type
 
         
-        datastructure_NPL = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_240418.csv", 
+        datastructure_NPL = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_240418_new.csv", 
                                         target = "PEAK_POS",
                                         wavelength_unit= "NM",     
                                         wavelength_filter= [400, 550],
@@ -451,7 +426,7 @@ class Synthesizer:
         datastructure_NPL.synthesis_training_selection = ["AS_Pb_ratio", "Cs_Pb_ratio"]	
 
 
-        datastructure_PLQY = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_240418.csv",
+        datastructure_PLQY = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_240418_new.csv",
                                         target = "PLQY",
                                         wavelength_unit= "NM",         
                                         wavelength_filter= [400, 550],
@@ -464,7 +439,7 @@ class Synthesizer:
                                                            "c (PbBr2)", "V (PbBr2 prec.)", "V (Cs-OA)"]
 
 
-        datastructure_FWHM = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_240418.csv",
+        datastructure_FWHM = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_240418_new.csv",
                                         target = "FWHM",
                                         wavelength_unit= "NM",             
                                         wavelength_filter= [400, 550],
