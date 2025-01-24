@@ -441,7 +441,7 @@ class GaussianProcess:
             case "MLP":
                 return GPy.kern.MLP(input_dim, ARD = True) + GPy.kern.MLP(input_dim, ARD=True)
             case "EXP":
-                return GPy.kern.Exponential(input_dim, lengthscale= 0.5)
+                return GPy.kern.Exponential(input_dim, lengthscale= 0.05)
             case "LIN":
                 return GPy.kern.Linear(input_dim)
             case "POLY":

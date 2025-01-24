@@ -19,8 +19,13 @@ from GaussianProcess import *
     and plots the result
 """
 
-MOLECULES = ["Pentanone", "Butanone", "3-Pentanone", "Propanol"]
-lengths = [1, 2, 4, 5, 8]
+# read all molecules from molecule_encoding.json
+def read_molecule_encoding():
+    with open("data/molecule_encoding.json", "r") as file:
+        molecule_encoding = json.load(file)
+    return molecule_encoding
+
+MOLECULES = read_molecule_encoding().keys()
 areas = []
 
 for TRANSFER_MOLECULE in MOLECULES:
@@ -28,7 +33,7 @@ for TRANSFER_MOLECULE in MOLECULES:
                                 synthesis_file_path = "Dataset_Transfer.csv",
                                 target              = "PEAK_POS",                                  
                                 wavelength_unit     = "NM",
-                                monodispersity_only = False,
+                                monodispersity_only = True,
                                 P_only              = True,
                                 molecule            = TRANSFER_MOLECULE,
                                 add_baseline        = True,
@@ -98,7 +103,7 @@ for TRANSFER_MOLECULE in MOLECULES:
     gp.train()
     gp.print_parameters()
 
-    #datastructure.plot_data("AS_Pb_ratio", "Cs_Pb_ratio", kernel= gp, model = "GP", molecule= TRANSFER_MOLECULE,)
+    datastructure.plot_data("AS_Pb_ratio", "Cs_Pb_ratio", kernel= gp, model = "GP", molecule= TRANSFER_MOLECULE,)
     area = datastructure.plot_2D_contour_old(kernel = gp, molecule= TRANSFER_MOLECULE,)
     #datastructure.plot_2D_contour(kernel = gp,)
 
@@ -110,7 +115,7 @@ for TRANSFER_MOLECULE in MOLECULES:
 plt.show()
 
 import matplotlib.pyplot as plt
-plt.plot(lengths, areas, "s--", color="cornflowerblue")
+plt.plot(MOLECULES, areas, "s--", color="cornflowerblue")
 
 plt.ylabel("area below 464nm (norm)")
 plt.xlabel("carbon chain length")
@@ -123,3 +128,9 @@ plt.tick_params(axis='x', direction='in')
 plt.tick_params(axis='y', direction='in')
 
 plt.show()
+
+# write areas to file
+with open("areas.csv", "w") as file:
+    file.write("molecule, area\n")
+    for molecule, area in zip(MOLECULES, areas):
+        file.write(f"{molecule}, {area}\n")

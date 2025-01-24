@@ -193,8 +193,8 @@ class Datastructure:
             # if self.synthesis_data["Age of prec"][index] != "-":
             #     continue
 
-            # if sample_number == "156":
-            #     continue
+            if sample_number in ["j103", "j104", "j105", "j109"]:
+                continue
 
             ###################################################
             if not FILTER:

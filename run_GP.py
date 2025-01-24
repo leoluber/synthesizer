@@ -20,7 +20,7 @@ from Preprocessor import *
     and plots the result
 """
 
-TRANSFER_MOLECULE = "Methanol"
+TRANSFER_MOLECULE = "Cyclopentanone"
 
 datastructure = Datastructure(
                             synthesis_file_path = "Perovskite_NC_synthesis_NH_240418_new.csv", 
@@ -28,9 +28,9 @@ datastructure = Datastructure(
                             PLQY_criteria       = False,
                             #wavelength_filter  = [455, 464],                                        
                             wavelength_unit     = "NM",
-                            monodispersity_only = False,
+                            monodispersity_only = True,
                             encoding            = "geometry", 
-                            P_only              = False,
+                            P_only              = True,
                             molecule            = TRANSFER_MOLECULE,
                             add_baseline        = True,
                             )
