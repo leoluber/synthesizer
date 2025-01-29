@@ -2,10 +2,11 @@
  """
     # < github.com/leoluber >
 
-
+#%%
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import warnings
 import os
 import sys
@@ -15,6 +16,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.
 # custom
 from package.src.Datastructure import Datastructure
 from package.src.GaussianProcess import GaussianProcess
+from package.plotting.Plotter import Plotter
 
 
 
@@ -31,11 +33,7 @@ from package.src.GaussianProcess import GaussianProcess
 
 datastructure = Datastructure(
                             synthesis_file_path = "CsPbI3_NH_LB_AS_BS_combined.csv", 
-                            spectral_file_path  = "spectrum_CsPbI3/",
-                            target              = "PEAK_POS",
-                            PLQY_criteria       = False,
-                            #wavelength_filter  = [455, 464],                                        
-                            wavelength_unit     = "NM",
+                            spectral_file_path  = "spectrum_CsPbI3/",     
                             monodispersity_only = False,
                             P_only              = True,
                             molecule            = "Toluene",
@@ -45,40 +43,12 @@ datastructure = Datastructure(
 
 #%%
 
-# adjust the selection of training parameters
-datastructure.synthesis_training_selection  = ["Cs_Pb_ratio", "Pb/I",]
+# feature selection
+features = ["Cs_Pb_ratio", "Pb/I" ,  "V (Cs-OA)", ]
+#["Cs_Pb_ratio", "Pb/I" , "V (Cs-OA)", "t_RKT", "RPM_cent", "t_cent" ]
 
-
-data_objects = datastructure.get_data()
-
-# get parameter selection
-parameter_selection = datastructure.total_training_parameter_selection
-
-
-
-#%%
-
-
-# select input and target from Data objects
-inputs, targets, sample_numbers = [], [], []
-molecule, peak_pos = [], []
-
-
-for data in data_objects:
-
-    inputs.append(data["total_parameters"])
-    peak_pos.append(data["peak_pos"])
-
-
-            # TARGETS
-    targets.append(data["y"])
-
-plt.show()
-
-# convert to numpy arrays
-inputs = np.array(inputs)
-targets = np.array(targets)
-
+# get training data
+inputs, targets = datastructure.get_training_data(training_selection=features, target="peak_pos")
 
 
 
@@ -86,7 +56,6 @@ targets = np.array(targets)
 
 gp = GaussianProcess(
                     training_data = inputs,
-                    parameter_selection = parameter_selection, 
                     targets = targets, 
                     kernel_type = "EXP", 
                     model_type  = "GPRegression",   
@@ -109,9 +78,11 @@ gp = GaussianProcess(
 gp.train()
 gp.print_parameters()
 
-datastructure.plot_data(datastructure.synthesis_training_selection[0], datastructure.synthesis_training_selection[1], kernel= gp, model = "GP", molecule= "Toluene",)
-#datastructure.plot_2D_contour_old(kernel = gp, molecule= TRANSFER_MOLECULE,)
-#datastructure.plot_2D_contour(kernel = gp,)
+
+plotter = Plotter()
+plotter.plot_data(features[0], features[1], "peak_pos", kernel= gp, molecule= "Toluene",)
+#plotter.plot_2D_contour_old(kernel = gp, molecule= "Toluene",)
+#plotter.plot_2D_contour(kernel = gp,)
 
 exit()
 

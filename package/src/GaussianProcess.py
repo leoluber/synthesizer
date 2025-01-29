@@ -44,7 +44,7 @@ class GaussianProcess:
 
 
     def __init__(self, 
-                 training_data = None, parameter_selection = None,
+                 training_data = None, 
                  targets = None,
                  kernel_type: Literal["RBF", "MLP", "EXP", "LIN"] = "EXP",
                  model_type  = "GPRegression",
@@ -54,7 +54,6 @@ class GaussianProcess:
         # training specific
         self.training_data = training_data
         self.input_dim = self.training_data.shape[1]
-        self.parameter_selection = parameter_selection
         self.targets = targets
 
 
@@ -370,32 +369,6 @@ class GaussianProcess:
 
 ### --------------------- OPTIMIZATION ----------------------- ###
 
-    def iterate_and_ignore(self):
-        
-        """ Iterates over all parameters and ignores one at a time to find the best set """
-
-        mse_historgram = []
-
-        for parameter in self.parameter_selection:
-
-            print(f"Ignoring parameter:     {parameter}")
-
-            index = self.parameter_selection.index(parameter)
-            new_training_data = np.delete(self.training_data, index, axis=1)
-
-            mse = self.leave_one_out_cross_validation(new_training_data, self.targets)
-            mse_historgram.append(mse)
-        
-
-        # plot the results
-        fig = plt.figure(figsize = (10, 5))    
-        plt.bar(self.parameter_selection,  mse_historgram, width = 0.4)
-
-        plt.xlabel("Parameters")
-        plt.ylabel("Error(MSE)")
-
-        plt.show()
-    
 
     def choose_best_kernel(self):
         
