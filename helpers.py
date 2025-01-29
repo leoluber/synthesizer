@@ -253,9 +253,6 @@ def surface_proportion(peak_pos, mode: Literal['EV', 'NM'], l = 20) -> float:
 
 
 
-
-
-
 ############### ---------------- VIZ ----------------- ################
 
 def plot_covariance():

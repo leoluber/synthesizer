@@ -479,8 +479,9 @@ class GaussianProcess:
         
         if TRANSFER_MOLECULE is None:
             #ax.plot([0.06, 0.18],[0.06, 0.18] ,'k--', lw=2)
-            ax.plot([0.0, 1],[0.0, 1] ,'k--', lw=2)
+            #ax.plot([0.0, 1],[0.0, 1] ,'k--', lw=2)
             #ax.plot([440, 520], [440, 520], 'k--', lw=2)
+            ax.plot([570, 710],[570, 710] ,'k--', lw=2)
         else:
             ax.plot([420, 520], [420, 520], 'k--', lw=2)
 

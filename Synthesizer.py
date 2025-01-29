@@ -8,7 +8,6 @@ import time
 from GPyOpt.methods import BayesianOptimization
 from datetime import date
 from typing import Literal
-import matplotlib.animation as animation
 
 # custom modules
 from Datastructure import *
@@ -16,6 +15,8 @@ from helpers import *
 from KRR import Ridge
 from GaussianProcess import GaussianProcess
 from Preprocessor import Preprocessor
+
+
 
 
 
