@@ -31,9 +31,8 @@ from package.src.Synthesizer import Synthesizer
 #molecule_name = input("Enter the molecule name: (e.g. Ethanol, Methanol, ...):     ")
 #target_peak   = int(input("Enter the target peak position in nm: (e.g. 470):         "))
 
-molecule_name =  "Cyclopentanone"
-geometry =        [0.5, 1, 0]
-target_peak   =   488
+molecule_name =  "Toluene"
+target_peak   =   620
 
 ### ------------------------------------------------------------------------- ###
 
@@ -45,19 +44,20 @@ def main():
 
     # initialize synthesizer object and optimize (specify As molecule and NPL type)
     synthesizer = Synthesizer(molecule_name, 
-                              iterations =       110, 
+                              data_path=         "CsPbI3_NH_LB_AS_BS_combined_new.csv",
+                              spectral_path=     "spectrum_CsPbI3/",
+                              iterations =       100, 
                               peak =             target_peak,
-                              obj =              ["PEAK_POS", "FWHM"], 
-                              encoding_type =    "geometry", 
-                              geometry =         None,
+                              obj =              ["peak_pos", "poly"], 
+                              ion=               "CsPbI3",  # "CsPbI3", "CsPbBr3",
                               Cs_Pb_opt =        False,
                               Cs_As_opt=         False,
-                              c_Pb_fixed =       0.01, 
+                              c_Pb_fixed =       None, 
                               #V_As_fixed=       5000,
-                              V_Cs_fixed=        100,  
+                              V_Cs_fixed=        None,  
                               c_Pb_max =         None,
                               V_As_max=          5000,
-                              model_type=        "GP",
+                              add_baseline=      False,
                               )
     
     

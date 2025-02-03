@@ -8,18 +8,15 @@ from typing import Literal
 import numpy as np
 import os
 import pandas as pd
-import matplotlib.pyplot as plt
-import plotly
-import pickle
 import json
+import matplotlib.pyplot as plt
 import os
 from plotly import graph_objs as go
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 
-
 # custom
-from src.helpers import nm_to_ev, ev_to_nm, find_lowest, surface_proportion
+from src.helpers import nm_to_ev, ev_to_nm
 
 
 
@@ -36,16 +33,19 @@ class Datastructure:
 
     REQUIREMENTS
     ------------
-    - all data should be at "/data/" relative to the current working directory and contain:
-        - a folder "spectrum" with the spectral data in .txt files (csv)
-        - AntisolventProperties.csv with the global attributes of the molecules; names for 
-          properties to be found in the global_attribute_selection list
-        - a _.csv file with the synthesis data (synthesis_file_path) containing the sample 
-          numbers, molecule names, synthesis parameters and other properties
+    - all experimental data should be in "/data/raw/" and contain:
+        - a folder "spectrum" with the spectral data in .txt or .csv files 
+        - a .csv file with the synthesis data containing the sample numbers, molecule names, 
+          synthesis parameters and other properties
+        - a .csv file with the global attributes of the molecules (AntisolventProperties.csv)
+        - a .json file with the molecule dictionary (molecule_dictionary.json)
+        - a .json file with the molecule encoding (molecule_encoding.json)
+        - a .json file with the ML dictionary (ml_dictionary.json)
 
     PARAMETERS
     ----------
     - synthesis_file_path:   path to the synthesis data file (csv)
+    - spectral_file_path:    path to the spectral data files (txt, csv)
     - encoding:              encoding type for the molecules (one_hot, geometry)
     - wavelength_filter:     filter for the peak position (list of two values in nm)
     - molecule:              molecule to be selected (all, specific molecule)
@@ -57,8 +57,7 @@ class Datastructure:
     -------------
     >>> from Datastructure import Datastructure
     >>> ds = Datastructure(synthesis_file_path = "synthesis_data.csv", target = "FWHM", ...)
-    >>> ds.get_training_data(["Cs_Pb_ratio", "AS_Pb_ratio"], "FWHM")
-
+    >>> x, y = ds.get_training_data(["Cs_Pb_ratio", "AS_Pb_ratio"], "peak_pos")
 
 
     FEATURES
@@ -69,14 +68,13 @@ class Datastructure:
 
 
 
-
     def __init__(
         self,
         synthesis_file_path:   str, 
-        spectral_file_path:   str = "spectrum/",
-        encoding:        Literal["one_hot", "geometry",] = "one_hot",
+        spectral_file_path:    str = "spectrum/",
+        encoding:              Literal["one_hot", "geometry",] = "one_hot",
         wavelength_filter =    [400, 800],
-        molecule =            "all",
+        molecule =             "all",
         add_baseline =         False,
         monodispersity_only =  False,
         P_only =               False,
@@ -84,8 +82,8 @@ class Datastructure:
         
 
         # main stettings
-        self.encoding        = encoding
-        self.add_baseline    = add_baseline
+        self.encoding          = encoding
+        self.add_baseline      = add_baseline
         self.wavelength_filter = wavelength_filter
 
 
@@ -93,15 +91,29 @@ class Datastructure:
         self.flags = {
                       "monodispersity_only": monodispersity_only,
                       "P_only"             : P_only,
-                      "molecule"           : molecule}
+                      "molecule"           : molecule
+                      }
+        
+        # parameter names
+        self.essential_parameters     = ["Sample No.", "c (PbBr2)", "c (Cs-OA)" , 
+                                         "V (Cs-OA)","V (antisolvent)", "V (PbBr2 prec.)", 
+                                         "antisolvent", ]
+        self.non_essential_parameters = ["PLQY", "Reference", "PL_data", "Pb/I", "monodispersity",
+                                         "Age of prec", "S/P", "suggestion", "NC shape", "polydispersity",
+                                         "Centrifugation time [min]", "Centrifugation speed [rpm]"]
+        self.parameters_to_normalize  = ["n_Cs", "n_Pb", "V_total", "V (Cs-OA)", "Pb/I", 
+                                         "V (PbBr2 prec.)", "V (antisolvent)", "c (PbBr2)", 
+                                         "c (Cs-OA)", "Centrifugation speed [rpm]","Centrifugation speed [rpm]"]
         
 
         # directories
+        self.dataset =                  synthesis_file_path
         self.current_path =             os.getcwd()
-        self.data_path_raw =            self.current_path + "/data/raw/"
-        self.data_path_processed =      self.current_path + "/data/processed/"
+        self.data_path_raw =            self.current_path  + "/data/raw/"
+        self.data_path_processed =      self.current_path  + "/data/processed/"
         self.synthesis_file_path =      self.data_path_raw + synthesis_file_path
-        self.global_attributes_path =   self.data_path_processed + "AntisolventProperties.csv"
+        self.processed_file_path =      self.data_path_processed + "processed_" + synthesis_file_path
+        self.global_attributes_path =   self.data_path_raw + "AntisolventProperties.csv"
         self.spectrum_path =            self.data_path_raw + spectral_file_path
         self.geometry_path=             self.data_path_raw + "molecule_encoding.json"
         self.molecule_dictionary_path = self.data_path_raw + "molecule_dictionary.json"
@@ -124,22 +136,17 @@ class Datastructure:
         # molecule attributes
         self.global_attributes_df =  pd.read_csv(self.global_attributes_path, 
                                                  delimiter= ';', header= 0)
-
-
-        # densities for adjusting the concentrations
+        
         self.densities = {f"{molecule}": self.global_attributes_df
                           .loc[self.global_attributes_df['antisolvent'] == molecule]['n [mol/L]']
                           .to_numpy()
                           .astype(float)[0] for molecule in self.molecule_names}
         
 
-        # read the synthesis data
-        self.read_synthesis_data()
 
 
 
-
-#### ------------------------------  READING DATA ------------------------------ ####
+#### ----------------------------  READING & PREPROCESSING --------------------------- ####
 
 
     def read_synthesis_data(self) -> dict:
@@ -153,14 +160,48 @@ class Datastructure:
         --> ratios are NOT normalized, use units instead to rescale them
         """
 
+
         print("Reading synthesis data...")
 
 
-        # define the essential and non-essential parameters and the parameters to normalize
-        essential_parameters = ["Sample No.", "c (PbBr2)", "c (Cs-OA)" , "V (Cs-OA)","V (antisolvent)", "V (PbBr2 prec.)", "antisolvent"]
-        non_essential_parameters = ["PLQY", "monodispersity", "Reference", "PL_data", "Pb/I", "Age of prec", "S/P", "suggestion", "NC shape"]
-        parameters_to_normalize = ["n_Cs", "n_Pb", "V_total", "V (Cs-OA)", "V (PbBr2 prec.)", "V (antisolvent)", "c (PbBr2)", "c (Cs-OA)"]
+        # get initial dataframe
+        df = self.get_synthesis_dataframe()
 
+        # calculate the essential properties
+        df = self.calculate_properties(df)
+
+        # normalize properties 
+        for key in self.parameters_to_normalize:
+            df[key] = self.normalize(df[key], key)
+
+        # handle specific properties
+        df = self.process_additional_properties(df)
+
+        # add spectral data
+        df = self.add_spectral_data(df)
+
+        # add baseline data
+        if self.add_baseline:
+            df = self.add_limit_baseline(df)
+            df = self.add_Toluene_baseline(df)
+
+        # write updated dataframe to csv
+        df.to_csv(self.processed_file_path, sep = ";")
+
+        # write meta data to file
+        df_meta_data = pd.DataFrame.from_dict(self.max_min, orient = "index", columns = ["max", "min"])
+        df_meta_data.to_csv(self.data_path_processed + "meta_data_" + self.dataset, sep = ";")
+
+
+        print("Data read and processed successfully!")
+        return 0
+    
+
+    def get_synthesis_dataframe(self) -> pd.DataFrame:
+        
+        """ Reads the synthesis data from the csv file and returns a pandas dataframe
+            with some basic error handling and parameter checking
+        """
 
         # read the dataframe from the defined path
         if not os.path.exists(self.synthesis_file_path): 
@@ -169,155 +210,162 @@ class Datastructure:
 
 
         #check if the critical columns are present
-        for key in essential_parameters:
+        for key in self.essential_parameters:
             if key not in df.columns:
-                raise KeyError(f"KeyError: {key} not found in synthesis data")
+                raise KeyError(f"KeyError: {key} parameter not found in synthesis data")
             
         
         # print out unfamiliar columns
         print("Unfamiliar columns:")
-        unfamiliar_columns = [key for key in df.columns if key not in essential_parameters + non_essential_parameters]
+        unfamiliar_columns = [key for key in df.columns 
+                              if key not in self.essential_parameters + self.non_essential_parameters]
         print(unfamiliar_columns)
-        
 
-        # remove unwanted molecules  TODO: move this to the data selection
+        # remove unknown molecules and replace "0" with "Toluene"
         recognized_molecules = list(self.molecule_dictionary.keys())
         df['antisolvent'] = df['antisolvent'].replace("0", "Tol")
         df = df[df['antisolvent'].isin(recognized_molecules)]
 
-        print(df)
+        return df
 
-        # calculate properties 
-        # (if these raise an error, there is a fundamental issue with the provided dataset)
+
+    def calculate_properties(self, df) -> pd.DataFrame:
+
+        """ Calculate the essential properties from the data
+            such as the Cs_Pb_ratio, AS_Pb_ratio, ...
+            (if these raise an error, there is a fundamental issue with the provided dataset)
+        """
+
         try:
-            print(len(df["c (PbBr2)"]), len(df["V (PbBr2 prec.)"]))
-            df['n_Pb'] = (df["c (PbBr2)"]* df["V (PbBr2 prec.)"]),
-            df['Cs_Pb_ratio'] = (df["n_Cs"] / df["n_Pb"]),
-            df['AS_Pb_ratio'] = (df["V (antisolvent)"]) / (df["V (PbBr2 prec.)"] * df["c (PbBr2)"]),
-            df['Cs_As_ratio'] = (df["c (Cs-OA)"] * df["V (Cs-OA)"]) / (df["V (antisolvent)"] + 0.0001),
-            df['V_total'] = df["V (Cs-OA)"] + df["V (antisolvent)"] + df["V (PbBr2 prec.)"],
+            df["n_Cs"] = df["c (Cs-OA)"] * df["V (Cs-OA)"]
+            df["n_Pb"] = df["c (PbBr2)"] * df["V (PbBr2 prec.)"]
+            df['Cs_Pb_ratio'] = df["n_Cs"] / df["n_Pb"]
+            df['AS_Pb_ratio'] = df["V (antisolvent)"] / df["n_Pb"]
+            df["V (antisolvent)"] = df["V (antisolvent)"] + 0.000001
+            df['V_total'] = df["V (Cs-OA)"] + df["V (antisolvent)"] + df["V (PbBr2 prec.)"]
+
 
         except KeyError:
             print("KeyError: central properties not found in synthesis data")
             return None
 
+        return df
+    
 
-        # normalize properties 
-        for key in parameters_to_normalize:
-            df[key] = self.normalize(df[key], key)
+    def process_additional_properties(self, df) -> pd.DataFrame:
 
+        """Handles specific properties of the synthesis data
+            (especially the ones that are not found in all datasets)
+            if these raise an error, there are workarounds in place to handle the issue
+        """
+    
 
+        # (1) SYNTHESIS & CENTRIFUGATION TIME:  normalize the, log to handle the large range
 
-
-        ### ----------------------  CASE SPECIFIC HANDELING  ---------------------- ###
-        # if these raise an error, there are workarounds in place to handle the issue
-        # TODO: generalize this, it's a mess
-        
-
-        """ >>> SYNTHESIS TIME:  normalize the , log to handle the large range """
         try:
-            df["t_RKT"] = self.normalize(np.log(df["t_RKT"]))
+            df["t_Rkt"] = self.normalize(np.log(df["t_Rkt"]), "t_Rkt")
+            df["Centrifugation time [min]"] = self.normalize(df["Centrifugation time [min]"], "Centrifugation time [min]")
         except KeyError:
-            print("KeyError: t_RKT not found in synthesis data")
-            df["t_RKT"] = np.zeros(len(df["Sample No."]))
+            print("KeyError: t_RKT or Centrifugation time [min], not found in synthesis data")
+            df["t_Rkt"] = np.zeros(len(df["Sample No."]))
+            df["Centrifugation time [min]"] = np.zeros(len(df["Sample No."]))
 
 
-        """ >>> MONODISPERSITY: can be a either a boolean or a float """
+        # (2) PL_data: if not found, use sample number.txt instead
+
+        if "PL_data" not in df.columns:
+            print("KeyError: PL_data not found in synthesis data, using [sample_number].txt instead")
+            df["PL_data"] = [str(x) + ".txt" for x in df["Sample No."]]
+
+
+        # (3) MONODISPERSITY: can be a either a descrete or a continuous value 
         try:
-            if set(df["monodispersity"]) <= {0, 1, ""}:
+            if set(df["monodispersity"]) <= {0, 1, 0.5, ""}: 
+                #descrete values
                 df["monodispersity"] = df["monodispersity"].replace("", 0)
                 df["monodispersity"] = df["monodispersity"].astype(int)
+
             else:
+                # continuous values
                 df["monodispersity"] = self.normalize(df["monodispersity"], "monodispersity")
 
         except KeyError:
             print("KeyError: monodispersity not found in synthesis data")
             df["monodispersity"] = np.ones(len(df["Sample No."]))
 
+
+        # (4) molecule_name: translate the molecule name to internal standard
+
+        df["molecule_name"] = np.array([self.molecule_dictionary[molecule] for molecule in df["antisolvent"]])
+
+
         
-        """ >>>  PL_data: if not found, use the 'sample_number.txt' instead """
-        try:
-            if "Pl_data" not in df.columns:
-                df["PL_data"] = df["Sample No."].astype(str) + ".txt"
-            else:
-                df["PL_data"] = df["PL_data"].astype(str)
+        # (5) addditional columns: prepare the dataframe for later use
 
-        except KeyError:
-            print("KeyError: PL_data not found in synthesis data")
-            df["PL_data"] = df["Sample No."].astype(str) + ".txt"
-        
+        # will be used later to mark the extrapolated data
+        for key in ["baseline", "artificial", ]:
+            df[key] = np.zeros(len(df["Sample No."]), dtype = bool)
 
-        """ >>> suggestion: if not found, use an empty string instead """
-        if "suggestion" not in df.columns:
-            df["suggestion"] = ""
-
-        """ >>> molecule_name """
-        df["molecule_name"] = df["antisolvent"]
-        for index, molecule in enumerate(df["molecule_name"]):
-            df["molecule_name"][index] = self.molecule_dictionary[molecule]
+        # encoding: one_hot or geometry encoding in list format
+        df["encoding"] = [self.encode(molecule)
+                        for molecule in df["molecule_name"]]
 
 
-        ### -------------------------  PREPROCESSING  -------------------------- ###
+
+        # (7) Antisolvent correction: calculate the AS_Pb_ratio and n_As by considering the density and units
+        df["n_As"] = np.zeros(len(df["Sample No."]))
+        for index, row in df.iterrows():
+            df["AS_Pb_ratio"][index] = row["AS_Pb_ratio"] * self.densities[row["molecule_name"]]
+            df["n_As"][index] = row["V (antisolvent)"] * self.densities[row["molecule_name"]]
+
+        # multiply AS_Pb_ratio by 10000
+        df["AS_Pb_ratio"] = df["AS_Pb_ratio"] / 10000
+
+
+
+        return df
+
+
+    def add_spectral_data(self, df) -> pd.DataFrame:
+
+        """ Read the spectral data from external files at /data/raw/ and
+         add them to the dataframe """
+
+
+        # define the columns for the spectral data
+        for key in ["fwhm", "peak_pos", "poly_peak_pos", "peak_pos_eV"]:
+            df[key] = np.zeros(len(df["Sample No."]))
+
+        # iterate the rows and read the spectral data
+        for index, row in df.iterrows():
+            try:
+                fwhm, peak_pos, poly_peak_pos, peak_pos_eV = self.read_spectrum(self.spectrum_path + row["PL_data"])
+                df["fwhm"][index] = fwhm
+                df["peak_pos"][index] = peak_pos
+                df["poly_peak_pos"][index] = poly_peak_pos
+                df["peak_pos_eV"][index] = peak_pos_eV
+
+            except TypeError:
+                print(f"TypeError: {row['PL_data']} not found in spectral data")
+                continue
+
+
+        # remove all rows with missing spectral data
+        df = df[df["peak_pos"] != 0]
+
 
         # classify the product
         df["NPL_type"] = [self.get_NPL_type(peak_pos) for peak_pos in df["peak_pos"]]
 
 
-        # add empty columns for parameters needed at a later stage
-        for key in ["baseline", "artificial", ]:
-            df[key] = np.zeros(len(df["Sample No."], dtype = bool))
+        return df
 
 
-        # encoding
-        df["encoding"] = [self.encode(self.molecule_dictionary[molecule]) 
-                        for molecule in df["molecule_names"]]
+
+#### ------------------------------  TRAINING DATA  ------------------------------- ####
 
 
-        # correct ratios by antisolvent density
-        df["n_As"] = np.zeros(len(df["Sample No."]))
-
-        for index, molecule in enumerate(df["molecule_names"]):
-            df['AS_Pb_ratio'][index] = df['AS_Pb_ratio'][index] * self.densities[molecule] / 10000
-            df['n_As'][index] = df['V (antisolvent)'][index] * self.densities[molecule]
-
-
-        
-        # read spectral data
-        for index, sample_number in enumerate(df["Sample No."]):
-            try:
-                path = self.spectrum_path + df["PL_data"][index]
-
-            except KeyError:
-                print(f"KeyError: PL_data column not in synthesis data, using sample number instead")
-                path = self.spectrum_path + str(sample_number)
-            
-            if not os.path.exists(path):
-                print(f"File not found: {path}")
-                continue
-
-            fwhm, peak_pos, poly_peak_pos, peak_pos_eV = self.read_spectrum(path, monodispersity = df["monodispersity"][index])
-
-            df["fwhm"][index] = fwhm
-            df["peak_pos"][index] = peak_pos
-            df["poly_peak_pos"][index] = poly_peak_pos
-            df["peak_pos_eV"][index] = peak_pos_eV
-
-
-        # add baseline data
-        if self.add_baseline:
-            df = self.add_limit_baseline(df)
-            df = self.add_Toluene_baseline(df)
-
-
-        # write updated dataframe to csv
-        df.to_csv("data/processed/data_processed.csv", sep = ";")
-
-        print("Data read and processed successfully")
-
-        return 0
-
-
-    def get_training_data(self, training_selection: list, target: str) -> tuple:
+    def get_training_data(self, training_selection: list, target: str, encoding = False )-> tuple:
 
         """ reads processed_data.csv and returns the training data as a numpy arrays 
             
@@ -326,17 +374,19 @@ class Datastructure:
         """
 
         # read the processed data
-        data_frame = pd.read_csv("data/processed/data_processed.csv", delimiter= ";", header= 0)
+        data_frame = pd.read_csv(self.processed_file_path, delimiter= ";", header= 0)
 
 
         #### --------------- TEMPORARY CHANGES --------------- ####
-        data_frame = data_frame[data_frame["Sample No."] > 120]
+        data_frame = data_frame[data_frame["Sample No."].astype(int) >= 120]
+        data_frame  = data_frame[data_frame["Pb/I"].astype(float) >0.4]
 
 
         # check if the keys are in the dataframe
         for key in (training_selection + [target]):
             if key not in data_frame.columns:
                 raise KeyError(f"KeyError: {key} not found in synthesis data")
+            
             
 
         # make sample selection based on self.flags and other criteria
@@ -346,22 +396,28 @@ class Datastructure:
 
         if self.flags["molecule"] != "all":
             data_frame = data_frame[data_frame['molecule_name'] == self.flags["molecule"]]
+
         if self.flags["monodispersity_only"]:
-            data_frame = data_frame[int(data_frame['monodispersity']) == 1]
+            data_frame = data_frame[data_frame['monodispersity'].astype(int) == 1]
+
         if self.flags["P_only"]:
-            data_frame = data_frame[data_frame['S/P'] == "P"]
+            data_frame = data_frame[data_frame['S/P'] != "S"]
+
         if target == "PLQY":
             data_frame = data_frame[data_frame['PLQY'] != 0]
-        
 
         # get the training data
         x = data_frame[training_selection].to_numpy()
         y = data_frame[target].to_numpy()
 
+        # add the encoding if requested
+        if encoding:
+            encodings = np.array([json.loads(x) for x in data_frame["encoding"]])
+            x = np.concatenate((encodings, x), axis = 1)
 
-        return x, y
+
+        return x, y, data_frame
             
-
 
 #### ----------------------------------  HELPERS  -------------------------------- ####
 
@@ -380,7 +436,6 @@ class Datastructure:
         return geo_encoding
 
 
-
     def read_spectrum(self, path,) -> tuple:
 
         """ Reads in the spectral data from a .txt or .csv file
@@ -392,6 +447,9 @@ class Datastructure:
         - the first column is the wavelength (nm)
         - the last column is the intensity 
         """
+
+        if not os.path.exists(path):
+            return 0,0,0,0
     
         energies, spectrum = [], []
         with open(path, "r") as filestream:
@@ -420,20 +478,21 @@ class Datastructure:
 
         # normalize the spectrum
         spectrum = [x/max(spectrum) for x in spectrum]
+        
 
 
         ### -- calulate two different peak positions -- ###
         # poly_peak_pos is the peak position calculated from the "centre of mass"
         max_index = spectrum.index(max(spectrum))
         peak_pos = energies[max_index]
-        peak_pos_eV = peak_pos.copy()
+        peak_pos_eV = peak_pos
         poly_peak_pos = np.average(np.array(energies), weights = spectrum)
 
 
         ### -- calculate the FWHM -- ###
         # linear interpolation for the FWHM
-        x_vec = np.linspace(wavelength[-1], wavelength[0], 10000)
-        y_vec = np.interp(x_vec, np.flip(wavelength), np.flip(spectrum))
+        x_vec = np.linspace(energies[-1], energies[0], 10000)
+        y_vec = np.interp(x_vec, np.flip(energies), np.flip(spectrum))
 
         # get indices for the left and right side of the peak
         above_half_max = y_vec > (0.5 * max(spectrum))
@@ -444,13 +503,17 @@ class Datastructure:
         fwhm = abs(x_vec[left_index] - x_vec[right_index])
 
 
-        # if the mode is NM, convert the peak position to nm
-        if self.wavelength_unit == "NM":
-            peak_pos = ev_to_nm(peak_pos)
-            wavelength = [ev_to_nm(x) for x in wavelength]
+        # convert the peak position to eV
+        peak_pos = ev_to_nm(peak_pos)
+        poly_peak_pos = ev_to_nm(poly_peak_pos)
+        wavelengths = [ev_to_nm(x) for x in energies]
+
+        if peak_pos < 400:
+            print(f"Peak position below 400 nm: {peak_pos} nm")
+            return None
+    
 
         return fwhm, peak_pos, poly_peak_pos, peak_pos_eV
-
 
 
     def normalize(self, a, name):
@@ -462,10 +525,9 @@ class Datastructure:
         if (a.max() - a.min()) == 0: 
             print(f"Normalization issue: {a}  has no range; returning original array")
             return a
-        
+
         return (a-a.min())/(a.max()-a.min())
     
-
 
     def denormalize(self, a, name):
 
@@ -479,13 +541,9 @@ class Datastructure:
         return a * (max_val - min_val) + min_val
 
 
-
     def get_NPL_type(self, peak_pos) -> float:
 
         """ Classify the NPL type from the peak position using the ml_dictionary """
-        
-        if self.wavelength_unit == "EV":
-            peak_pos = ev_to_nm(peak_pos)
 
         for key, value in self.ml_dictionary.items():
             if value[0] <= peak_pos <= value[1]:
@@ -498,49 +556,59 @@ class Datastructure:
 
 #### ----------------------------  BASELINE ADDITION  --------------------------- ####
 
-    def add_limit_baseline(self, dataframe, molecules: list):
+    def add_limit_baseline(self, dataframe,):
 
         """ Adds a number of extrapolated data points to the dataframe 
             based on physical and chemical insights
         """
     
         # define the inputs and the peak position
-        inputs  = [[i/10, 1] for i in range(0, 1)]
+        inputs  = [[i/10, 1] for i in range(0, 10)]
         peak  = 515
 
-        if self.wavelength_unit == "EV":
-            peaks = [nm_to_ev(peak) for i in range(len(inputs))]
-        else:
-            peaks = [peak for i in range(len(inputs))]
+        peaks = [peak for _ in range(len(inputs))]
 
+        # list of unique molecules
+        molecules = list(set(dataframe["molecule_name"]))
 
         # add new data to data objects
+        print(inputs)
         for molecule in molecules:
             for i, input_ in enumerate(inputs):
                 new_row = {}
+                new_row["Cs_Pb_ratio"] = input_[1]
+                new_row["AS_Pb_ratio"] = input_[0]
                 new_row["Sample No."] = "baseline"
                 new_row["molecule_name"] = molecule
                 new_row["baseline"] = True
                 new_row["artificial"] = True
-                new_row["encoding"] = self.encode(molecule, self.encoding)
+                new_row["encoding"] = self.encode(molecule,)
                 new_row["peak_pos"] = peaks[i]
+                new_row["poly_peak_pos"] = peaks[i]
+                new_row["peak_pos_eV"] = nm_to_ev(peaks[i])
                 new_row["fwhm"] = 0
-                dataframe.append(new_row)
+
+                dataframe = dataframe._append(new_row, ignore_index = True)
+        
+        print(dataframe[['Sample No.', 'molecule_name', 'Cs_Pb_ratio', 'AS_Pb_ratio', 'peak_pos']])
 
         return dataframe
 
 
-
-    def add_Toluene_baseline(self, dataframe, molecules: list):
+    def add_Toluene_baseline(self, dataframe,):
 
         """ Adds a baseline of the Toluene (no antisolvent) data to all antisolvents"""
         print("Adding Toluene baseline")
 
+        # list of unique molecules
+        molecules = list(set(dataframe["molecule_name"]))
+
         # we don't want to add the Toluene data to the Toluene data
-        molecules.drop("Toluene")
+        molecules.remove("Toluene")
 
         # get Toluene data (excluding the limit baselines)
-        toluene_data = dataframe[dataframe["molecule_name"] == "Toluene" and dataframe["baseline"] == False]
+        toluene_data = dataframe[dataframe["molecule_name"] == "Toluene"]
+        toluene_data = toluene_data[dataframe["baseline"] == False]
 
         # iterate the rows of tolune data and add the baseline to the other molecules
         for index, row in toluene_data.iterrows():
@@ -551,14 +619,10 @@ class Datastructure:
                 new_row["Sample No."] = "baseline"
                 new_row["artificial"] = False
                 new_row["fwhm"] = 0
-                new_row["encoding"] = self.encode(molecule, self.encoding)
-                dataframe.append(new_row)
+                new_row["encoding"] = self.encode(molecule,)
+                dataframe = dataframe._append(new_row, ignore_index = True)
             
         return dataframe
-
-
-
-        return new_data_objects
 
 
 
@@ -571,7 +635,6 @@ class Datastructure:
             Read the molecule dictionary and ML dictionary from the json files
         """
 
-        # read the molecule dictionary
         try:
             with open(self.molecule_dictionary_path, "r") as file:
                 molecule_dictionary = json.load(file)
@@ -585,6 +648,6 @@ class Datastructure:
             return molecule_dictionary, ml_dictionary, encoding
         
         except FileNotFoundError:
-            print("Could not find the molecule dictionary, encoding dictionary or the ML dictionary file. "+
-                   "Please make sure the files are in the correct path and in .json format.")
+            print("Could not find the molecule dictionary, encoding dictionary or the ML dictionary file")
+            print("Please make sure the files are in the correct path and in .json format.")
             return None

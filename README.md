@@ -21,17 +21,12 @@ molecule and target peak position
 - Synthesizer:      Optimization class (based on GPy Opt)
 - Datastructure:    handles all data related functionality (reading, selection, 
   normalization, parameter computations and so on)
-- KRR:              implements the Kernel Ridge Regression model from sklearn 
-  with extra logic
 - GaussianProcess:  implements the GPy Gaussian Process with some extra logic
 - Preprocessor:     a set of Data selection methods and target transformations
-- MoleculeEncoder:  implements Fingerprints, geometric Encoding, etc. (unfinished)
 
 
 
 ## REQUIREMENTS
 
-- torch, torch_geometric
 - GPy, GPyOpt
-- sklearn
 - plotly

@@ -144,7 +144,6 @@ def find_lowest(data_objects) ->  list:
     x = [i for i in x if i is not None]
     y = [i for i in y if i != float("inf")]
 
-    print(y, sample_numbers)
 
 
     return x, y

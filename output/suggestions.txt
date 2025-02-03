@@ -362,3 +362,37 @@ GP predicted rel. FWHM: [0.00171797]
 model type: GP, encoding: geometry, geometry: None, c_Pb_max: None ]
 
 THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+
+
+----------------------------------------------------   2025-02-03   ----------------------------------------------------
+L-SYNTH 2.0-4429
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Toluene- as an antisolvent 
+to make CsPbI3 NPLs around 620nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  1e-06', 'c (Cs-OA) :  0.2', 'V (PbBr2 prec.) :  3462.284504896119', 'V (Cs-OA) :  674.3686741198968']
+with the following As/Pb ratio: 2.717858681657455e-10
+ and the following Cs/Pb ratio: 0.3895512764281804
+
+DEV:
+SETTINGS:  Obj-> ['peak_pos', 'poly'], iterations-> 100,  peak-> 620,  molecule-> Toluene,  add_baseline-> False
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2025-02-03   ----------------------------------------------------
+L-SYNTH 2.0-3930
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Toluene- as an antisolvent 
+to make CsPbI3 NPLs around 620nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  1e-06', 'c (Cs-OA) :  0.13383790995874742', 'V (PbBr2 prec.) :  1939.5990893797514', 'V (Cs-OA) :  273.6308997316661']
+with the following As/Pb ratio: 6.69798856463407e-10
+ and the following Cs/Pb ratio: 0.38953807382215333
+
+DEV:
+SETTINGS:  Obj-> ['peak_pos', 'poly'], iterations-> 100,  peak-> 620,  molecule-> Toluene,  add_baseline-> False
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!

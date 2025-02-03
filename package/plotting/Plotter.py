@@ -17,8 +17,8 @@ from package.src.helpers import find_lowest, surface_proportion, ev_to_nm
 
 
 
-
-class Plotter():
+# Plotter builds on the Datastructure class
+class Plotter(Datastructure):
 
     """ Plotter class
     
@@ -27,13 +27,20 @@ class Plotter():
     """
 
     def __init__(self,
-                 data_path = "data/processed/data_processed.csv",
+                 processed_file_path,
                  ):
         
-
         # read the data
-        self.data_frame = pd.read_csv(data_path, header=0, sep=";")
+        self.data_frame = pd.read_csv(processed_file_path, header=0, sep=";")
 
+        # paths
+        self.data_path_raw =            "data/raw/"
+        self.geometry_path=             self.data_path_raw + "molecule_encoding.json"
+        self.molecule_dictionary_path = self.data_path_raw + "molecule_dictionary.json"
+        self.ml_dictionary_path =       self.data_path_raw + "ml_dictionary.json"
+
+        # get encodings
+        self.molecule_dictionary, self.ml_dictionary, self.molecule_geometry = self.get_dictionaries()
 
 
 
@@ -43,23 +50,29 @@ class Plotter():
                     var1=None, var2 = None, var3 = None,
                     kernel = None,
                     molecule = "all",
-                    library = "plotly") -> None:
+                    library = "plotly",
+                    selection_dataframe = None) -> None:
 
         """
             Simple 3D Scatter plot of the data in parameter space, for visualization;
             kernel can be plotted as well
         """
 
+        # choose the data frame
+        if selection_dataframe is not None:
+            df = selection_dataframe
+        else:
+            df = self.data_frame
+
         # select the data for the correct molecule
         if molecule != "all":
-            print(self.data_frame["molecule_name"])
-            df = self.data_frame[self.data_frame["molecule_name"] == molecule]
+            df = df[df["molecule_name"] == molecule]
+
         
         # different colors for the artificial data
         artificial = df[df["artificial"] == True]
         df = df[df["artificial"] == False]
 
-        print(df)
 
         # get the data
         var_1 = df[var1]
@@ -83,7 +96,7 @@ class Plotter():
                                     text = sample_no,
                                     ))
             
-            fig.update_traces(marker=dict(cmin=480, cmax=650, colorbar=dict(title='PEAK POS'), 
+            fig.update_traces(marker=dict(cmin=380, cmax=650, colorbar=dict(title='PEAK POS'), 
                                     colorscale='rainbow', color=peak, showscale=True, opacity=1),
                                 textposition='top center')
             
@@ -118,11 +131,10 @@ class Plotter():
             input = np.c_[X.ravel(), Y.ravel()]
             
             # add self.encode(molecule, self.encoding) to the input
-            encoding = self.encode(molecule, self.encoding)
+            encoding = self.encode(molecule)
             input = [np.append(encoding, row ) for row in input]
 
             input = np.array(input)
-            print(input.shape)
             Z = kernel.model.predict(input)[0].reshape(X.shape)
             err = kernel.model.predict(input)[1].reshape(X.shape)
 
@@ -134,9 +146,9 @@ class Plotter():
 
 
             # add the surface plot of the kernel with a uniform color
-            # if library == "plotly":
-            #     fig.add_trace(plotly.graph_objects.Surface(x=x_vec, y=y_vec, z=Z, opacity=0.8, colorscale='greys', cmin = 200, cmax = 900))
-            #     #fig.add_trace(plotly.graph_objects.Surface(x=x_vec, y=y_vec, z=Z, opacity=1, colorscale='Viridis', cmin = 430, cmax = 540))
+            if library == "plotly":
+                fig.add_trace(plotly.graph_objects.Surface(x=x_vec, y=y_vec, z=Z, opacity=0.8, colorscale='greys', cmin = 200, cmax = 900))
+                #fig.add_trace(plotly.graph_objects.Surface(x=x_vec, y=y_vec, z=Z, opacity=1, colorscale='Viridis', cmin = 430, cmax = 540))
             # elif library == "matplotlib":
             #     ax.plot_surface(X, Y, Z, alpha=0.7, color = "gray", lw=0.5, rstride=8, cstride=8,)
             #     ax.contourf(X, Y, Z, zdir='z', offset=420, cmap='gist_rainbow_r', alpha=0.8, vmin = 410, vmax = 600, levels = 20)
@@ -169,44 +181,44 @@ class Plotter():
 
 
     def plot_2D_contour(self, var1 = None, var2 = None, 
-                    molecule = "all", kernel = None) -> None:
+                    molecule = None, kernel = None,
+                    selection_dataframe = None) -> None:
 
         """
             2D contour plot of the data in parameter space, for visualization 
             purposes color coded by the target value (PEAK_POS)
         """
 
-        # get the data
-        if molecule != "all":
-            df = self.data_frame[self.data_frame["molecule_name"] == molecule]
+        # choose the data frame
+        if selection_dataframe is not None:
+            df = selection_dataframe
         else:
             df = self.data_frame
+
+
+        # select the data for the correct molecule
+        df = df[df["molecule_name"] == molecule]
 
         # remove the baseline data
         df = df[df["baseline"] == False]
 
+
         # get the data
         x = df[var1]
         y = df[var2]
-        
-
+    
 
         ### -- a contour plot of the kernel -- ###
         y_vec   = np.linspace(0, 1, 100)
         x_vec   = np.linspace(0, 1, 100)
         X, Y    = np.meshgrid(x_vec, y_vec)
         input   = np.c_[X.ravel(), Y.ravel()]
-
-        # output string
-        molecules = list(set([self.data_frame["molecule_name"] for data in self.data if not data["baseline"]]))
-        mol_str   = "_".join(molecules)
         
         # evaluate the kernel on the grid
-        encoding = self.encode(molecules[0], self.encoding)
+        encoding = self.encode(molecule)
         input = np.array([np.append(encoding, row ) for row in input])
 
         if kernel is not None:
-            print(input.shape)
             Z = kernel.model.predict(input)[0].reshape(X.shape)
 
             # contour plot with plotly, figure size is set
@@ -244,15 +256,16 @@ class Plotter():
 
 
         # save the plot as svg and png
-        fig.write_image(f"plots/Contour_Monodisp_{mol_str}.svg")
-        fig.write_image(f"plots/Contour_Monodisp_{mol_str}.png")
+        fig.write_image(f"plots/Contour_Monodisp_{molecule}.svg")
+        fig.write_image(f"plots/Contour_Monodisp_{molecule}.png")
 
         fig.show()
 
 
 
     def plot_2D_contour_old(self, var1 = None, var2 = None, 
-                            kernel = None, molecule = None) -> None:
+                            kernel = None, molecule = None,
+                            selection_dataframe = None) -> None:
 
         """
             2D contour plot of the data in parameter space, for visualization 
@@ -261,21 +274,19 @@ class Plotter():
             >>> ADDED: area calculation below 464nm
         """
 
-        # get the dataframe
-        if molecule != "all":
-            df = self.data_frame[self.data_frame["antisolvent"] == molecule]
+        # choose the data frame
+        if selection_dataframe is not None:
+            df = selection_dataframe
         else:
             df = self.data_frame
 
+        # select the data for the correct molecule
+        df = df[df["molecule_name"] == molecule]
+
         # get the data 
-        x = df[var1]
-        y = df[var2]
+        x = df["AS_Pb_ratio"]
+        y = df["Cs_Pb_ratio"]
         peak_pos = df["peak_pos"]
-
-
-        # output string
-        molecules = list(set([data["molecule_name"] for data in self.data]))
-        mol_str   = "_".join(molecules)
 
 
         # a contour plot of the kernel
@@ -287,13 +298,12 @@ class Plotter():
 
         
         # evaluate the kernel on the grid
-        encoding = self.encode(molecules[0], self.encoding)
+        encoding = self.encode(molecule,)
         input = np.array([np.append(encoding, row ) for row in input])
 
 
         # evaluate the kernel on the grid
         if kernel is not None:
-            print(input.shape)
             Z = kernel.model.predict(input)[0].reshape(X.shape)
             c = ax.contourf(X, Y, Z, 30, cmap='gist_rainbow_r', vmin = 400, vmax = 600, zorder = 1)
 
@@ -325,7 +335,7 @@ class Plotter():
         ax.set_ylabel("Cs/Pb Ratio", fontsize = 12)
 
         # save the plot as svg
-        plt.savefig(f"plots/Contour_{mol_str}.svg")
+        plt.savefig(f"plots/Contour_{molecule}.svg")
         
         plt.show()
 
@@ -496,34 +506,40 @@ class Plotter():
 
 
 
-    def plot_correlation(self) -> None:
+    def plot_correlation(self, selection_dataframe = None) -> None:
 
         """
             Plots the correlation matrix of the data 
             together with the target values
         """
 
-        # get the data
-        data = [data["total_parameters"] for data in self.data]
+        if selection_dataframe is not None:
+            df = selection_dataframe
+        else:
+            df = self.data_frame
 
-        # create a dataframe, usefull for correlation matrix
-        df = pd.DataFrame(data, columns = self.total_training_parameter_selection)
-        df["plqy"]     = [data["plqy"] for data in self.data]
-        df["fwhm"]     = [data["fwhm"] for data in self.data]
-        df["peak_pos"] = [data["peak_pos"] for data in self.data]
+        properties = ["Cs_Pb_ratio", "t_Rkt", "V (Cs-OA)","peak_pos", "fwhm", "polydispersity", "Pb/I", 
+                      "Centrifugation time [min]", "Centrifugation speed [rpm]", "c (Cs-OA)",]
+        df = df[properties]
+        print(df["t_Rkt"])
 
         # plot the correlation matrix
         corr = df.corr()
         fig, ax = plt.subplots()
-        im = ax.imshow(abs(corr), cmap="Blues")
+        # center the colorbar at 0
+        im = ax.imshow(corr, cmap="bwr", vmin=-1, vmax=1)
+
+        # mark the peak_pos with a black border along the row
+        for i in range(len(properties)):
+            if properties[i] == "peak_pos":
+                ax.axhline(i+0.5, color = "black", linewidth = 2)
+                ax.axhline(i-0.5, color = "black", linewidth = 2)
 
         # --> the "+3" is used for the additional plqy, fwhm, peak_pos
-        ax.set_xticks(np.arange(len(self.total_training_parameter_selection)+ 3))
-        ax.set_yticks(np.arange(len(self.total_training_parameter_selection)+ 3))
-        ax.set_xticklabels(self.total_training_parameter_selection 
-                            + ["plqy", "fwhm", "peak_pos"], rotation='vertical')    
-        ax.set_yticklabels(self.total_training_parameter_selection 
-                            + ["plqy", "fwhm", "peak_pos"])
+        ax.set_xticks(np.arange(len(properties)))
+        ax.set_yticks(np.arange(len(properties)))
+        ax.set_xticklabels(properties, rotation = 45)
+        ax.set_yticklabels(properties)
 
 
         plt.colorbar(im)
@@ -539,11 +555,8 @@ class Plotter():
 
         # amount of each substance
         Cs = np.array([data["amount_substance"]["Cs"] for data in data_objects])
-        print(np.mean(Cs))
         Pb = np.array([data["amount_substance"]["Pb"]/4 for data in data_objects])
-        print(np.mean(Pb))
         As = np.array([data["amount_substance"]["As"] for data in data_objects])
-        print(np.mean(As))
         total = Cs + Pb + As
 
         # normalize the data
