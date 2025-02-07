@@ -1,24 +1,37 @@
-r""" Script to optimize NPLs for a given antisolvent molecule (target: PLQY) 
-    using the Synthesizer.py module. """
-    # < github.com/leoluber >
-
+""" 
+    Project:     synthesizer
+    File:        run_Synthesizer.py
+    Description: This script uses the Synthesizer.py module to optimize Perovskite NPLs 
+                 for a given antisolvent molecule and objective function
+    Author:      << github.com/leoluber >> 
+    License:     MIT
+"""
 
 
 
 import os
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 
-# custom
+
+# custom imports
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from package.src.Synthesizer import Synthesizer
 
 
-"""
-    This script uses the Synthesizer.py module to optimize Perovskite NPLs for a given 
-    antisolvent molecule (target: PLQY)
-    - KRR / GP regression models for Peak Position, PLQY, FWHM, ...
-    - bounds given by min/max of all data points
-    - uses GPyOpt for optimization
+
+
+
+
+""" Uses the Synthesizer class to optimize Perovskite NPLs for a given 
+    antisolvent molecule
+
+SUMMARY
+-------
+
+- GP regression models for Peak Position, PLQY, FWHM, ...
+- bounds given by min/max of all data points or custom bounds
+- uses GPyOpt for optimization
+
 """
 
 
@@ -28,11 +41,8 @@ from package.src.Synthesizer import Synthesizer
 
 ### -------------------- choose molecule and target peak -------------------- ###
 
-#molecule_name = input("Enter the molecule name: (e.g. Ethanol, Methanol, ...):     ")
-#target_peak   = int(input("Enter the target peak position in nm: (e.g. 470):         "))
-
-molecule_name =  "Toluene"
-target_peak   =   620
+antisolvent =  "Methanol"
+target_peak   =   475
 
 ### ------------------------------------------------------------------------- ###
 
@@ -40,20 +50,23 @@ target_peak   =   620
 
 def main():
 
-    """ For explanation of the parameters see the Synthesizer.py module """
+    """ For explanation of the parameters see the Synthesizer.py file """
 
-    # initialize synthesizer object and optimize (specify As molecule and NPL type)
-    synthesizer = Synthesizer(molecule_name, 
-                              data_path=         "CsPbI3_NH_LB_AS_BS_combined_new.csv",
-                              spectral_path=     "spectrum_CsPbI3/",
-                              iterations =       100, 
+    synthesizer = Synthesizer(antisolvent, 
+                              
+                            #   data_path=        "CsPbI3_NH_LB_AS_BS_combined_new.csv",
+                            #   spectral_path=    "spectrum_CsPbI3/",
+                              data_path=         "Perovskite_NC_synthesis_NH_240418_new.csv",
+                              spectral_path=     "spectrum/",
+
+
+                              iterations =       50, 
                               peak =             target_peak,
-                              obj =              ["peak_pos", "poly"], 
-                              ion=               "CsPbI3",  # "CsPbI3", "CsPbBr3",
+                              obj =              ["peak_pos", "fwhm"], 
+                              ion=               "CsPbBr3",  # "CsPbI3", "CsPbBr3",
                               Cs_Pb_opt =        False,
                               Cs_As_opt=         False,
                               c_Pb_fixed =       None, 
-                              #V_As_fixed=       5000,
                               V_Cs_fixed=        None,  
                               c_Pb_max =         None,
                               V_As_max=          5000,
@@ -71,21 +84,17 @@ def main():
 
     # get results
     results_string =    synthesizer.results["results_string"]
-    input_NPL =         synthesizer.results["input_NPL"]
-    input_PLQY =        synthesizer.results["input_PLQY"]
-    input_FWHM =        synthesizer.results["input_FWHM"]
     As_Pb_ratio=        synthesizer.results["As_Pb_ratio"]
     Cs_Pb_ratio =       synthesizer.results["Cs_Pb_ratio"]
 
 
     # handle results (all done by the synthesizer class)
-    synthesizer.print_results(results_string, 
-                              input_PLQY, 
-                              input_NPL, 
-                              input_FWHM, 
-                              As_Pb_ratio, 
-                              Cs_Pb_ratio)
-    #synthesizer.test_results(input_PLQY)       
+    synthesizer.print_results( results_string=results_string,
+                               As_Pb_ratio=As_Pb_ratio,
+                               Cs_Pb_ratio=Cs_Pb_ratio,
+                            )
+
+
 
 
 

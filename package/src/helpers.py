@@ -58,21 +58,6 @@ atom_types = {'H' : 1,
 atom_types_inv_map = {v: k for k, v in atom_types.items()}   #inverse dictionary     number --> atom
 
 
-#### ------------------------------------ DATA ------------------------------------ ###
-
-def get_avg_sample(inputs) -> list:
-    
-    """ Get the average sample from a list of samples """
-
-    data_dim = len(inputs[0]) 
-    avg_sample = []
-
-    for index in range(data_dim):
-        avg = np.mean([data[index] for data in inputs])
-        avg_sample.append(avg)
-
-    return avg_sample
-
 
 #### ------------------------------------ OTHER ------------------------------------ ###
 
@@ -83,44 +68,6 @@ def nm_to_ev(nm) -> float:
 def ev_to_nm(ev) -> float:
     return 1239.840/ev
 
-
-def surface_proportion(nm) -> float:
-
-    """ Get the surface proportion for NPLs from a given wavelength (estimation) """
-
-    prop = 0
-    for key in ml_dictionary:
-        if ml_dictionary[key][0] <= nm:
-            prop =  2/ (float(key) + 1)
-        
-    return 1 - prop
-
-
-def get_perfect_peak(peak_in_nm, sigma = 40) -> list:
-    
-    """ Get a perfect peak for a given peak position and sigma """
-
-    f = lambda x: np.exp((-x**2) /(2* sigma**2) )
-
-    x = np.linspace(400, 600, 150)
-    y = [round(f(i-peak_in_nm),3) for i in x]
-
-    y = compress_spectrum(spectrum=y)
-    
-    return y
-
-
-def compress_spectrum(spectrum, factor = 1) -> list:
-    
-    """ Compress a spectrum by a given factor """
-
-    compressed_spectrum = []
-
-    while len(spectrum) >= factor:
-        compressed_spectrum.append(np.mean(spectrum[:factor]))
-        spectrum = spectrum[factor:]
-
-    return compressed_spectrum
 
 
 def find_lowest(data_objects) ->  list:
@@ -188,31 +135,6 @@ def viz_regression(val_loader, model):
     plt.title('Regression Chart')
 
     plt.show()
-
-
-
-def viz_regression_scatter(true_values, pred_values):
-    
-    """ Plot regression from true and predicted values (specifically for DIME-NET) """
-
-    x,y = [],[]
-
-    for i in range(len(true_values)):
-        x.append(true_values[i].item())
-        y.append(pred_values[i].item())
-    
-    min_max = min(min(x), min(y)), max(max(x), max(y))
-    plt.scatter(x, y,)
-
-    plt.xlim(min_max)
-    plt.ylim(min_max)
-    plt.xlabel('true value (norm)')
-    plt.ylabel('pred value (norm)')
-    plt.title('DIME-NET Regression Chart')
-
-    plt.show()
-
-
 
 
 ### ---------------- PHYSICS ----------------- ###

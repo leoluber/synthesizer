@@ -396,3 +396,68 @@ DEV:
 SETTINGS:  Obj-> ['peak_pos', 'poly'], iterations-> 100,  peak-> 620,  molecule-> Toluene,  add_baseline-> False
 
 THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2025-02-04   ----------------------------------------------------
+L-SYNTH 2.0-8083
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Toluene- as an antisolvent 
+to make CsPbI3 NPLs around 620nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  1e-06', 'c (PbBr2) :  0.007923389456712643', 'c (Cs-OA) :  0.02', 'V (PbBr2 prec.) :  4000.0', 'V (Cs-OA) :  620.1105520472888']
+with the following As/Pb ratio: 2.969057639855097e-10
+ and the following Cs/Pb ratio: 0.39131646591089575
+
+DEV:
+SETTINGS:  Obj-> ['peak_pos', 'poly'], iterations-> 100,  peak-> 620,  molecule-> Toluene,  add_baseline-> False
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2025-02-04   ----------------------------------------------------
+L-SYNTH 2.0-1984
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Toluene- as an antisolvent 
+to make CsPbI3 NPLs around 620nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  1e-06', 'c (PbBr2) :  0.007251934228084209', 'c (Cs-OA) :  0.02', 'V (PbBr2 prec.) :  2016.4665901225624', 'V (Cs-OA) :  286.72111500875104']
+with the following As/Pb ratio: 6.434943470284529e-10
+ and the following Cs/Pb ratio: 0.3921432873152523
+
+DEV:
+SETTINGS:  Obj-> ['peak_pos', 'fwhm'], iterations-> 100,  peak-> 620,  molecule-> Toluene,  add_baseline-> False
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+----------------------------------------------------   2025-02-04   ----------------------------------------------------
+L-SYNTH 2.0-4974
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Toluene- as an antisolvent 
+to make CsPbI3 NPLs around 625nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  1e-06', 'c (PbBr2) :  0.00853581413279869', 'c (Cs-OA) :  0.02', 'V (PbBr2 prec.) :  3808.9189883935906', 'V (Cs-OA) :  704.7955198714611']
+with the following As/Pb ratio: 2.894295956522972e-10
+ and the following Cs/Pb ratio: 0.43355724194250284
+
+DEV:
+SETTINGS:  Obj-> ['peak_pos', 'fwhm'], iterations-> 100,  peak-> 625,  molecule-> Toluene,  add_baseline-> False
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+
+----------------------------------------------------   2025-02-07   ----------------------------------------------------
+L-SYNTH 2.0-1359
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Methanol- as an antisolvent 
+to make CsPbBr3 NPLs around 475nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  3317.6716935436943', 'c (PbBr2) :  0.024099299985829166', 'c (Cs-OA) :  0.2205271463298163', 'V (PbBr2 prec.) :  3740.7182347363737', 'V (Cs-OA) :  110.27546030261368']
+with the following As/Pb ratio: 0.9075426736068253
+ and the following Cs/Pb ratio: 0.2697624594166115
+
+DEV:
+SETTINGS:  Obj-> ['peak_pos', 'fwhm'], iterations-> 50,  peak-> 475,  molecule-> Methanol,  add_baseline-> False
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!

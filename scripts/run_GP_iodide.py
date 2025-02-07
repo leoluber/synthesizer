@@ -49,7 +49,7 @@ features = ["Cs_Pb_ratio", "Pb/I" , "V (Cs-OA)", "t_Rkt", "Centrifugation time [
 #features = ["Cs_Pb_ratio", "Pb/I" , "V (Cs-OA)","Centrifugation time [min]", "Centrifugation speed [rpm]",]
 
 # get training data
-inputs, targets, selection_dataframe= datastructure.get_training_data(training_selection=features, target="peak_pos")
+inputs, targets, selection_dataframe = datastructure.get_training_data(training_selection=features, target="peak_pos")
 #inputs, targets, selection_dataframe= datastructure.get_training_data(training_selection=features, target="polydispersity")
 
 

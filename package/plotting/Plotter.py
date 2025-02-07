@@ -1,7 +1,13 @@
-""" Collection of functions for vizualizing the data in the 
-    data_processed.csv file
+""" 
+    Project:     synthesizer
+    File:        Datastructure.py
+    Description: Defines the Plotter class (child class of Datastructure) 
+                 for visualizing the processed data
+    Author:      << github.com/leoluber >> 
+    License:     MIT
 """
-    # <github.com/leoluber>
+
+
 
 
 
@@ -9,31 +15,39 @@ import matplotlib.pyplot as plt
 import plotly
 import pandas as pd
 import numpy as np
-import os
+import plotly.graph_objects as go
 
-# custom
+# custom imports
 from package.src.Datastructure import Datastructure
-from package.src.helpers import find_lowest, surface_proportion, ev_to_nm
+from package.src.helpers import surface_proportion, ev_to_nm
 
 
 
-# Plotter builds on the Datastructure class
+
+
+
 class Plotter(Datastructure):
 
-    """ Plotter class
-    
-    General porpuse class for plotting the data in the data/processed/data_processed.csv file
+    """ General porpuse class for plotting the processed data in various ways
 
+    NOTE: DON'T publish this class, it's just for internal use
+    
+    (...)
+    
     """
+
 
     def __init__(self,
                  processed_file_path,
                  ):
         
+        # No super().__init__() snince we don't actually need to
+        # initialize the Datastructure class, we just want to inherit the methods
+
         # read the data
         self.data_frame = pd.read_csv(processed_file_path, header=0, sep=";")
 
-        # paths
+        # paths to the data
         self.data_path_raw =            "data/raw/"
         self.geometry_path=             self.data_path_raw + "molecule_encoding.json"
         self.molecule_dictionary_path = self.data_path_raw + "molecule_dictionary.json"
@@ -45,6 +59,40 @@ class Plotter(Datastructure):
 
 
 
+### ---------------------------- INIT RELATED ---------------------------- ###
+
+    def evaluate_kernel(self, kernel, molecule) -> dict:
+
+        """ Evaluates the kernel on a grid for visualization purposes
+        
+        (...)
+
+        """
+
+        # set the grid (and define bounds of parameter space)
+        y_vec = np.linspace(0, 1, 100)
+        x_vec = np.linspace(0, 0.8, 100)
+        X, Y  = np.meshgrid(x_vec, y_vec)
+        input = np.c_[X.ravel(), Y.ravel()]
+        
+        # add self.encode(molecule, self.encoding) to the input
+        encoding = self.encode(molecule)
+        input = [np.append(encoding, row ) for row in input]
+
+        # evaluate the kernel on the grid
+        input = np.array(input)
+        Z = kernel.model.predict(input)[0].reshape(X.shape)
+        err = kernel.model.predict(input)[1].reshape(X.shape)
+
+        return {"Z": Z, "err": err, "X": X, "Y": Y, "x_vec": x_vec, "y_vec": y_vec}
+
+
+
+
+
+### ------------------------------ PLOTTING ------------------------------ ###
+
+
 
     def plot_data(self,
                     var1=None, var2 = None, var3 = None,
@@ -53,23 +101,27 @@ class Plotter(Datastructure):
                     library = "plotly",
                     selection_dataframe = None) -> None:
 
-        """
-            Simple 3D Scatter plot of the data in parameter space, for visualization;
+
+        """ Simple 3D Scatter plot of the data in parameter space, for visualization;
             kernel can be plotted as well
+
+        (...)
+
         """
 
-        # choose the data frame
+        # choose the correct data frame
         if selection_dataframe is not None:
             df = selection_dataframe
         else:
             df = self.data_frame
+
 
         # select the data for the correct molecule
         if molecule != "all":
             df = df[df["molecule_name"] == molecule]
 
         
-        # different colors for the artificial data
+        # different treatment for the artificial data
         artificial = df[df["artificial"] == True]
         df = df[df["artificial"] == False]
 
@@ -123,32 +175,24 @@ class Plotter(Datastructure):
             ax.set_zlabel("Peak Position [nm]")
 
 
+
         # plot model over the parameter space
         if kernel is not None:
-            y_vec = np.linspace(0, 1, 100)
-            x_vec = np.linspace(0, 0.8, 100)
-            X, Y  = np.meshgrid(x_vec, y_vec)
-            input = np.c_[X.ravel(), Y.ravel()]
             
-            # add self.encode(molecule, self.encoding) to the input
-            encoding = self.encode(molecule)
-            input = [np.append(encoding, row ) for row in input]
-
-            input = np.array(input)
-            Z = kernel.model.predict(input)[0].reshape(X.shape)
-            err = kernel.model.predict(input)[1].reshape(X.shape)
-
-
+            # evaluate the kernel on a grid
+            dict = self.evaluate_kernel(kernel, molecule)
+            Z, err, X, Y, x_vec, y_vec = dict["Z"], dict["err"], dict["X"], dict["Y"], dict["x_vec"], dict["y_vec"]
+            
             # write X, Y, Z to a csv with pandas
             #df = pd.DataFrame(data = Z, index = x_vec, columns = y_vec)
             #df.to_csv(f"model_{molecule}.csv")
-
 
 
             # add the surface plot of the kernel with a uniform color
             if library == "plotly":
                 fig.add_trace(plotly.graph_objects.Surface(x=x_vec, y=y_vec, z=Z, opacity=0.8, colorscale='greys', cmin = 200, cmax = 900))
                 #fig.add_trace(plotly.graph_objects.Surface(x=x_vec, y=y_vec, z=Z, opacity=1, colorscale='Viridis', cmin = 430, cmax = 540))
+            
             # elif library == "matplotlib":
             #     ax.plot_surface(X, Y, Z, alpha=0.7, color = "gray", lw=0.5, rstride=8, cstride=8,)
             #     ax.contourf(X, Y, Z, zdir='z', offset=420, cmap='gist_rainbow_r', alpha=0.8, vmin = 410, vmax = 600, levels = 20)
@@ -206,20 +250,13 @@ class Plotter(Datastructure):
         # get the data
         x = df[var1]
         y = df[var2]
-    
 
-        ### -- a contour plot of the kernel -- ###
-        y_vec   = np.linspace(0, 1, 100)
-        x_vec   = np.linspace(0, 1, 100)
-        X, Y    = np.meshgrid(x_vec, y_vec)
-        input   = np.c_[X.ravel(), Y.ravel()]
-        
-        # evaluate the kernel on the grid
-        encoding = self.encode(molecule)
-        input = np.array([np.append(encoding, row ) for row in input])
 
         if kernel is not None:
-            Z = kernel.model.predict(input)[0].reshape(X.shape)
+            
+            # evaluate the kernel on a grid
+            dict = self.evaluate_kernel(kernel, molecule)
+            Z, err, X, Y, x_vec, y_vec = dict["Z"], dict["err"], dict["X"], dict["Y"], dict["x_vec"], dict["y_vec"]
 
             # contour plot with plotly, figure size is set
             fig = plotly.graph_objects.Figure( layout = dict(width = 580, height = 500))
@@ -256,10 +293,11 @@ class Plotter(Datastructure):
 
 
         # save the plot as svg and png
-        fig.write_image(f"plots/Contour_Monodisp_{molecule}.svg")
-        fig.write_image(f"plots/Contour_Monodisp_{molecule}.png")
+        #fig.write_image(f"plots/Contour_Monodisp_{molecule}.svg")
+        #fig.write_image(f"plots/Contour_Monodisp_{molecule}.png")
 
         fig.show()
+
 
 
 
@@ -267,11 +305,14 @@ class Plotter(Datastructure):
                             kernel = None, molecule = None,
                             selection_dataframe = None) -> None:
 
-        """
-            2D contour plot of the data in parameter space, for visualization 
-            purposes color coded by the target value (PEAK_POS)
+
+        """ 2D contour plot of the data in parameter space
             
             >>> ADDED: area calculation below 464nm
+            (return)
+
+            (...)
+
         """
 
         # choose the data frame
@@ -291,20 +332,15 @@ class Plotter(Datastructure):
 
         # a contour plot of the kernel
         fig, ax = plt.subplots()
-        y_vec   = np.linspace(0, 1, 100)
-        x_vec   = np.linspace(0, 1, 100)
-        X, Y    = np.meshgrid(x_vec, y_vec)
-        input   = np.c_[X.ravel(), Y.ravel()]
-
-        
-        # evaluate the kernel on the grid
-        encoding = self.encode(molecule,)
-        input = np.array([np.append(encoding, row ) for row in input])
 
 
         # evaluate the kernel on the grid
         if kernel is not None:
-            Z = kernel.model.predict(input)[0].reshape(X.shape)
+
+            # evaluate the kernel on a grid
+            dict = self.evaluate_kernel(kernel, molecule)
+            Z, err, X, Y, x_vec, y_vec = dict["Z"], dict["err"], dict["X"], dict["Y"], dict["x_vec"], dict["y_vec"]
+
             c = ax.contourf(X, Y, Z, 30, cmap='gist_rainbow_r', vmin = 400, vmax = 600, zorder = 1)
 
             # add black lines for the contour
@@ -367,17 +403,8 @@ class Plotter(Datastructure):
         y = [data[var2] for data in df]
         color = [data[color_var] for data in df]
         peak_pos = [data["peak_pos_eV"] for data in df]
-
-        # other
         suggestion = [data["suggestion"] for data in df]
 
-
-        
-        # lowest values for each peak position
-        # TODO: replace in new version
-        # lowest_x, lowest_y = find_lowest(data_objects=data_objects)
-        # lowest_y = [y * 1000 for y in lowest_y]
-        
 
 
         """ basic scatter plot """
@@ -394,14 +421,10 @@ class Plotter(Datastructure):
         # for i, txt in enumerate(sample_no):
         #     ax.annotate(txt, (c_Perovskite[i], target[i]), fontsize = 8, color = "black")
 
-
-        # scatters lower limits
-        #ax.scatter(lowest_x, lowest_y, c = "red", s = 50, label = "lowest")
-        #cbar.remove()
         
         # settings
         ax.xaxis.set_tick_params(direction='in', which='both', labelsize = 12, top=True, bottom=True,) # labeltop=True, labelbottom=False)
-        ax.yaxis.set_tick_params(direction='in', which='both', labelsize = 12, right=True, left=True, ) #labelleft=True, labelright=False)
+        ax.yaxis.set_tick_params(direction='in', which='both', labelsize = 12, right=True, left=True, ) # labelleft=True, labelright=False)
 
         # set axis range
         #ax.set_ylim(0, 1)
@@ -431,28 +454,19 @@ class Plotter(Datastructure):
         prop = [surface_proportion(x, "EV") for x in x]
         plt.plot(x, prop, "--", color = "black")
 
-
-        # set axis range
-        #ax.set_xlim(2.650, 2.750)
-        #ax.set_ylim(55, 135)
-
         plt.tight_layout()
         plt.show()
         fig.show()
         #plt.savefig(f"data/{molecule_name}_As_Pb_peak_pos.png")
 
 
-        # save as csv
-        #df = pd.DataFrame({"AS_Pb_ratio": AS_Pb_ratio, "Cs_Pb_ratio": Cs_Pb_ratio, "peak_pos": peak_pos, "monodispersity": monodispersity, "fwhm": fwhm, "suggestion": suggestion, "molecule_name": molecule_name})
-        #df.to_csv("data/parameters.csv", index = False)
-
         return fig, ax
 
 
 
+
+
 #### TODO: fix everything below here in new version
-
-
 
     def plot_screening(self, data_objects, model = None) -> None:
 
@@ -474,7 +488,7 @@ class Plotter(Datastructure):
 
         # evaluate the kernel on the line
         fixed = Cs_Pb_ratio[0]
-        encoding = self.encode(molecule, self.encoding)
+        encoding = self.encode(molecule,)
         y_vec = np.linspace(0, 1, 100)
         input = np.array([np.append(encoding, [y, fixed]) for y in y_vec])
         output = model.model.predict(input)[0]
@@ -518,16 +532,24 @@ class Plotter(Datastructure):
         else:
             df = self.data_frame
 
-        properties = ["Cs_Pb_ratio", "t_Rkt", "V (Cs-OA)","peak_pos", "fwhm", "polydispersity", "Pb/I", 
-                      "Centrifugation time [min]", "Centrifugation speed [rpm]", "c (Cs-OA)",]
+        # properties = ["Cs_Pb_ratio", "t_Rkt", "V (Cs-OA)","peak_pos", "fwhm", "polydispersity", "Pb/I", 
+        #               "Centrifugation time [min]", "Centrifugation speed [rpm]", "c (Cs-OA)",]
+        properties = ["peak_pos", "V_total", "n_Cs", "n_As", "n_Pb", "Cs_Pb_ratio", "AS_Pb_ratio", "AS_Cs_ratio", ] #"relative polarity (-)","dielectric constant (-)","dipole moment (D)","Hansen parameter hydrogen bonding (MPa)1/2","Gutman donor number (kcal/mol)"]
         df = df[properties]
-        print(df["t_Rkt"])
+
 
         # plot the correlation matrix
         corr = df.corr()
         fig, ax = plt.subplots()
-        # center the colorbar at 0
         im = ax.imshow(corr, cmap="bwr", vmin=-1, vmax=1)
+
+
+        # write the values in the matrix
+        for i in range(len(properties)):
+            for j in range(len(properties)):
+                text = ax.text(j, i, round(corr.iloc[i, j], 2),
+                                ha="center", va="center", color="black")
+
 
         # mark the peak_pos with a black border along the row
         for i in range(len(properties)):
@@ -535,7 +557,7 @@ class Plotter(Datastructure):
                 ax.axhline(i+0.5, color = "black", linewidth = 2)
                 ax.axhline(i-0.5, color = "black", linewidth = 2)
 
-        # --> the "+3" is used for the additional plqy, fwhm, peak_pos
+
         ax.set_xticks(np.arange(len(properties)))
         ax.set_yticks(np.arange(len(properties)))
         ax.set_xticklabels(properties, rotation = 45)
@@ -547,35 +569,44 @@ class Plotter(Datastructure):
 
 
 
-    def plot_ternary(self, data_objects, kernel= None) -> None:
+
+    def plot_ternary(self, selection_dataframe = None, molecule = None) -> None:
 
         """
             Ternary plot of the data in parameter space, for visualization
+
+            TODO: solve bug with these plots
         """
 
-        # amount of each substance
-        Cs = np.array([data["amount_substance"]["Cs"] for data in data_objects])
-        Pb = np.array([data["amount_substance"]["Pb"]/4 for data in data_objects])
-        As = np.array([data["amount_substance"]["As"] for data in data_objects])
-        total = Cs + Pb + As
+        # get the data
+        if selection_dataframe is not None:
+            df = selection_dataframe
+        else:
+            df = self.data_frame
 
-        # normalize the data
-        Cs = Cs / total
-        Pb = Pb / total
-        As = As / total
+        # get correct columns
+        n_Cs = df["n_Cs"][df["molecule_name"] == molecule]
+        n_As = df["n_As"][df["molecule_name"] == molecule]
+        n_Pb = df["n_Pb"][df["molecule_name"] == molecule]
 
-        #TODO: fix
+        print(df[["n_As", "n_Pb", "n_Cs"]][df["molecule_name"] == molecule])
+
+
+        Cs = n_Cs / (n_Cs + n_As + n_Pb)
+        As = n_As / (n_Cs + n_As + n_Pb)
+        Pb = n_Pb / (n_Cs + n_As + n_Pb)
+
 
         # plot the data
         fig = go.Figure(go.Scatterternary(a=Cs, b=Pb, c=As, 
                         mode='markers', 
                         marker=dict(size=10, opacity=0.7, cmin=400, cmax=0, 
-                                    color = [data["peak_pos"] for data in data_objects],
+                                    color = df["peak_pos"],
                                     colorscale='rainbow',),
                         ))
         fig.update_layout({
             'ternary': {'sum': 1, 'aaxis': {'title': 'Cs'}, 'baxis': {'title': 'Pb'}, 'caxis': {'title': 'As'}},
-            'annotations': [{'showarrow': False, 'text': f'{self.flags["molecule"]}', 
+            'annotations': [{'showarrow': False, 'text': f'{molecule}', 
                                 'x': 0.5, 'y': -0.2, 'font': {'size': 16}}],
             'width': 400,
             'height': 400,
@@ -584,7 +615,7 @@ class Plotter(Datastructure):
         fig.show()
 
         # save as svg
-        fig.write_image(f"plots/Ternary_{self.flags['molecule']}.svg")
+        fig.write_image(f"plots/Ternary_{molecule}.svg")
 
 
 

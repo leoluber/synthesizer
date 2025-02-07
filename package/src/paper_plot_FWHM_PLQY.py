@@ -136,7 +136,7 @@ PLQY / FWHM Matrix
                                 "MeAc" : "MethylAcetate",	
 """
 
-molecules = ["Methanol", "Ethanol", "Isopropanol", "Butanol", "Toluene","Cyclopentanone",] # "Acetone", "Butanone", "Isopropanol", "Cyclopentanol", "Hexanol", "Octanol", "EthylAcetate", "MethylAcetate"]
+molecules = ["Methanol", "Ethanol", "Isopropanol", "Butanol", "Cyclopentanone", "Toluene",] # "Acetone", "Butanone", "Isopropanol", "Cyclopentanol", "Hexanol", "Octanol", "EthylAcetate", "MethylAcetate"]
 
 matrix = [[[] for _ in range(len(datastructure.ml_dictionary))] for _ in range(len(molecules))]
 
