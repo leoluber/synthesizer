@@ -13,7 +13,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 
 #custom
-from src import Datastructure, GaussianProcess, KRR
+from src import Datastructure, GaussianProcess
 
 
 

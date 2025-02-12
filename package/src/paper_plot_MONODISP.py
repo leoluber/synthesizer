@@ -1,4 +1,5 @@
 import warnings
+import numpy as np
 warnings.filterwarnings('ignore')
 
 # custom
@@ -6,68 +7,42 @@ from Datastructure import Datastructure
 from Preprocessor import Preprocessor
 from GaussianProcess import GaussianProcess
 from helpers import *
+import pandas as pd
+import os
+import sys
 
 
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
+from plotting.Plotter import Plotter
 
-datastructure = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_240418_new.csv", 
-                              
-                              target = "PEAK_POS",         
-                              PLQY_criteria = False,
-                              wavelength_unit= "NM",
-                              monodispersity_only =False,
-                              encoding= "geometry",
-                              P_only= False, 
-                              molecule="Octanol",
-                              add_baseline= True,
-                              )
+
+
+datastructure = Datastructure(
+                            synthesis_file_path = "Perovskite_NC_synthesis_NH_240418_new.csv", 
+                            spectral_file_path  = "spectrum/", 
+                            monodispersity_only = True,
+                            P_only              = True,
+                            molecule            = "all",
+                            add_baseline        = True,
+                            )
+                            
+
+datastructure.read_synthesis_data()
+
 
 
 #%%
 
-# adjust the selection of training parameters
-datastructure.synthesis_training_selection    = ["AS_Pb_ratio", "Cs_Pb_ratio", ]
-data_objects = datastructure.get_data()
-parameter_selection = datastructure.total_training_parameter_selection
+# feature selection
+features = ["AS_Pb_ratio", "Cs_Pb_ratio",]
+
+# get training data
+inputs, targets, selection_dataframe = datastructure.get_training_data(training_selection=features, target="peak_pos", encoding=True)
 
 
 
-#%%
-
-# select input and target from Data objects
-inputs, targets, sample_numbers, baseline, include = [], [], [], [], []
-peak_pos = []
-
-for data in data_objects:
-
-    if data["monodispersity"] == 0:
-        continue
-
-
-        # INPUTS
-    input = data["encoding"] + data["total_parameters"]
-
-
-     #Spectrum
-
-    # spectrum = data["spectrum"]
-    # plt.plot(spectrum[0], spectrum[1])
-    # print(data["sample_number"])
-    # plt.show()
-
-    inputs.append(input)
-
-        # TARGETS
-    #targets.append(data["y"])
-    targets.append(data["y"])
-
-
-
-
-# convert to numpy arrays
-inputs = np.array(inputs)
-targets = np.array(targets)
-
+plotter = Plotter(datastructure.processed_file_path, encoding= datastructure.encoding)
 
 
 
@@ -75,20 +50,14 @@ targets = np.array(targets)
 
 gp = GaussianProcess(
                     training_data = inputs,
-                    parameter_selection = parameter_selection, 
                     targets = targets, 
-                    kernel_type = "EXP", 
-                    model_type  = "GPRegression",   
+                    kernel_type = "EXP",   
                     )
 gp.train()
-#gp.leave_one_out_cross_validation(inputs, targets, baseline, include)
 
 
-
-
-#%%
 """
-_____________________________________________________________________________________
+__________________________________________________________
 
     MONODISPERSITY (Figure 5)
 _____________________________________________________________________________________

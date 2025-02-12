@@ -85,7 +85,7 @@ class Synthesizer:
                  peak : int,
                  ion : Literal["CsPbI3", "CsPbBr3"] = "CsPbBr3",
                  obj : list =       ["peak_pos", "fwhm",],
-                 weights : list =   {"peak_pos": 1, 
+                 weights : list =   {"peak_pos": 10, 
                                      "poly": 10,
                                      "plqy": 5,
                                      "fwhm": 1,},
@@ -94,6 +94,7 @@ class Synthesizer:
                  Cs_Pb_opt =        False,
                  Cs_As_opt =        False,
                  c_Pb_max =         None,
+                 c_Cs_fixed =       None,
                  V_As_max =         5000,
                  add_baseline =     True,
                 ):
@@ -151,6 +152,7 @@ class Synthesizer:
         self.c_Pb_max = c_Pb_max
         self.V_As_max = V_As_max
         self.c_Pb_fixed = c_Pb_fixed
+        self.c_Cs_fixed = c_Cs_fixed
         self.V_Cs_fixed = V_Cs_fixed
 
         
@@ -174,8 +176,8 @@ class Synthesizer:
         # display the trained models to check for overfitting etc. 
         # (if the number of dimensions is sufficiently small)
         self.plotter = Plotter(self.datastructure.processed_file_path)
-        self.plotter.plot_data("Cs_Pb_ratio", "V (Cs-OA)", "peak_pos", 
-                               kernel= None, molecule= self.molecule,)
+        self.plotter.plot_data( "AS_Pb_ratio", "Cs_Pb_ratio", "peak_pos", 
+                              kernel= self.NPL_model, molecule= self.molecule,)
         
 
 
@@ -258,8 +260,8 @@ class Synthesizer:
 
         # hard constraints 
         # TODO: refactor this to a more general approach
-        if Cs_Pb_ratio < 0.1: return 1000
-        if Cs_Pb_ratio > 0.3: return 1000
+        if Cs_Pb_ratio < 0.2: return 1000
+        if Cs_Pb_ratio > 0.4: return 1000
         #if Cs_Pb_ratio < 0.15: return 1000
         #if As_Pb_ratio > 0.8: return 1000
 
@@ -275,9 +277,9 @@ class Synthesizer:
         # construct the input for the NPL model
         NPL_input = np.append(base_input, x[0][:len(self.parameters_opt_PEAK)])
 
-        # construct the input for all other models (but exclude the last 5 parameters)
+        # construct the input for all other models
         total_input = np.append(base_input, x[0])
-
+        print(f"total_input: {total_input}")
 
         # predictions
         NPL =   self.NPL_model.predict(NPL_input)[0][0]
@@ -295,11 +297,11 @@ class Synthesizer:
 
         # construct the objective function
         # weights are fixed; note that the PLQY is subtracted!
-        output = abs(NPL - self.peak) * self.weights["peak_pos"]
+        output = abs(NPL[0] - self.peak) * self.weights["peak_pos"]
 
         if "fwhm" in self.obj:
             output += FWHM[0] * self.weights["fwhm"]
-            print(f"FWHM: {FWHM[0] * self.weights["fwhm"]}")
+            print(f"FWHM: {FWHM * self.weights["fwhm"]}")
 
         if "plqy" in self.obj:
             output -= PLQY[0] * self.weights["plqy"]
@@ -308,13 +310,13 @@ class Synthesizer:
         if "poly" in self.obj:
             output += POLY[0] * self.weights["poly"]
             print(f"POLY: {POLY[0] * self.weights["poly"]}")
-        
+                
+
         if self.Cs_Pb_opt:
             output += Cs_Pb_ratio * 20
-
         
         # print the current NPL value and ratios (for real-time feedback)
-        print(f"NPL: {NPL}, Cs_Pb: {Cs_Pb_ratio}, As_Pb: {As_Pb_ratio}, loss:{output}")
+        print(f"NPL: {NPL}, Cs_Pb: {Cs_Pb_ratio}, As_Pb: {As_Pb_ratio}, loss:{output}, FWHM: {FWHM}")
 
         return output
 
@@ -340,13 +342,13 @@ class Synthesizer:
 
         inputs, targets, df = self.datastructure. \
                             get_training_data(training_selection = parameter_selection, 
-                                              target = target, encoding = True)
+                                              target = target, encoding = True, 
+                                              remove_baseline = (target != "peak_pos"))
+    
         
-
         gp = GaussianProcess(training_data = inputs,
                             targets = targets, 
                             kernel_type = "EXP",
-                            model_type  = "GPRegression",
                             )
         gp.train()
 
@@ -389,6 +391,10 @@ class Synthesizer:
         if self.c_Pb_fixed is not None:
             norm_c_Pb_fixed = Norm(self.c_Pb_fixed, "c (PbBr2)")
             limits["c (PbBr2)"] = [norm_c_Pb_fixed, norm_c_Pb_fixed]
+
+        if self.c_Cs_fixed is not None:
+            norm_c_Cs_fixed = Norm(self.c_Cs_fixed, "c (Cs-OA)")
+            limits["c (Cs-OA)"] = [norm_c_Cs_fixed, norm_c_Cs_fixed]
 
         elif self.c_Pb_max is not None:
             max_c_Pb = self.c_Pb_max
@@ -461,6 +467,16 @@ class Synthesizer:
         results["Cs_Pb_ratio"] =  (c_Cs * V_Cs) / (c_Pb * V_Pb)
 
 
+        # input
+        input = np.array(self.encoding)
+        if self.ion == "CsPbBr3":
+            input  = np.append(input, results["As_Pb_ratio"])
+        input = np.append(input, results["Cs_Pb_ratio"])  
+
+        # predictions
+        results["pred_peak"] = self.NPL_model.predict(input)[0][0]  
+
+
         # denormalize the parameters
         results["results_string"] = []
         denorm = {}
@@ -473,7 +489,7 @@ class Synthesizer:
 
 
 
-    def print_results(self, results_string, 
+    def print_results(self, results_string, peak_pos,
                       As_Pb_ratio, Cs_Pb_ratio):
         
         """ Print the resulting suggestion to a file 
@@ -495,6 +511,7 @@ class Synthesizer:
         print("----------------------------------------------------")
         print(f"RESULTS: \n")
         print(f"{results_string}\n")
+        print(f"Peak position: {peak_pos}")
         print(f"As_Pb_ratio (old): {As_Pb_ratio}")
         print(f"Cs_Pb_ratio (old): {Cs_Pb_ratio}")
         print("----------------------------------------------------")
@@ -517,9 +534,11 @@ class Synthesizer:
                 file.write(f"Choose the following synthesis parameters:\n")
                 file.write(f"{results_string}\n")
 
-                file.write(f"with the following As/Pb ratio: {As_Pb_ratio*10}\n")
+                file.write(f"with the following As/Pb ratio: {As_Pb_ratio}\n")
                 file.write(f" and the following Cs/Pb ratio: {Cs_Pb_ratio}\n")
 
+                file.write(f"\n")
+                file.write(f"Predicted peak position: {peak_pos}\n")
 
                 file.write(f"\n")
                 file.write(f"DEV:\n")

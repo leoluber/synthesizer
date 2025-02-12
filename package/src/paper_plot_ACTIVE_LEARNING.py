@@ -1,5 +1,6 @@
 
 import warnings
+import matplotlib.pyplot as plt
 warnings.filterwarnings('ignore')
 
 # custom
@@ -14,60 +15,37 @@ from helpers import *
 
 
 
-datastructure = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_240418.csv", 
-                              
-                              target = "PEAK_POS",               
-                              PLQY_criteria = False,
-                              wavelength_unit= "NM",
+datastructure = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_240418_new.csv", 
+                              spectral_file_path  = "spectrum/",        
                               monodispersity_only= True,
-                              encoding= "geometry",
                               P_only=True, 
                               molecule="all",
-                              #molecule= NEW_MOLECULE,
                               add_baseline= True,
                               )
 
 
+datastructure.read_synthesis_data()
 
-
-#%%
-# adjust the selection of training parameters
-datastructure.synthesis_training_selection    = ["AS_Pb_ratio", "Cs_Pb_ratio", ]
-data_objects = datastructure.get_data()
-parameter_selection = datastructure.total_training_parameter_selection
-
-
-
-
-# select input and target from Data objects
-inputs, targets, sample_numbers, baseline, include = [], [], [], [], []
-peak_pos = []
-
-
-
-for data in data_objects:
-
-        # INPUTS
-    input = data["encoding"] + data["total_parameters"]
-    inputs.append(input)
-
-        # TARGETS
-    targets.append(data["y"])
-
-
-
-# convert to numpy arrays
-inputs = np.array(inputs)
-targets = np.array(targets)
 
 
 #%%
 
-gp = GaussianProcess(training_data = inputs,
-                    targets = targets,
-                    kernel_type = "EXP", 
-                    model_type  = "GPRegression",   
+# feature selection
+features = ["AS_Pb_ratio", "Cs_Pb_ratio", ]
+
+# get training data
+inputs, targets, selection_dataframe = datastructure.get_training_data(training_selection=features, target="peak_pos", encoding=True)
+
+
+#%%
+
+gp = GaussianProcess(
+                    training_data = inputs,
+                    targets = targets, 
+                    kernel_type = "EXP",  
                     )
+
+
 """
 _____________________________________________________________________________________
 
@@ -77,9 +55,9 @@ ________________________________________________________________________________
 ...
 
 # """
-# for molecule in ["Methanol", "Ethanol", "Butanol", "Cyclopentanone"]:
-#     gp.active_learning_simulation(data_objects, measured_molecule = molecule, resolution=5)
+for molecule in ["Methanol", "Ethanol", "Butanol", "Cyclopentanone"]:
+    gp.active_learning_simulation(selection_dataframe, measured_molecule = molecule, resolution=5)
 
-# plt.show()
+plt.show()
 
 #datastructure.plot_data(var1="Cs_Pb_tratio", var2= "AS_Pb_ration", kernel =  gp, molecule= NEW_MOLECULE, library= "plotly",)

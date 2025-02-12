@@ -1,113 +1,69 @@
 #%%
 import warnings
-import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+import sys
 warnings.filterwarnings('ignore')
 
 # custom
 from Datastructure import Datastructure
-from Preprocessor import Preprocessor
 from GaussianProcess import GaussianProcess
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
+from plotting.Plotter import Plotter
 from helpers import *
 
 
 # transfer molecule
-#TRANSFER_MOLECULE = "Cyclopentanone"
+TRANSFER_MOLECULE = "Butanol"
 
 
-#def iterate(TRANSFER_MOLECULE):
 datastructure = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_240418_new.csv", 
-                            
-                            target = "PEAK_POS",
-                            #wavelength_filter= [470, 480],                
-                            PLQY_criteria = False,
-                            wavelength_unit= "NM",
-                            monodispersity_only = True,
-                            encoding= "geometry",
-                            P_only= True, 
-                            molecule= "all",
-                            add_baseline= True,
-                            )
+                              spectral_file_path  = "spectrum/",        
+                              monodispersity_only= True,
+                              P_only=True, 
+                              molecule="all",
+                              add_baseline= True,
+                              encoding= "geometry",
+                              )
 
 
-#%%
-# adjust the selection of training parameters
-datastructure.synthesis_training_selection    = ["AS_Pb_ratio", "Cs_Pb_ratio", ]
-data_objects = datastructure.get_data()
-parameter_selection = datastructure.total_training_parameter_selection
-
-
-# Data Preprocessing
-# use Preprocessor to select data points
-# ds = Preprocessor(selection_method= ["PEAK_SHAPE"], fwhm_margin=-0.01, peak_error_threshold=0.00015)
-# data_objects = ds.select_data(data_objects)                           
-# datastructure.data  = data_objects
-# data_objects  = ds.add_residual_targets_avg(data_objects)
+datastructure.read_synthesis_data()
 
 
 
 #%%
 
-# select input and target from Data objects
-inputs, targets, sample_numbers, baseline, include = [], [], [], [], []
-peak_pos = []
+# feature selection
+features = ["AS_Pb_ratio", "Cs_Pb_ratio", ]
 
-for data in data_objects:
+# get training data and the corresponding selection dataframe
+inputs, targets, selection_dataframe = datastructure.get_training_data(training_selection=features, target="peak_pos", encoding=True)
 
-    
-        # INPUTS
-    input = data["encoding"] + data["total_parameters"]
-    #input = data["total_parameters"]
-    inputs.append(input)
-
-        # TARGETS
-    targets.append(data["y"])
-
-        # BASELINE
-    baseline.append(data["baseline"])
-
-    # if data["molecule_name"] == TRANSFER_MOLECULE:
-    #     include.append(True)
-    # else:
-    #     include.append(False)
-
-
-
-# convert to numpy arrays
-inputs = np.array(inputs)
-targets = np.array(targets)
-
-
-# # save data to file as csv
-# df = pd.DataFrame({"AS_Pb_ratio": inputs[:, 0], "Cs_Pb_ratio": inputs[:, 1], "peak_pos": targets})
-# df.to_csv(f"{TRANSFER_MOLECULE}_data.csv")
-
-
-
+print(selection_dataframe[features])
 
 #%%
 
 gp = GaussianProcess(
                     training_data = inputs,
-                    parameter_selection = parameter_selection, 
                     targets = targets, 
-                    kernel_type = "EXP", 
-                    model_type  = "GPRegression",   
+                    kernel_type = "EXP",  
                     )
-gp.train()
+
+
+#leave one out cross validation
+#baseline and include are necessary to exclude the transfer molecule from the training set
+#and to exclude the baseline from the test set
+baseline = selection_dataframe["baseline"].to_numpy().astype(bool)
+include = np.array([True if molecule == TRANSFER_MOLECULE else False for molecule in selection_dataframe["molecule_name"]] )
+
 
 
 # gp.leave_one_out_cross_validation(inputs, targets, baseline, include)
 # gp.regression_plot(TRANSFER_MOLECULE)
 
-#datastructure.plot_data("AS_Pb_ratio", "Cs_Pb_ratio", kernel= gp, model = "GP", molecule= TRANSFER_MOLECULE, library= "plotly")
-
-
-
-# molecules = ["Isopropanol"]
-
-# for TRANSFER_MOLECULE in molecules:
-#     iterate(TRANSFER_MOLECULE)
-
+# exit()
 
 """
 _____________________________________________________________________________________
@@ -119,13 +75,12 @@ ________________________________________________________________________________
 
 # """
 
-# shuffle data objects
-np.random.shuffle(data_objects)
 
 # molecule loo with histogram
-names  = []
+antisolvents  = ["Methanol",  "Ethanol",  "Isopropanol", "Butanol",  "Cyclopentanone",]
+#antisolvents  = ["Butanol",]
 errors = []
-errors_5 = []
+errors_10 = []
 errors_max = []
 
 # distribution = datastructure.get_molecule_distribution()
@@ -133,43 +88,45 @@ errors_max = []
 # print(min)
 
 
-for transfer_molecule in ["Methanol",  "Ethanol",  "Butanol",  "Cyclopentanone", "Isopropanol"]:
+for transfer_molecule in antisolvents:
 
-    error = gp.molecular_cross_validation(data_objects, transfer_molecule = transfer_molecule)
-    names.append(transfer_molecule)
-    errors.append(error)
-
-
-
-for transfer_molecule in ["Methanol", "Ethanol",  "Butanol", "Cyclopentanone" , "Isopropanol"]:
-
-    # seperate in and out of sample
-    old_data = [data for data in data_objects if data["molecule_name"] != transfer_molecule]
-    new_data = [data for data in data_objects if data["molecule_name"] == transfer_molecule][:10]
-    data = old_data + new_data
-    inputs   = np.array([data["encoding"] + data["total_parameters"] for data in data])
-    targets  = np.array([data["y"] for data in data])
-    baseline = np.array([data["baseline"] for data in data])
-
-    include = [True if item["molecule_name"] == transfer_molecule else False for item in data]
-    error = gp.leave_one_out_cross_validation(inputs, targets, baseline, include)
-    errors_5.append(error)
+    # (I):  Full Transfer; no known data on transfer_molecule 
+    x, y, x_test, y_test = datastructure.get_transfer_training_data(training_selection=features, 
+                                                                  selection_dataframe = selection_dataframe, 
+                                                                  molecule_to_exclude = transfer_molecule,
+                                                                  num_samples = 0,
+                                                                  target = "peak_pos",
+                                                                  encoding = True,)
+    
+    error= gp.validate_transfer(x, y, x_test, y_test)
+    errors.append(float(error))
+    
+    extra_gp = GaussianProcess(x, y, kernel_type = "EXP")
+    extra_gp.train()
+    plotter = Plotter(datastructure.processed_file_path, encoding= datastructure.encoding)
+    plotter.plot_data("AS_Pb_ratio", "Cs_Pb_ratio", "peak_pos", kernel= extra_gp, molecule= transfer_molecule, selection_dataframe= selection_dataframe)
+  
+    
 
 
+    # (II):  Transfer with 10 known data points on transfer_molecule
+    x, y, x_test, y_test = datastructure.get_transfer_training_data(training_selection=features, 
+                                                                  selection_dataframe = selection_dataframe, 
+                                                                  molecule_to_exclude = transfer_molecule,
+                                                                  num_samples = 10,
+                                                                  target = "peak_pos",
+                                                                  encoding = True,)
+                                                                  
+    error_10 = gp.validate_transfer(x, y, x_test, y_test)
+    errors_10.append(error_10)
 
-for transfer_molecule in ["Methanol", "Ethanol",  "Butanol", "Cyclopentanone", "Isopropanol" ]:
 
-    # seperate in and out of sample
-    old_data = [data for data in data_objects if data["molecule_name"] != transfer_molecule]
-    new_data = [data for data in data_objects if data["molecule_name"] == transfer_molecule]
-    data = old_data + new_data
-    inputs   = np.array([data["encoding"] + data["total_parameters"] for data in data])
-    targets  = np.array([data["y"] for data in data])
-    baseline = np.array([data["baseline"] for data in data])
 
-    include = [True if item["molecule_name"] == transfer_molecule else False for item in data]
-    error = gp.leave_one_out_cross_validation(inputs, targets, baseline, include)
-    errors_max.append(error)
+    # (III):  Transfer with all known data points on transfer_molecule (LOO)
+    baseline = selection_dataframe["baseline"].to_numpy().astype(bool)
+    include = np.array([True if molecule == transfer_molecule else False for molecule in selection_dataframe["molecule_name"]] )
+    err_max = gp.leave_one_out_cross_validation(inputs, targets, baseline, include)
+    errors_max.append(err_max)
 
 
 
@@ -180,11 +137,13 @@ barWidth = 0.25
 r1 = np.arange(len(errors))
 r2 = [x + barWidth for x in r1]
 r3 = [x + barWidth for x in r2]
+
 plt.bar(r1, errors, color='cornflowerblue', width=barWidth, edgecolor='grey', label='Errors')
-plt.bar(r2, errors_5, color='coral', width=barWidth, edgecolor='grey', label='Improved Errors')
+plt.bar(r2, errors_10, color='coral', width=barWidth, edgecolor='grey', label='Improved Errors')
 plt.bar(r3, errors_max, color='lightgreen', width=barWidth, edgecolor='grey', label='Min Errors')
 plt.xlabel('Molecule', fontweight='bold')
-plt.xticks([r + barWidth for r in range(len(errors))], names)
+
+plt.xticks([r + barWidth for r in range(len(errors))], antisolvents)
 plt.ylabel('Error', fontweight='bold')
           
 

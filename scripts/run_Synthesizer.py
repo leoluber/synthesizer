@@ -41,8 +41,8 @@ SUMMARY
 
 ### -------------------- choose molecule and target peak -------------------- ###
 
-antisolvent =  "Methanol"
-target_peak   =   475
+antisolvent =  "Cyclopentanone"
+target_peak   =   489
 
 ### ------------------------------------------------------------------------- ###
 
@@ -60,17 +60,18 @@ def main():
                               spectral_path=     "spectrum/",
 
 
-                              iterations =       50, 
+                              iterations =       100, 
                               peak =             target_peak,
                               obj =              ["peak_pos", "fwhm"], 
                               ion=               "CsPbBr3",  # "CsPbI3", "CsPbBr3",
                               Cs_Pb_opt =        False,
                               Cs_As_opt=         False,
-                              c_Pb_fixed =       None, 
-                              V_Cs_fixed=        None,  
+                              c_Pb_fixed =       0.01, 
+                              c_Cs_fixed =       0.02,
+                              V_Cs_fixed=        100,  
                               c_Pb_max =         None,
                               V_As_max=          5000,
-                              add_baseline=      False,
+                              add_baseline=      True,
                               )
     
     
@@ -90,6 +91,7 @@ def main():
 
     # handle results (all done by the synthesizer class)
     synthesizer.print_results( results_string=results_string,
+                               peak_pos=synthesizer.results["pred_peak"],
                                As_Pb_ratio=As_Pb_ratio,
                                Cs_Pb_ratio=Cs_Pb_ratio,
                             )

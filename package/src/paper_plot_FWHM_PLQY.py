@@ -1,49 +1,49 @@
 import warnings
 warnings.filterwarnings('ignore')
 
+
+import matplotlib.pyplot as plt
+
 # custom
 from Datastructure import Datastructure
 from Preprocessor import Preprocessor
 from GaussianProcess import GaussianProcess
 from helpers import *
 import pandas
+import numpy as np
+import os
+import sys
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
+from plotting.Plotter import Plotter
 
 
 
+datastructure = Datastructure(
+                            synthesis_file_path = "Perovskite_NC_synthesis_NH_240418_new.csv", 
+                            spectral_file_path  = "spectrum/", 
+                            monodispersity_only = True,
+                            P_only              = True,
+                            molecule            = "all",
+                            add_baseline        = True,
+                            )
+                            
 
-datastructure = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_240418_new.csv", 
-                              
-                              target = "PLQY",         
-                              PLQY_criteria = False,
-                              wavelength_unit= "EV",
-                              #wavelength_filter= [400, 440],
-                              monodispersity_only = False,
-                              encoding= "geometry",
-                              P_only= False, 
-                              molecule="all",
-                              add_baseline= False,
-                              )
+datastructure.read_synthesis_data()
 
 
 
 #%%
 
-# adjust the selection of training parameters
-datastructure.synthesis_training_selection    = ["AS_Pb_ratio", "Cs_Pb_ratio", ]
-data_objects = datastructure.get_data()
-parameter_selection = datastructure.total_training_parameter_selection
+# feature selection
+features = ["AS_Pb_ratio", "Cs_Pb_ratio",]
+
+# get training data
+inputs, targets, selection_dataframe = datastructure.get_training_data(training_selection=features, target="peak_pos", encoding=True)
 
 
 
-# write the PLQY data to a csv file
-# plqy = [data["y"] for data in data_objects]
-# peaks = [data["peak_pos"] for data in data_objects]
-# df = pandas.DataFrame({"PLQY": plqy, "Peak": peaks})
-# df.to_csv("PLQY_data.csv")
-
-# exit()
-
-#%%
+plotter = Plotter(datastructure.processed_file_path, encoding= datastructure.encoding)
 
 """
 _____________________________________________________________________________________
@@ -54,9 +54,9 @@ ________________________________________________________________________________
 ...
 
 """
-
-# datastructure.plot_ternary(data_objects)
-# exit()
+MOLECULE = "Butanol"
+plotter.plot_ternary(selection_dataframe= selection_dataframe, molecule= MOLECULE)
+exit()
 
 
 #%%
@@ -71,44 +71,13 @@ ________________________________________________________________________________
 """
 
 ##PLQY
-#data_objects = [item for item in data_objects if item["Cs_Pb_ratio"] >= 0.2]
-datastructure.plot_parameters(data_objects,)
+plotter.plot_parameters("peak_pos", "plqy", color_var = "peak_pos")
 plt.show()
 
 exit()
 
 
 
-
-"""
-_____________________________________________________________________________________
-
-    SCREENING
-_____________________________________________________________________________________
-
-...
-
-"""
-
-# train the GP
-# inputs  = [data["encoding"] + data["total_parameters"] for data in data_objects]
-# targets = [data["y"] for data in data_objects]  
-# gp = GaussianProcess(
-#                     training_data = np.array(inputs),
-#                     parameter_selection = parameter_selection, 
-#                     targets = np.array(targets), 
-#                     kernel_type = "EXP", 
-#                     model_type  = "GPRegression",   
-#                     )
-# gp.train()
-
-
-# # PLQY
-# data_objects = [item for item in data_objects if item["Cs_Pb_ratio"] == 0.2  and item["molecule_name"] == "Methanol"]
-# datastructure.plot_screening(data_objects=data_objects, model=gp)
-# plt.show()
-
-# exit()
 
 
 
@@ -136,43 +105,50 @@ PLQY / FWHM Matrix
                                 "MeAc" : "MethylAcetate",	
 """
 
-molecules = ["Methanol", "Ethanol", "Isopropanol", "Butanol", "Cyclopentanone", "Toluene",] # "Acetone", "Butanone", "Isopropanol", "Cyclopentanol", "Hexanol", "Octanol", "EthylAcetate", "MethylAcetate"]
+molecules = ["Methanol", "Ethanol", "Isopropanol", "Butanol", "Cyclopentanone", "Toluene",] 
 
 matrix = [[[] for _ in range(len(datastructure.ml_dictionary))] for _ in range(len(molecules))]
 
-for i, data in enumerate(data_objects):
-    molecule = data["molecule_name"]
+# iterate over selection_dataframe
+for i, row in selection_dataframe.iterrows():
+    molecule = row["molecule_name"]
     if molecule not in molecules:
         continue
-    ml = get_ml_from_peak_pos(data["peak_pos"])
+    ml = get_ml_from_peak_pos(row["peak_pos"])
     
     if ml is not None:
         matrix[molecules.index(molecule)][int(ml-2)].append(data["y"])
 
 
-# delete entries with less than 5 data points
+# delete entries with less than n data points
 for i in range(len(matrix)):
     for j in range(len(matrix[i])):
         if len(matrix[i][j]) < 1:
             matrix[i][j] = 0
         else:
+            # depending on the desired output (min, max, mean)
+            
             #matrix[i][j] = np.mean(matrix[i][j]) # *1000
             matrix[i][j]  = np.min(matrix[i][j])
             #matrix[i][j] = np.max(matrix[i][j])
+
+
 
 # plot the matrix as heatmap
 fig, ax = plt.subplots()
 cmap = plt.get_cmap('Blues')
 cmap.set_under('grey')
 #cmap.set_over('red')
+
 cax = ax.matshow(matrix, cmap= cmap, vmin=0.065, vmax=0.12) 
 #cax = ax.matshow(matrix, cmap= cmap,  vmin = 0.01, vmax = 1, )
 
+
+
+# layout stuff
 fig.colorbar(cax,) #  label="AVG PLQY",)
 plt.tick_params(axis='x', which='both', bottom=False)
 fig.set_size_inches(10, 4)
-
-
 
 ax.set_xticklabels([""] + list(ml_dictionary.keys()), rotation=45)
 plt.xticks(range(len(ml_dictionary)), ml_dictionary.keys())
@@ -181,21 +157,5 @@ plt.yticks(range(len(molecules)), molecules)
 
 
 plt.tight_layout()
-
 plt.show()
 
-
-
-
-# write to csv with pandas
-#df = pandas.DataFrame(matrix, columns= ml_dictionary.keys(), index= molecules)
-# df.to_csv("min_FWHM_matrix.csv")
-
-# print(df)
-
-
-# write PLQY and peak positions to csv
-# plqy = [data["y"] for data in data_objects]
-# peaks = [data["peak_pos"] for data in data_objects]
-# df = pandas.DataFrame({"PLQY": plqy, "Peak": peaks})
-# df.to_csv("PLQY_data.csv")

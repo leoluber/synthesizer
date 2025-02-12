@@ -18,8 +18,8 @@ import numpy as np
 import plotly.graph_objects as go
 
 # custom imports
-from package.src.Datastructure import Datastructure
-from package.src.helpers import surface_proportion, ev_to_nm
+from src.Datastructure import Datastructure
+from src.helpers import surface_proportion, ev_to_nm
 
 
 
@@ -39,6 +39,7 @@ class Plotter(Datastructure):
 
     def __init__(self,
                  processed_file_path,
+                 encoding = "chemical"
                  ):
         
         # No super().__init__() snince we don't actually need to
@@ -47,14 +48,21 @@ class Plotter(Datastructure):
         # read the data
         self.data_frame = pd.read_csv(processed_file_path, header=0, sep=";")
 
+        self.encoding = encoding
+
         # paths to the data
         self.data_path_raw =            "data/raw/"
         self.geometry_path=             self.data_path_raw + "molecule_encoding.json"
         self.molecule_dictionary_path = self.data_path_raw + "molecule_dictionary.json"
         self.ml_dictionary_path =       self.data_path_raw + "ml_dictionary.json"
+        self.global_attributes_path =   self.data_path_raw + "AntisolventProperties.csv"
 
         # get encodings
         self.molecule_dictionary, self.ml_dictionary, self.molecule_geometry = self.get_dictionaries()
+
+        # molecule attributes
+        self.global_attributes_df =  pd.read_csv(self.global_attributes_path, 
+                                                 delimiter= ';', header= 0)
 
 
 
@@ -70,24 +78,72 @@ class Plotter(Datastructure):
         """
 
         # set the grid (and define bounds of parameter space)
-        y_vec = np.linspace(0, 1, 100)
-        x_vec = np.linspace(0, 0.8, 100)
+        y_vec = np.linspace(0, 1, 20)
+        x_vec = np.linspace(0, 1, 20)
         X, Y  = np.meshgrid(x_vec, y_vec)
         input = np.c_[X.ravel(), Y.ravel()]
         
         # add self.encode(molecule, self.encoding) to the input
-        encoding = self.encode(molecule)
-        input = [np.append(encoding, row ) for row in input]
+        encoding = self.encode(molecule, enc= self.encoding)
+        #encoding = self.encode(molecule)
+        input_ = [np.append(encoding, row ) for row in input]
+
 
         # evaluate the kernel on the grid
-        input = np.array(input)
-        Z = kernel.model.predict(input)[0].reshape(X.shape)
-        err = kernel.model.predict(input)[1].reshape(X.shape)
+        input_ = np.array(input_)
+        print(input_[0])
+        Z = kernel.model.predict(input_)[0].reshape(X.shape)
+        err = kernel.model.predict(input_)[1].reshape(X.shape)
+
+        
+        # append input to data.csv
+        # df = pd.DataFrame(data = input, columns = ["AS_Pb_ratio", "Cs_Pb_ratio",])
+        # df["peak_pos"] = Z.ravel()
+        # df["Sample No."] = np.array(["synth" for i in range(len(df))])
+        # df["molecule_name"] = np.array([molecule for i in range(len(df))])
+
+        # save the data
+        #df.to_csv("data.csv", mode='a', header=False)
+
 
         return {"Z": Z, "err": err, "X": X, "Y": Y, "x_vec": x_vec, "y_vec": y_vec}
 
 
+    def screen_kernel(self, kernel, molecule, Cs_Pb = 0.3, As_Pb = None) -> dict:
 
+        """ Evaluates the kernel on a line for screening purposes
+        
+        (...)
+
+        """
+        
+        fig, ax = plt.subplots()
+
+        if (Cs_Pb is None and As_Pb is None) or (Cs_Pb is not None and As_Pb is not None):
+            raise ValueError("Please provide at exactly one parameter")
+        
+        if Cs_Pb is not None:
+            As_Pb_values = np.linspace(0, 1, 100)
+            inputs = np.array([np.append(self.encode(molecule), [As_Pb, Cs_Pb, ]) for As_Pb in As_Pb_values])
+            Z = kernel.model.predict(inputs)[0]
+
+            # calc V_As
+            V_As = As_Pb_values * (0.0066 * 1000 * 10000) /(11.29)
+            ax.plot(V_As, Z, color = "black", linestyle = "dashed", linewidth = 2)
+
+        elif As_Pb is not None:
+            Cs_Pb_values = np.linspace(0, 1, 100)
+            inputs = np.array([np.append(self.encode(molecule), [As_Pb, Cs_Pb, ]) for Cs_Pb in Cs_Pb_values])
+            Z = kernel.model.predict(inputs)[0]
+            ax.plot(Cs_Pb_values, Z, color = "black", linestyle = "dashed", linewidth = 2)
+            
+
+        #plot
+        ax.set_xlabel("As")
+        ax.set_ylabel("Peak Position [nm]")
+        plt.show()
+
+        
 
 
 ### ------------------------------ PLOTTING ------------------------------ ###
@@ -132,6 +188,8 @@ class Plotter(Datastructure):
         var_3 = df[var3]
         peak  = df["peak_pos"]
         sample_no = df["Sample No."]
+        fwhm = df["fwhm"]
+        info = [f"No: {str(no)}  FWHM: {str(round(fwhm, 2))}" for no, fwhm in zip(sample_no, fwhm)]
 
         # get the artificial data
         art_1 = artificial[var1]
@@ -145,7 +203,7 @@ class Plotter(Datastructure):
             fig.add_trace(plotly.graph_objects
                             .Scatter3d(x=var_1, y=var_2, z=var_3, mode='markers', 
                                     marker=dict(size=13, opacity=0.7, color=peak,),
-                                    text = sample_no,
+                                    text = info,
                                     ))
             
             fig.update_traces(marker=dict(cmin=380, cmax=650, colorbar=dict(title='PEAK POS'), 
@@ -178,10 +236,13 @@ class Plotter(Datastructure):
 
         # plot model over the parameter space
         if kernel is not None:
+
+            # screen
+            #self.screen_kernel(kernel, molecule, Cs_Pb = 0.3)
             
             # evaluate the kernel on a grid
-            dict = self.evaluate_kernel(kernel, molecule)
-            Z, err, X, Y, x_vec, y_vec = dict["Z"], dict["err"], dict["X"], dict["Y"], dict["x_vec"], dict["y_vec"]
+            dict_ = self.evaluate_kernel(kernel, molecule)
+            Z, err, X, Y, x_vec, y_vec = dict_["Z"], dict_["err"], dict_["X"], dict_["Y"], dict_["x_vec"], dict_["y_vec"]
             
             # write X, Y, Z to a csv with pandas
             #df = pd.DataFrame(data = Z, index = x_vec, columns = y_vec)
@@ -214,7 +275,7 @@ class Plotter(Datastructure):
 
         # save the plot as interactive html
         if library == "plotly":
-            #fig.write_html(f"plots/{molecule}.html")
+            fig.write_html(f"plots/{molecule}.html")
             fig.show()
         
         elif library == "matplotlib":
@@ -255,8 +316,8 @@ class Plotter(Datastructure):
         if kernel is not None:
             
             # evaluate the kernel on a grid
-            dict = self.evaluate_kernel(kernel, molecule)
-            Z, err, X, Y, x_vec, y_vec = dict["Z"], dict["err"], dict["X"], dict["Y"], dict["x_vec"], dict["y_vec"]
+            dict_ = self.evaluate_kernel(kernel, molecule)
+            Z, err, X, Y, x_vec, y_vec = dict_["Z"], dict_["err"], dict_["X"], dict_["Y"], dict_["x_vec"], dict_["y_vec"]
 
             # contour plot with plotly, figure size is set
             fig = plotly.graph_objects.Figure( layout = dict(width = 580, height = 500))
@@ -300,7 +361,6 @@ class Plotter(Datastructure):
 
 
 
-
     def plot_2D_contour_old(self, var1 = None, var2 = None, 
                             kernel = None, molecule = None,
                             selection_dataframe = None) -> None:
@@ -338,8 +398,8 @@ class Plotter(Datastructure):
         if kernel is not None:
 
             # evaluate the kernel on a grid
-            dict = self.evaluate_kernel(kernel, molecule)
-            Z, err, X, Y, x_vec, y_vec = dict["Z"], dict["err"], dict["X"], dict["Y"], dict["x_vec"], dict["y_vec"]
+            dict_ = self.evaluate_kernel(kernel, molecule)
+            Z, err, X, Y, x_vec, y_vec = dict_["Z"], dict_["err"], dict_["X"], dict_["Y"], dict_["x_vec"], dict_["y_vec"]
 
             c = ax.contourf(X, Y, Z, 30, cmap='gist_rainbow_r', vmin = 400, vmax = 600, zorder = 1)
 
@@ -385,7 +445,6 @@ class Plotter(Datastructure):
 
         return area
     
-
 
 
     def plot_parameters(self, var1 = None, var2 = None, color_var = None) -> None:
@@ -588,8 +647,6 @@ class Plotter(Datastructure):
         n_Cs = df["n_Cs"][df["molecule_name"] == molecule]
         n_As = df["n_As"][df["molecule_name"] == molecule]
         n_Pb = df["n_Pb"][df["molecule_name"] == molecule]
-
-        print(df[["n_As", "n_Pb", "n_Cs"]][df["molecule_name"] == molecule])
 
 
         Cs = n_Cs / (n_Cs + n_As + n_Pb)

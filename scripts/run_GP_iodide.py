@@ -59,14 +59,13 @@ gp = GaussianProcess(
                     training_data = inputs,
                     targets = targets, 
                     kernel_type = "EXP", 
-                    model_type  = "GPRegression",   
                     )
 
 
 
     # (1) LOO cross validation
-# gp.leave_one_out_cross_validation(inputs, targets,)
-# gp.regression_plot()
+#gp.leave_one_out_cross_validation(inputs, targets,)
+#gp.regression_plot()
 
 # exit()
 

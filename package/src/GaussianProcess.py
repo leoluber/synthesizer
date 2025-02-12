@@ -1,10 +1,17 @@
-""" Gaussian Process Regression with GPy"""
-    # < github.com/leoluber >
+""" 
+    Project:     synthesizer
+    File:        helpers.py
+    Description: Helper functions for the synthesizer project
+    Author:      << github.com/leoluber >> 
+    License:     MIT
+"""
+
 
 
 import numpy as np
 import matplotlib.pyplot as plt
 import GPy
+import json
 from timeit import default_timer as timer
 from typing import Literal
 
@@ -34,9 +41,10 @@ class GaussianProcess:
 
     USAGE
     -----
-
     >>> gp = GaussianProcess(training_data, targets, parameter_selection, ...)
     >>> gp.leave_one_out_cross_validation(training_data, targets)
+    OR:
+    >>> gp = GaussianProcess(training_data, targets, parameter_selection, ...)
     >>> gp.train()
     >>> gp.predict(sample)
 
@@ -44,10 +52,11 @@ class GaussianProcess:
 
 
     def __init__(self, 
-                 training_data = None, 
-                 targets = None,
-                 kernel_type: Literal["RBF", "MLP", "EXP", "LIN"] = "EXP",
-                 model_type  = "GPRegression",
+                 training_data, 
+                 targets,
+                 kernel_type: Literal["RBF", "MLP", 
+                                      "EXP", "LIN", 
+                                      "POLY", "SPECIAL"] = "EXP",
                  ):
         
 
@@ -56,19 +65,18 @@ class GaussianProcess:
         self.input_dim = self.training_data.shape[1]
         self.targets = targets
 
-
         # model specific
         self.kernel_type = kernel_type
         self.kernel = self.get_kernel(self.kernel_type, input_dim = self.input_dim)   
-        self.model_type = model_type
         self.model = None
-
 
         # evaluation (LOO) results
         self.loo_predictions, self.loo_uncertainty, self.loo_error = None, None, None
 
         # performance
         self.fitting_time = None
+
+
 
 
 ### ----------------------- BASICS ------------------------- ###
@@ -78,33 +86,55 @@ class GaussianProcess:
               training_data = None, targets = None,
               ) -> GPy.models.GPRegression:
         
-        """Trains the Gaussian Process model """
+        """ Trains the Gaussian Process model 
+        
+        ARGS (optional)
+        ---------------
+        - training_data: training data (np.array)
+        - targets: targets (np.array)
+        [if not provided, the class variables are used]
 
+        RETURNS
+        -------
+        - model: GPy.models.GPRegression object
+
+        """
+
+        print("Training the model...")
 
         # adjust dimensions
         if training_data is None or targets is None:
             targets = np.reshape(self.targets, (self.targets.shape[0], 1))
-            training_data = np.reshape(self.training_data, (self.training_data.shape[0], self.training_data.shape[1]))
+            training_data = np.reshape(self.training_data, 
+                                       (self.training_data.shape[0], self.training_data.shape[1]))
 
         else:
             targets = np.reshape(targets, (targets.shape[0], 1))
-            training_data = np.reshape(training_data, (training_data.shape[0], training_data.shape[1]))
+            training_data = np.reshape(training_data, 
+                                       (training_data.shape[0], training_data.shape[1]))
 
-        # select the model
-        if self.model_type == "GPRegression":
-            model = GPy.models.GPRegression(training_data, targets, self.kernel)
-        else:
-            raise ValueError("Model type not supported")
-
+        # initialize the model and optimize
+        model = GPy.models.GPRegression(training_data, targets, self.kernel)
         model.optimize()
 
         self.model = model
         return model	
 
 
+
     def predict(self, sample) -> np.ndarray:
 
-        """ Predicts the target value for a given sample"""
+        """ Predicts the target value for a given sample
+        
+        ARGS
+        ----
+        - sample: input sample (np.array)
+
+        RETURNS
+        -------
+        - prediction: predicted target value (np.array)
+
+        """
 
         sample = np.reshape(sample, (1, len(sample)))
         return self.model.predict(sample)
@@ -115,22 +145,21 @@ class GaussianProcess:
 
 ### ------------------ CROSS VALIDATION -------------------- ###
 
-
     def leave_one_out_cross_validation(self, training_data, targets, 
                                        baseline_list = None, include_sample = None,) -> float:
 
 
         """LOO cross validation on the training data, returns the mean squared error"""
 
-
         # LOO loop
         predictions, uncertainty, error = [], [], []
 
+        # default values
         if include_sample is None:
             include_sample = np.ones(len(training_data))
 
-        step = 0
 
+        step = 0
         for i, data in enumerate(training_data):
 
             step += 1
@@ -158,10 +187,7 @@ class GaussianProcess:
             # select the model
             self.kernel = self.get_kernel(self.kernel_type, input_dim = X_train.shape[1])
 
-            if self.model_type == "GPRegression":
-                model = GPy.models.GPRegression(X_train, y_train, self.kernel)
-            else:
-                raise ValueError("Model type not supported")
+            model = GPy.models.GPRegression(X_train, y_train, self.kernel)
 
 
             # opimize the model and predict the test data
@@ -254,7 +280,7 @@ class GaussianProcess:
 
 
 
-    def active_learning_simulation(self, data_objects,
+    def active_learning_simulation(self, dataframe,
                                    measured_molecule: str = "Methanol",
                                    resolution = 5,	
                                    ) -> float:
@@ -270,14 +296,27 @@ class GaussianProcess:
         """
 
         # seperate into baseline and real molecules
-        starting_data = [data["encoding"] + data["total_parameters"]
-                         for data in data_objects if data["baseline"] == True or data["molecule_name"] != measured_molecule]
-        self.targets = np.array([data["y"] for data in data_objects if data["baseline"] == True or data["molecule_name"] != measured_molecule])
+        starting_data_df = dataframe[dataframe["baseline"] == True]
+        starting_data_df = starting_data_df[starting_data_df["molecule_name"] != measured_molecule]
 
-        measured_data = [data["encoding"] + data["total_parameters"]
-                         for data in data_objects if data["baseline"] == False and data["molecule_name"] == measured_molecule]
-        measured_targets = np.array([data["y"] for data in data_objects if data["baseline"] == False and data["molecule_name"] == measured_molecule])
-        
+        # get the starting data
+        encodings = np.array([json.loads(x) for x in starting_data_df["encoding"]])
+        inputs = starting_data_df[["AS_Pb_ratio", "Cs_Pb_ratio"]] 
+
+        # set class variables
+        self.training_data = np.concatenate((encodings, inputs), axis = 1)
+        self.targets = starting_data_df["peak_pos"].to_numpy().astype(float)
+
+
+        # sepperate the measured data into baseline and real molecules
+        measured_data_df = dataframe[dataframe["baseline"] == False] 
+        measured_data_df = measured_data_df[measured_data_df["molecule_name"] == measured_molecule]
+        encodings = np.array([json.loads(x) for x in measured_data_df["encoding"]])
+
+        # get the measured data
+        measured_data = np.concatenate((encodings, measured_data_df[["AS_Pb_ratio", "Cs_Pb_ratio"]]), axis = 1)
+        measured_targets = measured_data_df["peak_pos"]
+
         #shuffle 
         zip_list = list(zip(measured_data, measured_targets))
         np.random.shuffle(zip_list)
@@ -285,9 +324,7 @@ class GaussianProcess:
 
 
         # train the model on the starting data
-        self.training_data = np.array(starting_data)
-        self.targets = np.array(self.targets)
-        self.train()
+        self.train(training_data = self.training_data, targets = self.targets)
 
 
         # main loop
@@ -311,10 +348,10 @@ class GaussianProcess:
 
 
             # remaining data
-            if n!=0:
+            try:
                 remaining_data = np.vstack((measured_data[:n], measured_data[n+resolution:]))
                 remaining_targets = np.append(measured_targets[:n], measured_targets[n+resolution:])
-            else:
+            except:
                 remaining_data = measured_data[resolution:]
                 remaining_targets = measured_targets[resolution:]
 
@@ -327,10 +364,10 @@ class GaussianProcess:
 
 
                 # add the experiment to the training data
-                if l!=0:
+                try:
                     training_data = np.vstack((self.training_data, remaining_data[:l]))
                     targets = np.append(self.targets, remaining_targets[:l])
-                else:
+                except:
                     training_data = self.training_data
                     targets = self.targets
 
@@ -361,48 +398,50 @@ class GaussianProcess:
 
 
 
+    def validate_transfer(self, x, y, x_test, y_test) -> float:
+
+        """ Validate the transfer of a model to a new molecule """
+
+        # reshape for GPy
+        y = np.reshape(y, (y.shape[0], 1))
+        y_test = np.reshape(y_test, (y_test.shape[0], 1))
+        x = np.reshape(x, (x.shape[0], x.shape[1]))
+        x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1]))
+
+        # train the model
+        model = GPy.models.GPRegression(x, y, self.kernel)
+        model.optimize()
+
+        # predict the test data
+        print(x_test)
+        predictions, _ = model.predict(x_test)
+        print(predictions)
+
+        # calculate the error
+        error = np.mean(np.abs(predictions - y_test))
+        error_median = np.median(np.abs(predictions - y_test))
+        print(f"Error Median: {error_median}")
+
+        return error_median
 
 
 
+### ------------------------- INIT ------------------------- ###
 
+    def get_kernel(self, kernel, input_dim) -> GPy.kern:
 
-
-### --------------------- OPTIMIZATION ----------------------- ###
-
-
-    def choose_best_kernel(self):
+        """ Returns the kernel object based on the kernel string 
         
-        """ Iterates over all kernels and chooses the best one """
+        ARGS
+        ----
+        - kernel: kernel string (str)
+        - input_dim: input dimensions (int)
 
+        RETURNS
+        -------
+        - kernel: GPy.kern object
 
-        mse_historgram = []
-        for kernel in ["RBF", "MLP", "EXP", "LIN"]:
-
-            print(f"Testing kernel:     {kernel}")
-
-            self.kernel = self.get_kernel(kernel, input_dim = self.input_dim)
-
-            mse = self.leave_one_out_cross_validation(self.training_data, self.targets)
-            mse_historgram.append(mse)
-        
-        self.kernel_type = ["RBF", "MLP", "EXP", "LIN"][np.argmin(mse_historgram)]
-
-        # plot the results
-        fig = plt.figure(figsize = (10, 5))    
-        plt.bar(["RBF", "MLP", "EXP", "LIN"],  mse_historgram, width = 0.4)
-
-        plt.xlabel("Kernels")
-        plt.ylabel("Error(MSE)")
-
-        plt.show()
-
-
-
-### ------------- HELPER FUNCTIONS --------------- ###
-
-    def get_kernel(self, kernel, input_dim = None) -> GPy.kern:
-
-        """ Returns the kernel object based on the kernel string """
+        """
 
         match kernel:
             case "RBF":
@@ -410,11 +449,12 @@ class GaussianProcess:
             case "MLP":
                 return GPy.kern.MLP(input_dim, ARD = True) + GPy.kern.MLP(input_dim, ARD=True)
             case "EXP":
-                return GPy.kern.Exponential(input_dim, lengthscale= 0.5)
+                return GPy.kern.Exponential(input_dim, lengthscale= 0.15)
             case "LIN":
                 return GPy.kern.Linear(input_dim)
             case "POLY":
                 return GPy.kern.Poly(input_dim, order = 3,)
+            
             case "SPECIAL":
                 parameter_kernel = GPy.kern.Exponential(2, active_dims= [5,6])
                 parameter_kernel.lengthscale.constrain_bounded(100, 600)
@@ -424,13 +464,13 @@ class GaussianProcess:
                 geometry_kernel.variance.constrain_bounded(0.1, 200)
 
                 return parameter_kernel * geometry_kernel 
-                #return exp * rbf
+            
             case _:
                 raise ValueError("Kernel not supported")
             
 
 
-### ------------- PLOTTING FUNCTIONS --------------- ###
+### ------------------ PLOTTING FUNCTIONS ------------------ ###
 
     def regression_plot(self, TRANSFER_MOLECULE = None):
 
@@ -440,17 +480,19 @@ class GaussianProcess:
 
         print(len(self.targets), len(self.loo_predictions))
 
-        error = np.mean(np.abs(np.array(self.targets) - np.array(self.loo_predictions)))
+        error        = np.mean(np.abs(np.array(self.targets) - np.array(self.loo_predictions)))
+        error        = round(error, 4)
         error_median = np.median(np.abs(np.array(self.targets) - np.array(self.loo_predictions)))
         error_median = round(error_median, 4)
-        error = round(error, 4)
+
         ax.scatter(self.targets, self.loo_predictions, c='blue', label= f'med err: {error_median}', marker = 's',s = 40)
         
+        # plot the identity line
         if TRANSFER_MOLECULE is None:
             #ax.plot([0.06, 0.18],[0.06, 0.18] ,'k--', lw=2)
             #ax.plot([0.0, 1],[0.0, 1] ,'k--', lw=2)
-            #ax.plot([440, 520], [440, 520], 'k--', lw=2)
-            ax.plot([570, 710],[570, 710] ,'k--', lw=2)
+            ax.plot([420, 530], [420, 530], 'k--', lw=2)
+            #ax.plot([570, 710],[570, 710] ,'k--', lw=2)
         else:
             ax.plot([420, 520], [420, 520], 'k--', lw=2)
 
@@ -461,9 +503,6 @@ class GaussianProcess:
 
         ax.xaxis.set_label_text("True value", fontsize = 12)
         ax.yaxis.set_label_text("Predicted value", fontsize = 12)
-
-        #ax.set_xlim(430, 530)
-        #ax.set_ylim(430, 530)
 
         plt.tight_layout()
         plt.legend()
@@ -498,7 +537,7 @@ class GaussianProcess:
         # save as svg
         #fig.savefig(f"data/active_learning_error_{molecule}.svg", format = "svg")
 
-    
+
     def print_parameters(self):
 
         """ Prints the parameters of the model """

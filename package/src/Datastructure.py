@@ -17,7 +17,7 @@ import pandas as pd
 import json
 import os
 import sys
-
+from typing import Literal
 
 
 # custom imports
@@ -79,6 +79,7 @@ class Datastructure:
         spectral_file_path:    str = "spectrum/",
         wavelength_filter =    [400, 800], #nm
         molecule =             "all",
+        encoding =             "geometry", # "geometry" or "chemical"
         add_baseline =         False,
         monodispersity_only =  False,
         P_only =               False,
@@ -88,7 +89,7 @@ class Datastructure:
         # main stettings
         self.add_baseline      = add_baseline
         self.wavelength_filter = wavelength_filter
-
+        self.encoding          = encoding
 
         # selection flags
         self.flags = {"monodispersity_only": monodispersity_only,
@@ -289,7 +290,6 @@ class Datastructure:
         return df
     
 
-
     def process_additional_properties(self, df) -> pd.DataFrame:
 
         """Handles specific properties of the synthesis data
@@ -352,13 +352,18 @@ class Datastructure:
         for key in ["baseline", "artificial", ]:
             df[key] = np.zeros(len(df["Sample No."]), dtype = bool)
 
-        # encoding: one_hot or geometry encoding in list format
+        # encoding: geometry encoding or chemical encoding
         df["encoding"] = [self.encode(molecule)
                         for molecule in df["molecule_name"]]
         
+
         # seperate single elements from the encoding
-        df["chain_length"] = [x[2] for x in df["encoding"]]
-        df["group_pos"]    = [x[3] for x in df["encoding"]]
+        try:
+            df["chain_length"] = [x[2] for x in df["encoding"]]
+            df["group_pos"]    = [x[3] for x in df["encoding"]]
+        except:
+            df["chain_length"] = np.zeros(len(df["Sample No."]))
+            df["group_pos"] = np.zeros(len(df["Sample No."]))
 
         
         # add additional chemical properties
@@ -374,16 +379,14 @@ class Datastructure:
                     df[attribute][index] = 0
                     print(f"ValueError: {attribute} not found in global attributes")
 
+            self.normalize(df[attribute], attribute)
+
 
         # (7) Antisolvent correction: calculate the AS_Pb_ratio and n_As by considering the density and units
         df["n_As"] = np.zeros(len(df["Sample No."]))
         for index, row in df.iterrows():
             df["n_As"][index] =  row["V (antisolvent)"] * self.densities[row["molecule_name"]]
             df["AS_Pb_ratio"][index] = row["AS_Pb_ratio"] * self.densities[row["molecule_name"]]
-
-
-        test_df = df[["n_As", "n_Pb", "AS_Pb_ratio",]]
-        print(test_df)
 
 
         return df
@@ -433,7 +436,7 @@ class Datastructure:
 
 
     def get_training_data(self, training_selection: list, 
-                          target: str, encoding = False )-> tuple:
+                          target: str, encoding = False, remove_baseline = False )-> tuple:
 
         """ Reads processed_data.csv and returns the training data as a numpy arrays 
             
@@ -459,10 +462,15 @@ class Datastructure:
         # read the processed data
         data_frame = pd.read_csv(self.processed_file_path, delimiter= ";", header= 0)
 
+        # remove the baseline data if requested
+        if remove_baseline:
+            data_frame = data_frame[data_frame["baseline"] == False]
+
 
         #### --------------- TEMPORARY CHANGES --------------- ####
         #data_frame = data_frame[data_frame["Sample No."].astype(int) >= 120]
         #data_frame  = data_frame[data_frame["Pb/I"].astype(float) >0.4]
+        data_frame = data_frame[data_frame["Sample No."] != "416"]
 
 
         # check if the keys are in the dataframe
@@ -482,7 +490,9 @@ class Datastructure:
             data_frame = data_frame[data_frame['molecule_name'] == self.flags["molecule"]]
 
         if self.flags["monodispersity_only"]:
-            data_frame = data_frame[data_frame['monodispersity'].astype(int) == 1]
+            print(len(data_frame[data_frame['monodispersity'] != 0]))
+            print(len(data_frame))
+            data_frame = data_frame[data_frame['monodispersity'] != 0]
 
         if self.flags["P_only"]:
             data_frame = data_frame[data_frame['S/P'] != "S"]
@@ -501,14 +511,63 @@ class Datastructure:
             encodings = np.array([json.loads(x) for x in data_frame["encoding"]])
             x = np.concatenate((encodings, x), axis = 1)
 
+        return x, y, data_frame,
 
-        return x, y, data_frame
+
+    def get_transfer_training_data(self, 
+                                   training_selection: list,
+                                   selection_dataframe,
+                                   molecule_to_exclude,
+                                   num_samples = 0,
+                                   target = "peak_pos",
+                                   encoding = True,
+                                   )-> tuple:
+        
+        """ Similar to get_training_data but transfer specific
             
+        (...)
+        
+        """
+
+        training_df = selection_dataframe[selection_dataframe["molecule_name"] != molecule_to_exclude]
+        test_df = selection_dataframe[selection_dataframe["molecule_name"] == molecule_to_exclude]
+        test_df_no_baseline = test_df[test_df["baseline"] == False]
+        test_df_baseline = test_df[test_df["baseline"] == True]
+
+        # add baseline to training data (as it is always known)
+        training_df = pd.concat([training_df, test_df_baseline], ignore_index = True)
+
+        # get n random samples from the single_df_no_baseline dataframe
+        #random_set = test_df_no_baseline.sample(n = num_samples)
+        random_set = test_df_no_baseline.head(num_samples)
+        test_df = test_df_no_baseline.drop(random_set.index)
+
+        # add the baseline data to the excluded dataframe
+        training_df = pd.concat([training_df, random_set], ignore_index = True)
+      
+        # get the training data
+        x = training_df[training_selection].to_numpy().astype(float)
+        x_test = test_df[training_selection].to_numpy().astype(float)
+        y = training_df[target].to_numpy().astype(float)
+        y_test = test_df[target].to_numpy().astype(float)
+
+        print(x.shape, y.shape, x_test.shape, y_test.shape)
+
+        # add the encoding if requested
+        if encoding:
+            encodings = np.array([json.loads(x) for x in training_df["encoding"]])
+            encodings_test = np.array([json.loads(x) for x in test_df["encoding"]])
+            x = np.concatenate((encodings, x), axis = 1)
+            x_test = np.concatenate((encodings_test, x_test), axis = 1)
+
+        return x, y, x_test, y_test
+        
+      
 
 #### ----------------------------------  HELPERS  -------------------------------- ####
 
 
-    def encode(self, molecule_name,) -> list:
+    def encode(self, molecule_name, enc = None) -> list:
 
         """ Encodes the molecule name to a geometry encoding 
         
@@ -517,15 +576,41 @@ class Datastructure:
         - geo_encoding (list): the geometry encoding of the molecule
 
         """
+        if enc is None:
+            enc = self.encoding
 
-        try:
+
+        if enc == "chemical":
+            selection = ["relative polarity (-)", "dielectric constant (-)","dipole moment (D)",
+                         "Hansen parameter hydrogen bonding (MPa)1/2","Gutman donor number (kcal/mol)"]
+            global_attributes = self.global_attributes_df.loc[self.global_attributes_df['antisolvent'] == molecule_name]
+            chem_encoding = list(global_attributes[selection].to_numpy().astype(float)[0])
+            return chem_encoding
+        
+
+        elif enc == "geometry":
+            try:
+                geo_encoding = [float(x) for x in self.molecule_geometry[molecule_name]]
+
+            except KeyError:
+                print(f"KeyError: {molecule_name} not found in molecule dictionary")
+                return None
+
+            return geo_encoding
+
+
+        elif enc == "combined":
+
             geo_encoding = [float(x) for x in self.molecule_geometry[molecule_name]]
-
-        except KeyError:
-            print(f"KeyError: {molecule_name} not found in molecule dictionary")
+            selection = ["relative polarity (-)", "Hansen parameter hydrogen bonding (MPa)1/2",] #"Gutman donor number (kcal/mol)"]
+                        #"dielectric constant (-)","dipole moment (D)",]
+            global_attributes = self.global_attributes_df.loc[self.global_attributes_df['antisolvent'] == molecule_name]
+            chem_encoding = list(global_attributes[selection].to_numpy().astype(float)[0])
+            return geo_encoding + chem_encoding
+        
+        else:
+            print("Invalid encoding type")
             return None
-
-        return geo_encoding
 
 
     def read_spectrum(self, path,) -> tuple:
@@ -709,24 +794,24 @@ class Datastructure:
 
         # add new data to data objects
         for molecule in molecules:
+
+            # get example data
+            new_row = dataframe[dataframe["molecule_name"] == molecule].iloc[0]
+
             for i, input_ in enumerate(inputs):
 
-                new_row = {}
                 new_row["Cs_Pb_ratio"] = input_[1]
                 new_row["AS_Pb_ratio"] = input_[0]
                 new_row["Sample No."] = "baseline"
-                new_row["molecule_name"] = molecule
                 new_row["baseline"] = True
                 new_row["artificial"] = True
-                new_row["encoding"] = self.encode(molecule,)
+                new_row["monodispersity"] = 1
                 new_row["peak_pos"] = peaks[i]
                 new_row["poly_peak_pos"] = peaks[i]
                 new_row["peak_pos_eV"] = nm_to_ev(peaks[i])
                 new_row["fwhm"] = 0
 
                 dataframe = dataframe._append(new_row, ignore_index = True)
-        
-        print(dataframe[['Sample No.', 'molecule_name', 'Cs_Pb_ratio', 'AS_Pb_ratio', 'peak_pos']])
 
         return dataframe
 
@@ -765,13 +850,13 @@ class Datastructure:
                 new_row["molecule_name"] = molecule
                 new_row["baseline"] = True
                 new_row["Sample No."] = "baseline"
+                new_row["monodispersity"] = 1
                 new_row["artificial"] = False
                 new_row["fwhm"] = 0
                 new_row["encoding"] = self.encode(molecule,)
                 dataframe = dataframe._append(new_row, ignore_index = True)
             
         return dataframe
-
 
 
 
