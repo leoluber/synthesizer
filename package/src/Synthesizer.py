@@ -88,7 +88,7 @@ class Synthesizer:
                  weights : list =   {"peak_pos": 10, 
                                      "poly": 10,
                                      "plqy": 5,
-                                     "fwhm": 1,},
+                                     "fwhm": 10,},
                  c_Pb_fixed =       None,
                  V_Cs_fixed =       None,
                  Cs_Pb_opt =        False,
@@ -96,6 +96,7 @@ class Synthesizer:
                  c_Pb_max =         None,
                  c_Cs_fixed =       None,
                  V_As_max =         5000,
+                 V_Pb_max =         None,
                  add_baseline =     True,
                 ):
         
@@ -117,7 +118,7 @@ class Synthesizer:
         self.datastructure =    self.get_datastructure()
         self.molecule_names =   self.datastructure.molecule_names
         self.encoding =         self.datastructure.encode(self.molecule)
-        
+        self.selection_dataframe = None
 
         # results dictionary
         self.results = None
@@ -151,6 +152,7 @@ class Synthesizer:
         # extra constraints
         self.c_Pb_max = c_Pb_max
         self.V_As_max = V_As_max
+        self.V_Pb_max = V_Pb_max
         self.c_Pb_fixed = c_Pb_fixed
         self.c_Cs_fixed = c_Cs_fixed
         self.V_Cs_fixed = V_Cs_fixed
@@ -175,7 +177,7 @@ class Synthesizer:
 
         # display the trained models to check for overfitting etc. 
         # (if the number of dimensions is sufficiently small)
-        self.plotter = Plotter(self.datastructure.processed_file_path)
+        self.plotter = Plotter(self.datastructure.processed_file_path, encoding= self.datastructure.encoding, selection_dataframe= self.selection_dataframe)
         self.plotter.plot_data( "AS_Pb_ratio", "Cs_Pb_ratio", "peak_pos", 
                               kernel= self.NPL_model, molecule= self.molecule,)
         
@@ -260,10 +262,9 @@ class Synthesizer:
 
         # hard constraints 
         # TODO: refactor this to a more general approach
-        if Cs_Pb_ratio < 0.2: return 1000
-        if Cs_Pb_ratio > 0.4: return 1000
-        #if Cs_Pb_ratio < 0.15: return 1000
-        #if As_Pb_ratio > 0.8: return 1000
+        #if Cs_Pb_ratio < 0.2: return 1000
+        if Cs_Pb_ratio > 1:   return 1000
+        if As_Pb_ratio > 0.6: return 1000
 
 
         # get the molecule encoding
@@ -344,6 +345,8 @@ class Synthesizer:
                             get_training_data(training_selection = parameter_selection, 
                                               target = target, encoding = True, 
                                               remove_baseline = (target != "peak_pos"))
+        if target == "peak_pos":
+            self.selection_dataframe = df
     
         
         gp = GaussianProcess(training_data = inputs,
@@ -388,6 +391,11 @@ class Synthesizer:
             norm_max_V_As   = Norm(max_V_As, "V (antisolvent)")
             limits["V (antisolvent)"] = [0, norm_max_V_As]
 
+        if self.V_Pb_max is not None:
+            max_V_Pb = self.V_Pb_max
+            norm_max_V_Pb   = Norm(max_V_Pb, "V (PbBr2 prec.)")
+            limits["V (PbBr2 prec.)"] = [0, norm_max_V_Pb]
+
         if self.c_Pb_fixed is not None:
             norm_c_Pb_fixed = Norm(self.c_Pb_fixed, "c (PbBr2)")
             limits["c (PbBr2)"] = [norm_c_Pb_fixed, norm_c_Pb_fixed]
@@ -396,10 +404,11 @@ class Synthesizer:
             norm_c_Cs_fixed = Norm(self.c_Cs_fixed, "c (Cs-OA)")
             limits["c (Cs-OA)"] = [norm_c_Cs_fixed, norm_c_Cs_fixed]
 
-        elif self.c_Pb_max is not None:
+        if self.c_Pb_max is not None:
             max_c_Pb = self.c_Pb_max
             norm_max_c_Pb   = Norm(max_c_Pb, "c (PbBr2)")
             limits["c (PbBr2)"] = [0, norm_max_c_Pb]
+            print(f"max_c_Pb: {norm_max_c_Pb}")
 
         if self.V_Cs_fixed is not None:
             norm_V_Cs_fixed = Norm(self.V_Cs_fixed, "V (Cs-OA)")
@@ -426,6 +435,7 @@ class Synthesizer:
                                         molecule = "all",
                                         P_only = True,
                                         add_baseline = self.add_baseline,
+                                        encoding = "geometry",
                                         )
         
         datastructure.read_synthesis_data()

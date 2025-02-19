@@ -158,24 +158,24 @@ class GaussianProcess:
         if include_sample is None:
             include_sample = np.ones(len(training_data))
 
+        if baseline_list is None:
+            baseline_list = np.zeros(len(training_data))
+
 
         step = 0
         for i, data in enumerate(training_data):
 
             step += 1
 
-            if baseline_list is not None and include_sample is not None:
-                # we dont want to test against the baseline, as it is not a real molecule
-                if baseline_list[i] == True:
-                    continue
-                
-                # we only want to test against the samples that are "included"
-                if include_sample[i] == False:
-                    continue
+            if baseline_list[i] == True:
+                continue
+
+            if include_sample[i] == False:
+                continue
 
             print("step: "+ str(step) + "  / " + str(len([inc for inc in include_sample if inc == True])))
 
-            # Split the data into training and test data and reshape so it fits the GPy standard
+            # Split the data into training and test data
             X_train = np.delete(training_data, i, axis=0)
             y_train = np.delete(targets, i, axis=0)
 
@@ -476,7 +476,7 @@ class GaussianProcess:
 
         """ Plots the regression results """
 
-        fig, ax = plt.subplots(figsize = (4.2, 4))
+        fig, ax = plt.subplots(figsize = (4, 4))
 
         print(len(self.targets), len(self.loo_predictions))
 
@@ -490,8 +490,8 @@ class GaussianProcess:
         # plot the identity line
         if TRANSFER_MOLECULE is None:
             #ax.plot([0.06, 0.18],[0.06, 0.18] ,'k--', lw=2)
-            #ax.plot([0.0, 1],[0.0, 1] ,'k--', lw=2)
-            ax.plot([420, 530], [420, 530], 'k--', lw=2)
+            ax.plot([0.0, 1],[0.0, 1] ,'k--', lw=2)
+            #ax.plot([420, 530], [420, 530], 'k--', lw=2)
             #ax.plot([570, 710],[570, 710] ,'k--', lw=2)
         else:
             ax.plot([420, 520], [420, 520], 'k--', lw=2)

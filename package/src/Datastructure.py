@@ -18,6 +18,7 @@ import json
 import os
 import sys
 from typing import Literal
+import matplotlib.pyplot as plt
 
 
 # custom imports
@@ -79,7 +80,7 @@ class Datastructure:
         spectral_file_path:    str = "spectrum/",
         wavelength_filter =    [400, 800], #nm
         molecule =             "all",
-        encoding =             "geometry", # "geometry" or "chemical"
+        encoding =             "geometry", # "geometry" or "chemical", "combined"
         add_baseline =         False,
         monodispersity_only =  False,
         P_only =               False,
@@ -125,14 +126,16 @@ class Datastructure:
         self.processed_file_path =      self.data_path_processed + "processed_" + synthesis_file_path
         self.global_attributes_path =   self.data_path_raw + "AntisolventProperties.csv"
         self.spectrum_path =            self.data_path_raw + spectral_file_path
-        self.geometry_path=             self.data_path_raw + "molecule_encoding.json"
+        self.encoding_path=             self.data_path_raw + "molecule_encoding.json"
         self.molecule_dictionary_path = self.data_path_raw + "molecule_dictionary.json"
         self.ml_dictionary_path =       self.data_path_raw + "ml_dictionary.json"
+        self.geometry_path =            self.data_path_raw + "molecule_geometry.json"
 
 
 
         # dictionaries for molecule names, geometries and atom numbers
-        self.molecule_dictionary, self.ml_dictionary, self.molecule_geometry = self.get_dictionaries()
+        self.molecule_dictionary, self.ml_dictionary, self.encoding_dictionary, self.molecule_geometry =  self.get_dictionaries()
+        
 
 
         # list of all relevant molecule names
@@ -419,7 +422,7 @@ class Datastructure:
                 print(f"TypeError: {row['PL_data']} not found in spectral data")
                 continue
 
-
+        plt.show()
         # remove all rows with missing spectral data
         df = df[df["peak_pos"] != 0]
 
@@ -470,7 +473,6 @@ class Datastructure:
         #### --------------- TEMPORARY CHANGES --------------- ####
         #data_frame = data_frame[data_frame["Sample No."].astype(int) >= 120]
         #data_frame  = data_frame[data_frame["Pb/I"].astype(float) >0.4]
-        data_frame = data_frame[data_frame["Sample No."] != "416"]
 
 
         # check if the keys are in the dataframe
@@ -495,11 +497,16 @@ class Datastructure:
             data_frame = data_frame[data_frame['monodispersity'] != 0]
 
         if self.flags["P_only"]:
+            print("Removing non-P type samples")
+            print(len(data_frame))
             data_frame = data_frame[data_frame['S/P'] != "S"]
+            print(len(data_frame))
 
         if target == "PLQY":
             data_frame = data_frame[data_frame['PLQY'] != 0]
 
+            # drop the samples with PLQY = nan
+            data_frame = data_frame.dropna(subset = ["PLQY"])
 
         # get the training data
         x = data_frame[training_selection].to_numpy()
@@ -510,6 +517,8 @@ class Datastructure:
         if encoding:
             encodings = np.array([json.loads(x) for x in data_frame["encoding"]])
             x = np.concatenate((encodings, x), axis = 1)
+
+        
 
         return x, y, data_frame,
 
@@ -573,44 +582,48 @@ class Datastructure:
         
         RETURNS
         -------
-        - geo_encoding (list): the geometry encoding of the molecule
+        - geo_encoding (list): the geometry encoding of the molecule """
 
-        """
+
         if enc is None:
             enc = self.encoding
 
 
-        if enc == "chemical":
-            selection = ["relative polarity (-)", "dielectric constant (-)","dipole moment (D)",
-                         "Hansen parameter hydrogen bonding (MPa)1/2","Gutman donor number (kcal/mol)"]
-            global_attributes = self.global_attributes_df.loc[self.global_attributes_df['antisolvent'] == molecule_name]
-            chem_encoding = list(global_attributes[selection].to_numpy().astype(float)[0])
-            return chem_encoding
-        
+        match enc:
+            case "chemical":
+                selection = ["relative polarity (-)", "dielectric constant (-)","dipole moment (D)",
+                            "Hansen parameter hydrogen bonding (MPa)1/2","Gutman donor number (kcal/mol)"]
+                global_attributes = self.global_attributes_df.loc[self.global_attributes_df['antisolvent'] == molecule_name]
 
-        elif enc == "geometry":
-            try:
-                geo_encoding = [float(x) for x in self.molecule_geometry[molecule_name]]
+                return list(global_attributes[selection].to_numpy().astype(float)[0])
+            
+            case "geometry":
 
-            except KeyError:
-                print(f"KeyError: {molecule_name} not found in molecule dictionary")
-                return None
+                return [float(x) for x in self.encoding_dictionary[molecule_name]]
 
-            return geo_encoding
+            case "combined":
+                geo_encoding = [float(x) for x in self.encoding_dictionary[molecule_name]]
+                selection = ["relative polarity (-)", "Hansen parameter hydrogen bonding (MPa)1/2",]
+                global_attributes = self.global_attributes_df.loc[self.global_attributes_df['antisolvent'] == molecule_name]
+                chem_encoding = list(global_attributes[selection].to_numpy().astype(float)[0])
 
+                return geo_encoding + chem_encoding
+            
+            case "strength":
+                
+                selection = ["relative polarity (-)",]
+                global_attributes = self.global_attributes_df.loc[self.global_attributes_df['antisolvent'] == molecule_name]
+                chem_encoding = list(global_attributes[selection].to_numpy().astype(float)[0])
 
-        elif enc == "combined":
+                length = self.molecule_geometry[molecule_name][0]
+                cone_angle = self.molecule_geometry[molecule_name][1]
+                strength = self.molecule_geometry[molecule_name][2]
 
-            geo_encoding = [float(x) for x in self.molecule_geometry[molecule_name]]
-            selection = ["relative polarity (-)", "Hansen parameter hydrogen bonding (MPa)1/2",] #"Gutman donor number (kcal/mol)"]
-                        #"dielectric constant (-)","dipole moment (D)",]
-            global_attributes = self.global_attributes_df.loc[self.global_attributes_df['antisolvent'] == molecule_name]
-            chem_encoding = list(global_attributes[selection].to_numpy().astype(float)[0])
-            return geo_encoding + chem_encoding
-        
-        else:
-            print("Invalid encoding type")
-            return None
+                return [strength, cone_angle, length, ] + chem_encoding
+            
+            case _:
+                print("Invalid encoding type")
+
 
 
     def read_spectrum(self, path,) -> tuple:
@@ -656,7 +669,7 @@ class Datastructure:
 
         # normalize the spectrum
         spectrum = [x/max(spectrum) for x in spectrum]
-        
+
 
         ### -- calulate two different peak positions -- ###
         # poly_peak_pos is the peak position calculated from the "centre of mass"
@@ -881,12 +894,16 @@ class Datastructure:
             with open(self.ml_dictionary_path, "r") as file:
                 ml_dictionary = json.load(file)
 
-            with open(self.geometry_path, "r") as file:
+            with open(self.encoding_path, "r") as file:
                 encoding = json.load(file)
 
-            return molecule_dictionary, ml_dictionary, encoding
+            with open(self.geometry_path, "r") as file:
+                molecule_geometry = json.load(file)
+
+            return molecule_dictionary, ml_dictionary, encoding, molecule_geometry
         
         except FileNotFoundError:
             print("Could not find the molecule dictionary, encoding dictionary or the ML dictionary file")
             print("Please make sure the files are in the correct path and in .json format.")
             return None
+

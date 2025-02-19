@@ -22,10 +22,10 @@ from plotting.Plotter import Plotter
 datastructure = Datastructure(
                             synthesis_file_path = "Perovskite_NC_synthesis_NH_240418_new.csv", 
                             spectral_file_path  = "spectrum/", 
-                            monodispersity_only = True,
-                            P_only              = True,
+                            monodispersity_only = False,
+                            P_only              = False,
                             molecule            = "all",
-                            add_baseline        = True,
+                            add_baseline        = False,
                             )
                             
 
@@ -54,9 +54,9 @@ ________________________________________________________________________________
 ...
 
 """
-MOLECULE = "Butanol"
-plotter.plot_ternary(selection_dataframe= selection_dataframe, molecule= MOLECULE)
-exit()
+# MOLECULE = "Butanol"
+# plotter.plot_ternary(selection_dataframe= selection_dataframe, molecule= MOLECULE)
+# exit()
 
 
 #%%
@@ -71,10 +71,10 @@ ________________________________________________________________________________
 """
 
 ##PLQY
-plotter.plot_parameters("peak_pos", "plqy", color_var = "peak_pos")
-plt.show()
+# plotter.plot_parameters("peak_pos", "plqy", color_var = "peak_pos")
+# plt.show()
 
-exit()
+# exit()
 
 
 
@@ -107,6 +107,14 @@ PLQY / FWHM Matrix
 
 molecules = ["Methanol", "Ethanol", "Isopropanol", "Butanol", "Cyclopentanone", "Toluene",] 
 
+low_fhm = selection_dataframe[selection_dataframe["fwhm"] < 0.1]
+#low_fhm = low_fhm[low_fhm["peak_pos"] >= 504]
+low_fhm = low_fhm[low_fhm["peak_pos"] <= 500]
+low_fhm = low_fhm[["Sample No.", "peak_pos", "fwhm", "suggestion"]]
+# print full dataframe, all rows
+with pandas.option_context('display.max_rows', None, 'display.max_columns', None):
+    print(low_fhm)
+
 matrix = [[[] for _ in range(len(datastructure.ml_dictionary))] for _ in range(len(molecules))]
 
 # iterate over selection_dataframe
@@ -117,7 +125,7 @@ for i, row in selection_dataframe.iterrows():
     ml = get_ml_from_peak_pos(row["peak_pos"])
     
     if ml is not None:
-        matrix[molecules.index(molecule)][int(ml-2)].append(data["y"])
+        matrix[molecules.index(molecule)][int(ml-2)].append(row["fwhm"])
 
 
 # delete entries with less than n data points

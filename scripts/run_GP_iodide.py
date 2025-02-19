@@ -38,6 +38,7 @@ datastructure = Datastructure(
                             P_only              = True,
                             molecule            = "Toluene",
                             add_baseline        = False,
+                            encoding= "geometry",
                             )
 
 datastructure.read_synthesis_data()
@@ -45,7 +46,7 @@ datastructure.read_synthesis_data()
 #%%
 
 # feature selection
-features = ["Cs_Pb_ratio", "Pb/I" , "V (Cs-OA)", "t_Rkt", "Centrifugation time [min]", "Centrifugation speed [rpm]",]
+features = ["Cs_Pb_ratio",] # "Pb/I" , "V (Cs-OA)", "t_Rkt", "Centrifugation time [min]", "Centrifugation speed [rpm]",]
 #features = ["Cs_Pb_ratio", "Pb/I" , "V (Cs-OA)","Centrifugation time [min]", "Centrifugation speed [rpm]",]
 
 # get training data
@@ -64,8 +65,8 @@ gp = GaussianProcess(
 
 
     # (1) LOO cross validation
-#gp.leave_one_out_cross_validation(inputs, targets,)
-#gp.regression_plot()
+gp.leave_one_out_cross_validation(inputs, targets,)
+gp.regression_plot()
 
 # exit()
 

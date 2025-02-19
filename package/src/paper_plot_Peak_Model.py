@@ -16,7 +16,7 @@ from helpers import *
 
 
 # transfer molecule
-TRANSFER_MOLECULE = "Butanol"
+TRANSFER_MOLECULE = "Methanol"
 
 
 datastructure = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_240418_new.csv", 
@@ -77,7 +77,7 @@ ________________________________________________________________________________
 
 
 # molecule loo with histogram
-antisolvents  = ["Methanol",  "Ethanol",  "Isopropanol", "Butanol",  "Cyclopentanone",]
+antisolvents  = ["Isopropanol", "Acetone",  "Methanol",  "Ethanol",  "Butanol",  "Cyclopentanone",]
 #antisolvents  = ["Butanol",]
 errors = []
 errors_10 = []
@@ -100,7 +100,7 @@ for transfer_molecule in antisolvents:
     
     error= gp.validate_transfer(x, y, x_test, y_test)
     errors.append(float(error))
-    
+
     extra_gp = GaussianProcess(x, y, kernel_type = "EXP")
     extra_gp.train()
     plotter = Plotter(datastructure.processed_file_path, encoding= datastructure.encoding)
@@ -119,6 +119,8 @@ for transfer_molecule in antisolvents:
                                                                   
     error_10 = gp.validate_transfer(x, y, x_test, y_test)
     errors_10.append(error_10)
+
+
 
 
 

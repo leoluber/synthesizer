@@ -18,7 +18,24 @@ import pubchempy as pcp
 
 # dictionaries for antisolvent names and MLs
 ml_dictionary       = json.load(open("data/raw/ml_dictionary.json", "r"))
-
+# dictionaries
+molecule_dictionary = {
+    "Tol": "Toluene",
+    "Ac": "Acetone",
+    "MeOH": "Methanol",
+    "EtOH": "Ethanol",
+    "i-PrOH": "Isopropanol",
+    "n-PrOH": "Propanol",
+    "n-BuOH": "Butanol",
+    "butanone": "Butanone",
+    "pentanone": "Pentanone",
+    "CyPen": "Cyclopentanone",
+    "CyPol": "Cyclopentanol",
+    "PenOH": "Pentanol",
+    "HexOH": "Hexanol",
+    "OctOH": "Octanol",
+    "3-Penon": "3-Pentanone",
+}
 
 
 def nm_to_ev(nm) -> float:
@@ -110,6 +127,7 @@ def cone_angle(molecule_name) -> float:
         return np.nan
 
     # get the coordinates of all atoms in the molecule
+    print(molecule_name)
     coordinates = get_molecule_coordinates(molecule_name)
 
     # get the coordinates of the functional group
@@ -137,8 +155,6 @@ def cone_angle(molecule_name) -> float:
 def calculate_length_of_molecule(molecule_name: str, axis: int = 0):
     """Calculate the length of a molecule along a given axis."""
 
-    if molecule_name in ["MethylAcetate"]:
-        return np.nan
 
     coordinates = get_molecule_coordinates(molecule_name)
     coordinates_1d = coordinates[:, axis + 1].astype(float)
@@ -149,15 +165,17 @@ def calculate_length_of_molecule(molecule_name: str, axis: int = 0):
 
 if __name__ == "__main__":
 
+    dict = {}
 
-    for molecule in ml_dictionary:
+    for molecule in molecule_dictionary.values():
         # define a dictionary for the molecule
-        molecule_dict = {"molecule": molecule}
-        molecule_dict["cone_angle"] = cone_angle(molecule)
-        molecule_dict["length"] = calculate_length_of_molecule(molecule, axis=0)
-        molecule_dict["strength"] = 0.02 * molecule_dict["length"] + (0.001 * molecule_dict["cone_angle"])
+        length = calculate_length_of_molecule(molecule, axis=0)
+        cone_angle_ = cone_angle(molecule)
+        strength = 0.5/(0.02 * length + (0.001 * cone_angle_))
+        list = [float(length), float(cone_angle_), float(strength)]
 
-        # add to json file
-        with open("data/processed/molecule_geometry.json", "a") as f:
-            json.dump(molecule_dict, f)
-            f.write("\n")
+        dict[molecule] = list
+
+    
+    # list to json
+    json.dump(dict, open("data/raw/molecule_geometry.json", "w"), indent=4)

@@ -601,3 +601,193 @@ SETTINGS:  Obj-> ['peak_pos', 'fwhm'], iterations-> 100,  peak-> 489
 molecule-> Cyclopentanone,  add_baseline-> True
 
 THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+------------------------------------   2025-02-14   ---------------------------------
+L-SYNTH 2.0-1096
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Cyclopentanone- as an antisolvent 
+to make CsPbBr3 NPLs around 496nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  2062.370455186354', 'c (PbBr2) :  0.0066', 'c (Cs-OA) :  0.02', 'V (PbBr2 prec.) :  1062.9974511083358', 'V (Cs-OA) :  100.0']
+with the following As/Pb ratio: 0.33188258317818947
+ and the following Cs/Pb ratio: 0.2850715236563814
+
+Predicted peak position: [495.9478547]
+
+DEV:
+SETTINGS:  Obj-> ['peak_pos', 'fwhm'], iterations-> 100,  peak-> 496
+molecule-> Cyclopentanone,  add_baseline-> True
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+------------------------------------   2025-02-14   ---------------------------------
+L-SYNTH 2.0-8660
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Cyclopentanone- as an antisolvent 
+to make CsPbBr3 NPLs around 503nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  2397.813368958445', 'c (PbBr2) :  0.0066', 'c (Cs-OA) :  0.02', 'V (PbBr2 prec.) :  638.530327459579', 'V (Cs-OA) :  100.0']
+with the following As/Pb ratio: 0.6423679353589049
+ and the following Cs/Pb ratio: 0.47457464430220947
+
+Predicted peak position: [502.8569889]
+
+DEV:
+SETTINGS:  Obj-> ['peak_pos', 'fwhm'], iterations-> 100,  peak-> 503
+molecule-> Cyclopentanone,  add_baseline-> True
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+------------------------------------   2025-02-14   ---------------------------------
+L-SYNTH 2.0-2018
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Cyclopentanone- as an antisolvent 
+to make CsPbBr3 NPLs around 509nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  2286.1419757850354', 'c (PbBr2) :  0.0066', 'c (Cs-OA) :  0.02', 'V (PbBr2 prec.) :  436.31815569671227', 'V (Cs-OA) :  100.0']
+with the following As/Pb ratio: 0.8962928239690628
+ and the following Cs/Pb ratio: 0.694516831522687
+
+Predicted peak position: [508.8238777]
+
+DEV:
+SETTINGS:  Obj-> ['peak_pos', 'fwhm'], iterations-> 100,  peak-> 509
+molecule-> Cyclopentanone,  add_baseline-> True
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+------------------------------------   2025-02-14   ---------------------------------
+L-SYNTH 2.0-612
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Cyclopentanone- as an antisolvent 
+to make CsPbBr3 NPLs around 509nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  1231.0209547794177', 'c (PbBr2) :  0.0066', 'c (Cs-OA) :  0.02', 'V (PbBr2 prec.) :  364.8331688749894', 'V (Cs-OA) :  100.0']
+with the following As/Pb ratio: 0.5771931078723501
+ and the following Cs/Pb ratio: 0.8305996517935484
+
+Predicted peak position: [509.60931032]
+
+DEV:
+SETTINGS:  Obj-> ['peak_pos', 'fwhm'], iterations-> 100,  peak-> 509
+molecule-> Cyclopentanone,  add_baseline-> True
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+------------------------------------   2025-02-14   ---------------------------------
+L-SYNTH 2.0-6629
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Cyclopentanone- as an antisolvent 
+to make CsPbBr3 NPLs around 504nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  1148.9750803061172', 'c (PbBr2) :  0.0066', 'c (Cs-OA) :  0.02', 'V (PbBr2 prec.) :  484.9655425281016', 'V (Cs-OA) :  100.0']
+with the following As/Pb ratio: 0.4052749244020961
+ and the following Cs/Pb ratio: 0.6248491417567956
+
+Predicted peak position: [501.32426167]
+
+DEV:
+SETTINGS:  Obj-> ['peak_pos', 'fwhm'], iterations-> 100,  peak-> 504
+molecule-> Cyclopentanone,  add_baseline-> True
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+------------------------------------   2025-02-17   ---------------------------------
+L-SYNTH 2.0-4301
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Cyclopentanone- as an antisolvent 
+to make CsPbBr3 NPLs around 487nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  3016.530115852783', 'c (PbBr2) :  0.010000000000000002', 'c (Cs-OA) :  0.02', 'V (PbBr2 prec.) :  1632.783284485032', 'V (Cs-OA) :  100.0']
+with the following As/Pb ratio: 0.20858019145338766
+ and the following Cs/Pb ratio: 0.12249022996525745
+
+Predicted peak position: [487.05852535]
+
+DEV:
+SETTINGS:  Obj-> ['peak_pos', 'fwhm'], iterations-> 100,  peak-> 487
+molecule-> Cyclopentanone,  add_baseline-> True
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+------------------------------------   2025-02-17   ---------------------------------
+L-SYNTH 2.0-4054
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Cyclopentanone- as an antisolvent 
+to make CsPbBr3 NPLs around 483nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  2278.3680946218788', 'c (PbBr2) :  0.010000000000000002', 'c (Cs-OA) :  0.02', 'V (PbBr2 prec.) :  1369.1995814244342', 'V (Cs-OA) :  100.0']
+with the following As/Pb ratio: 0.18786724840742758
+ and the following Cs/Pb ratio: 0.1460707428729505
+
+Predicted peak position: [482.98659443]
+
+DEV:
+SETTINGS:  Obj-> ['peak_pos', 'fwhm'], iterations-> 100,  peak-> 483
+molecule-> Cyclopentanone,  add_baseline-> True
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+------------------------------------   2025-02-17   ---------------------------------
+L-SYNTH 2.0-8730
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Cyclopentanone- as an antisolvent 
+to make CsPbBr3 NPLs around 500nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  2967.2233745500967', 'c (PbBr2) :  0.008090321325946243', 'c (Cs-OA) :  0.02', 'V (PbBr2 prec.) :  882.9098930309746', 'V (Cs-OA) :  100.0']
+with the following As/Pb ratio: 0.46898832265826823
+ and the following Cs/Pb ratio: 0.27999343048422676
+
+Predicted peak position: [499.99135059]
+
+DEV:
+SETTINGS:  Obj-> ['peak_pos', 'fwhm'], iterations-> 100,  peak-> 500
+molecule-> Cyclopentanone,  add_baseline-> True
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+------------------------------------   2025-02-17   ---------------------------------
+L-SYNTH 2.0-8434
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Cyclopentanone- as an antisolvent 
+to make CsPbBr3 NPLs around 485nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  2722.9716923350074', 'c (PbBr2) :  0.010000000000000002', 'c (Cs-OA) :  0.02', 'V (PbBr2 prec.) :  1556.0636204887542', 'V (Cs-OA) :  100.0']
+with the following As/Pb ratio: 0.19756486818197164
+ and the following Cs/Pb ratio: 0.12852944916042744
+
+Predicted peak position: [485.00618385]
+
+DEV:
+SETTINGS:  Obj-> ['peak_pos', 'fwhm'], iterations-> 100,  peak-> 485
+molecule-> Cyclopentanone,  add_baseline-> True
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+------------------------------------   2025-02-17   ---------------------------------
+L-SYNTH 2.0-560
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Cyclopentanone- as an antisolvent 
+to make CsPbBr3 NPLs around 503nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  1101.9426040639253', 'c (PbBr2) :  0.0019230797461021038', 'c (Cs-OA) :  0.02', 'V (PbBr2 prec.) :  1533.1090119493253', 'V (Cs-OA) :  100.0']
+with the following As/Pb ratio: 0.4219709813714458
+ and the following Cs/Pb ratio: 0.6783591154994782
+
+Predicted peak position: [502.77105764]
+
+DEV:
+SETTINGS:  Obj-> ['peak_pos', 'fwhm'], iterations-> 100,  peak-> 503
+molecule-> Cyclopentanone,  add_baseline-> True
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!

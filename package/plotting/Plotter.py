@@ -19,7 +19,7 @@ import plotly.graph_objects as go
 
 # custom imports
 from src.Datastructure import Datastructure
-from src.helpers import surface_proportion, ev_to_nm
+from src.helpers import surface_proportion, ev_to_nm, nm_to_ev
 
 
 
@@ -39,26 +39,32 @@ class Plotter(Datastructure):
 
     def __init__(self,
                  processed_file_path,
-                 encoding = "chemical"
+                 encoding = "combined",
+                 selection_dataframe = None,
                  ):
         
         # No super().__init__() snince we don't actually need to
         # initialize the Datastructure class, we just want to inherit the methods
 
         # read the data
-        self.data_frame = pd.read_csv(processed_file_path, header=0, sep=";")
+        if selection_dataframe is not None:
+            self.data_frame = selection_dataframe
+        else:
+            self.data_frame = pd.read_csv(processed_file_path, header=0, sep=";")
+
 
         self.encoding = encoding
 
         # paths to the data
         self.data_path_raw =            "data/raw/"
-        self.geometry_path=             self.data_path_raw + "molecule_encoding.json"
+        self.encoding_path=             self.data_path_raw + "molecule_encoding.json"
         self.molecule_dictionary_path = self.data_path_raw + "molecule_dictionary.json"
         self.ml_dictionary_path =       self.data_path_raw + "ml_dictionary.json"
         self.global_attributes_path =   self.data_path_raw + "AntisolventProperties.csv"
+        self.geometry_path =            self.data_path_raw + "molecule_geometry.json"
 
         # get encodings
-        self.molecule_dictionary, self.ml_dictionary, self.molecule_geometry = self.get_dictionaries()
+        self.molecule_dictionary, self.ml_dictionary, self.encoding_dictionary, self.molecule_geometry = self.get_dictionaries()
 
         # molecule attributes
         self.global_attributes_df =  pd.read_csv(self.global_attributes_path, 
@@ -78,8 +84,8 @@ class Plotter(Datastructure):
         """
 
         # set the grid (and define bounds of parameter space)
-        y_vec = np.linspace(0, 1, 20)
-        x_vec = np.linspace(0, 1, 20)
+        y_vec = np.linspace(0, 1, 100)
+        x_vec = np.linspace(0, 1, 100)
         X, Y  = np.meshgrid(x_vec, y_vec)
         input = np.c_[X.ravel(), Y.ravel()]
         
@@ -189,6 +195,7 @@ class Plotter(Datastructure):
         peak  = df["peak_pos"]
         sample_no = df["Sample No."]
         fwhm = df["fwhm"]
+        #suggestion = df["suggestion"]
         info = [f"No: {str(no)}  FWHM: {str(round(fwhm, 2))}" for no, fwhm in zip(sample_no, fwhm)]
 
         # get the artificial data
@@ -457,24 +464,31 @@ class Plotter(Datastructure):
         # get the dataframe
         df = self.data_frame
 
+        # remove the baseline data
+        df = df[df["baseline"] == False]
+
         # get the data
-        x = [data[var1] for data in df]
-        y = [data[var2] for data in df]
-        color = [data[color_var] for data in df]
-        peak_pos = [data["peak_pos_eV"] for data in df]
-        suggestion = [data["suggestion"] for data in df]
+        x = df[var1]
+        y = df[var2]
+        color = df[color_var]
+        print(color)
+
+        peak_pos_eV = df["peak_pos_eV"]
+        suggestion = df["suggestion"]
+        suggestion = [1 if "L-" in str(s) else 0 for s in suggestion]
+        if color_var == "suggestion":
+            color = suggestion
 
 
 
         """ basic scatter plot """
-        fig, ax = plt.subplots(figsize = (3.5, 4))
-        sign = -1 if self.wavelength_unit == "EV" else 1
+        #fig, ax = plt.subplots(figsize = (3.5, 4))
+        fig, ax = plt.subplots(figsize = (6, 4))
 
-        cbar = plt.colorbar(ax.scatter(x, y,
-                                        c = color, cmap= "bwr_r", alpha = 1, s = 70,vmin = 0, vmax = 0.2)) # vmin = nm_to_ev(400), vmax = nm_to_ev(600)))
+        # cbar = plt.colorbar(ax.scatter(x, y,
+        #                                 c = color, cmap= "bwr_r", alpha = 1, s = 70,vmin = 0, vmax = 0.2)) # vmin = nm_to_ev(400), vmax = nm_to_ev(600)))
         
-        # cbar = plt.colorbar(ax.scatter(x, y
-        #                                 c = color, cmap= "gist_rainbow_r", alpha = 1, s = 70, vmin = 400, vmax = 600))
+        cbar = plt.colorbar(ax.scatter(x, y, c = color, cmap= "gist_rainbow", alpha = 1, s = 70, vmin = nm_to_ev(400), vmax = nm_to_ev(600)))
         
         # label the points with the sample number
         # for i, txt in enumerate(sample_no):
@@ -493,7 +507,7 @@ class Plotter(Datastructure):
         """ plot lines at ml boundaries """
         for ml in self.ml_dictionary.keys():
             peak_range = self.ml_dictionary[ml]
-            peak_range = [ev_to_nm(peak_range[0]), ev_to_nm(peak_range[1])] if self.wavelength_unit == "EV" else peak_range
+            peak_range = [ev_to_nm(peak_range[0]), ev_to_nm(peak_range[1])]
             #ax.axvline(x = peak_range[0], color = "black", linestyle = "dashed", linewidth = 1)
             #ax.axvline(x = peak_range[1], color = "black", linestyle = "dashed", linewidth = 1)
 
@@ -508,10 +522,10 @@ class Plotter(Datastructure):
 
 
         """plot surface proportions"""
-        plt.tight_layout()
-        x = np.linspace(min(peak_pos), max(peak_pos), 300)
-        prop = [surface_proportion(x, "EV") for x in x]
-        plt.plot(x, prop, "--", color = "black")
+        # plt.tight_layout()
+        # x = np.linspace(min(peak_pos_eV), max(peak_pos_eV), 300)
+        # prop = [surface_proportion(x, "EV") for x in x]
+        # plt.plot(x, prop, "--", color = "black")
 
         plt.tight_layout()
         plt.show()
