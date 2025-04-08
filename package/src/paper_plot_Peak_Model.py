@@ -25,7 +25,7 @@ datastructure = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_2
                               P_only=True, 
                               molecule="all",
                               add_baseline= True,
-                              encoding= "geometry",
+                              encoding= "combined",
                               )
 
 
@@ -77,7 +77,7 @@ ________________________________________________________________________________
 
 
 # molecule loo with histogram
-antisolvents  = ["Isopropanol", "Acetone",  "Methanol",  "Ethanol",  "Butanol",  "Cyclopentanone",]
+antisolvents  = ["Methanol", "Ethanol", "Isopropanol", "Butanol", "Cyclopentanone",]
 #antisolvents  = ["Butanol",]
 errors = []
 errors_10 = []
@@ -101,12 +101,6 @@ for transfer_molecule in antisolvents:
     error= gp.validate_transfer(x, y, x_test, y_test)
     errors.append(float(error))
 
-    extra_gp = GaussianProcess(x, y, kernel_type = "EXP")
-    extra_gp.train()
-    plotter = Plotter(datastructure.processed_file_path, encoding= datastructure.encoding)
-    plotter.plot_data("AS_Pb_ratio", "Cs_Pb_ratio", "peak_pos", kernel= extra_gp, molecule= transfer_molecule, selection_dataframe= selection_dataframe)
-  
-    
 
 
     # (II):  Transfer with 10 known data points on transfer_molecule
@@ -120,6 +114,12 @@ for transfer_molecule in antisolvents:
     error_10 = gp.validate_transfer(x, y, x_test, y_test)
     errors_10.append(error_10)
 
+    extra_gp = GaussianProcess(x, y, kernel_type = "EXP")
+    extra_gp.train()
+    plotter = Plotter(datastructure.processed_file_path, encoding= datastructure.encoding)
+    plotter.plot_data("AS_Pb_ratio", "Cs_Pb_ratio", "peak_pos", kernel= extra_gp, molecule= transfer_molecule, selection_dataframe= selection_dataframe)
+  
+    
 
 
 

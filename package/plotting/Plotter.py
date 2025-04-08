@@ -187,6 +187,15 @@ class Plotter(Datastructure):
         artificial = df[df["artificial"] == True]
         df = df[df["artificial"] == False]
 
+        # get all polydisperse data
+        df_poly = df[df["monodispersity"] ==0]
+        print(df)
+        df_notpoly = df[df["monodispersity"] ==1]
+        print(df_notpoly)
+        if len(df_poly) > 0:
+            for i in range(10):
+                print("ATTENTION: POLYDISPERSE DATA")
+
 
         # get the data
         var_1 = df[var1]
@@ -199,10 +208,9 @@ class Plotter(Datastructure):
         info = [f"No: {str(no)}  FWHM: {str(round(fwhm, 2))}" for no, fwhm in zip(sample_no, fwhm)]
 
         # get the artificial data
-        art_1 = artificial[var1]
-        art_2 = artificial[var2]
-        art_3 = artificial[var3]
-
+        art_1 = artificial[var1][:5]
+        art_2 = artificial[var2][:5]
+        art_3 = artificial[var3][:5]
 
         # plot data with plotly
         if library == "plotly":
@@ -213,7 +221,7 @@ class Plotter(Datastructure):
                                     text = info,
                                     ))
             
-            fig.update_traces(marker=dict(cmin=380, cmax=650, colorbar=dict(title='PEAK POS'), 
+            fig.update_traces(marker=dict(cmin=400, cmax=600, colorbar=dict(title='PEAK POS'), 
                                     colorscale='rainbow', color=peak, showscale=True, opacity=1),
                                 textposition='top center')
             
@@ -233,11 +241,11 @@ class Plotter(Datastructure):
                                     )
 
         elif library == "matplotlib":
-            fig = plt.figure(figsize=(10, 10))
+            fig = plt.figure(figsize=(4.5, 4.5))
             ax = fig.add_subplot(111, projection='3d')
-            ax.set_xlabel(var1)
-            ax.set_ylabel(var2)
-            ax.set_zlabel("Peak Position [nm]")
+            ax.set_xlabel("As/Pb ratio (10^4)")
+            ax.set_ylabel("Cs/Pb ratio")
+            ax.set_zlabel("peak position (nm)")
 
 
 
@@ -252,22 +260,22 @@ class Plotter(Datastructure):
             Z, err, X, Y, x_vec, y_vec = dict_["Z"], dict_["err"], dict_["X"], dict_["Y"], dict_["x_vec"], dict_["y_vec"]
             
             # write X, Y, Z to a csv with pandas
-            #df = pd.DataFrame(data = Z, index = x_vec, columns = y_vec)
-            #df.to_csv(f"model_{molecule}.csv")
+            df = pd.DataFrame(data = Z, index = x_vec, columns = y_vec)
+            df.to_csv(f"model_{molecule}_S.csv")
 
 
             # add the surface plot of the kernel with a uniform color
             if library == "plotly":
-                fig.add_trace(plotly.graph_objects.Surface(x=x_vec, y=y_vec, z=Z, opacity=0.8, colorscale='greys', cmin = 200, cmax = 900))
+                fig.add_trace(plotly.graph_objects.Surface(x=x_vec, y=y_vec, z=Z, opacity=0.8, colorscale='greys', cmin = 400, cmax = 600))
                 #fig.add_trace(plotly.graph_objects.Surface(x=x_vec, y=y_vec, z=Z, opacity=1, colorscale='Viridis', cmin = 430, cmax = 540))
             
-            # elif library == "matplotlib":
-            #     ax.plot_surface(X, Y, Z, alpha=0.7, color = "gray", lw=0.5, rstride=8, cstride=8,)
-            #     ax.contourf(X, Y, Z, zdir='z', offset=420, cmap='gist_rainbow_r', alpha=0.8, vmin = 410, vmax = 600, levels = 20)
+            elif library == "matplotlib":
+                ax.plot_surface(X, Y, Z, alpha=0.7, color = "gray", lw=0.5, rstride=5, cstride=5,)
+                ax.contourf(X, Y, Z, zdir='z', offset=420, cmap='gist_rainbow_r', alpha=0.8, vmin = 400, vmax = 600, levels = 10)
                 
-            #     ax.scatter(As_Pb, Cs_Pb, peak, c = peak, cmap = "gist_rainbow_r", 
-            #                edgecolors='black', vmin = 410, vmax = 600, s = 100, alpha=1)
-            #     ax.scatter(As_Pb_base, Cs_Pb_base,  peak_base, c = "black", edgecolors='black', s = 100, alpha=1)
+                ax.scatter(var_1, var_2, var_3, c = peak, cmap = "gist_rainbow_r", 
+                           edgecolors='black', vmin = 400, vmax = 600, s = 50, alpha=1)
+                ax.scatter(art_1, art_2, art_3, c = "black", edgecolors='black', s = 50, alpha=1)
 
             # add confidence intervals
             # if model == "GP":
@@ -391,14 +399,22 @@ class Plotter(Datastructure):
         # select the data for the correct molecule
         df = df[df["molecule_name"] == molecule]
 
+        # remove the baseline data
+        df = df[df["baseline"] == False]
+
+        df_poly = df[df["monodispersity"] == 0]
+
         # get the data 
         x = df["AS_Pb_ratio"]
+        x_poly = df_poly["AS_Pb_ratio"]
         y = df["Cs_Pb_ratio"]
+        y_poly = df_poly["Cs_Pb_ratio"]
         peak_pos = df["peak_pos"]
+        peak_pos_poly = df_poly["peak_pos"]
 
 
         # a contour plot of the kernel
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(5, 4))
 
 
         # evaluate the kernel on the grid
@@ -412,17 +428,30 @@ class Plotter(Datastructure):
 
             # add black lines for the contour
             ax.contour(X, Y, Z, 30, colors='black', linewidths=0.5, zorder = 2)
-            
+
+            # save the data to a csv
+            df_Z = pd.DataFrame(data = Z, index = x_vec, columns = y_vec)
+            df_Z.to_csv(f"model_{molecule}_contour_data.csv")
+
+
             # colorbar with text size 12
             cbar = fig.colorbar(c, ax=ax, label = "PEAK POS",)
             cbar.ax.tick_params(labelsize=12,)
-            cbar.set_label("PEAK POS", fontsize = 12)
+            cbar.set_label("peak position (nm)", fontsize = 12)
 
 
         # plot the data
-        ax.scatter(x, y, c = peak_pos, s = 80, vmin = 400, vmax = 600, 
+        ax.scatter(x, y, c = peak_pos, s = 50, vmin = 400, vmax = 600, 
                     cmap = "gist_rainbow_r",
                     edgecolors='black', zorder = 3)
+        ax.scatter(x_poly, y_poly, c = "white", s = 50,
+                    edgecolors='black', zorder = 3)
+        
+        # scatter polydisperse data in white
+        print(df)
+        x_p = df[df["monodispersity"] == False]["AS_Pb_ratio"]
+        y_p = df[df["monodispersity"] == False]["Cs_Pb_ratio"]
+        ax.scatter(x_p, y_p, c = "white", s = 70, edgecolors='black', zorder = 3)
         
         # layout
         # ticks inside, label size 12
@@ -430,16 +459,15 @@ class Plotter(Datastructure):
         ax.yaxis.set_tick_params(direction='in', which='both', labelsize = 12, right=True, left=True,)
 
         # set x and y range to -0.1, 1.1
-        ax.set_xlim(-0.1, 1.1)
-        ax.set_ylim(-0.1, 1.1)
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
 
         # set labels
-        ax.set_xlabel("AS/Pb Ratio (10^4)", fontsize = 12)
-        ax.set_ylabel("Cs/Pb Ratio", fontsize = 12)
+        ax.set_xlabel("AS/Pb ratio (10^4)", fontsize = 12)
+        ax.set_ylabel("Cs/Pb ratio", fontsize = 12)
 
         # save the plot as svg
-        plt.savefig(f"plots/Contour_{molecule}.svg")
-        
+        plt.savefig(f"Contour_{molecule}.svg")
         plt.show()
 
 
@@ -466,33 +494,49 @@ class Plotter(Datastructure):
 
         # remove the baseline data
         df = df[df["baseline"] == False]
+        #df = df[df["S/P"] == "P"]
+        df = df[df["monodispersity"] == True]
+
+        # remove everything with y=0
+        df = df[df[var2] != 0]
 
         # get the data
         x = df[var1]
-        y = df[var2]
+        y = df[var2]*1000
         color = df[color_var]
-        print(color)
+        sample_no = df["Sample No."]    
 
         peak_pos_eV = df["peak_pos_eV"]
         suggestion = df["suggestion"]
         suggestion = [1 if "L-" in str(s) else 0 for s in suggestion]
+        LL = [1 if "LL" in str(s) else 0 for s in sample_no]
         if color_var == "suggestion":
             color = suggestion
+
+        # set color to black if the sample is LL
+        color = [0 if l == 1 else c for l, c in zip(LL, color)]
+
 
 
 
         """ basic scatter plot """
-        #fig, ax = plt.subplots(figsize = (3.5, 4))
+        #fig, ax = plt.subplots(figsize = (3, 4))
         fig, ax = plt.subplots(figsize = (6, 4))
+        #fig, ax = plt.subplots(figsize = (10, 5.5))
+        #fig, ax = plt.subplots(figsize = (4, 3))
 
         # cbar = plt.colorbar(ax.scatter(x, y,
         #                                 c = color, cmap= "bwr_r", alpha = 1, s = 70,vmin = 0, vmax = 0.2)) # vmin = nm_to_ev(400), vmax = nm_to_ev(600)))
-        
-        cbar = plt.colorbar(ax.scatter(x, y, c = color, cmap= "gist_rainbow", alpha = 1, s = 70, vmin = nm_to_ev(400), vmax = nm_to_ev(600)))
+
+        cmap = plt.get_cmap('gist_rainbow')
+        cmap.set_under('k')
+        cbar = plt.colorbar(ax.scatter(x, y, c = color, cmap= cmap, alpha = 1, s = 70, vmin = nm_to_ev(400), vmax = nm_to_ev(600)))
+        # hide the colorbar
+        cbar.remove()
         
         # label the points with the sample number
-        # for i, txt in enumerate(sample_no):
-        #     ax.annotate(txt, (c_Perovskite[i], target[i]), fontsize = 8, color = "black")
+        for i, txt in enumerate(sample_no):
+            ax.annotate(txt, (np.array(x)[i]+0.001, np.array(y)[i]), fontsize = 8, color = "black")
 
         
         # settings
@@ -502,6 +546,12 @@ class Plotter(Datastructure):
         # set axis range
         #ax.set_ylim(0, 1)
         #ax.set_xlim(0, 1)
+
+        # axis limits
+        #ax.set_xlim(2.45, 2.65)
+
+        # reverse x axis
+        ax.invert_xaxis()
 
 
         """ plot lines at ml boundaries """
@@ -517,6 +567,10 @@ class Plotter(Datastructure):
             # fill between the lines
             #ax.fill_between([-0.05, 0.4], peak_range[0], peak_range[1], color = "gray", alpha = 0.1)
 
+        # plot horizontal line at 0.07
+        if var2 == "fwhm":
+            ax.axhline(y =70, color = "black", linestyle = "dashed", linewidth = 1, alpha = 0.3)
+
         
         #plt.show()
 
@@ -529,9 +583,14 @@ class Plotter(Datastructure):
 
         plt.tight_layout()
         plt.show()
-        fig.show()
         #plt.savefig(f"data/{molecule_name}_As_Pb_peak_pos.png")
 
+        # save the plot as svg
+        #plt.savefig(f"plots/{var1}_{var2}.svg")
+
+        # save data to csv
+        #df = df[[var1, var2, "Sample No.", "molecule_name"]]
+        #df.to_csv(f"plots/{var1}_{var2}.csv", mode='a', header=True, index=True)
 
         return fig, ax
 
@@ -615,6 +674,9 @@ class Plotter(Datastructure):
         corr = df.corr()
         fig, ax = plt.subplots()
         im = ax.imshow(corr, cmap="bwr", vmin=-1, vmax=1)
+
+        # save correlation matrix as csv
+        corr.to_csv("plots/S_correlation_matrix.csv")
 
 
         # write the values in the matrix

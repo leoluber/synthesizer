@@ -262,9 +262,10 @@ class Synthesizer:
 
         # hard constraints 
         # TODO: refactor this to a more general approach
-        #if Cs_Pb_ratio < 0.2: return 1000
-        if Cs_Pb_ratio > 1:   return 1000
-        if As_Pb_ratio > 0.6: return 1000
+        #if Cs_Pb_ratio < 0.5: return 1000
+        if Cs_Pb_ratio > 0.4:  return 1000
+        #if As_Pb_ratio > 1.5: return 1000
+        #if As_Pb_ratio < 0.7: return 1000
 
 
         # get the molecule encoding

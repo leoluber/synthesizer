@@ -33,11 +33,11 @@ import numpy as np
 
 
 datastructure = Datastructure(
-                            synthesis_file_path = "CsPbI3_NH_LB_AS_BS_combined_new.csv", 
-                            spectral_file_path  = "spectrum_CsPbI3/",     
-                            monodispersity_only = False,
+                            synthesis_file_path = "Synthesis_overview_PL.csv", 
+                            spectral_file_path  = "spectrum_T/",     
+                            monodispersity_only = True,
                             P_only              = True,
-                            molecule            = "Toluene",
+                            S_only              = False,
                             add_baseline        = False,
                             encoding= "geometry",
                             )
@@ -47,24 +47,10 @@ datastructure.read_synthesis_data()
 #%%
 
 # feature selection
-features = ["Cs_Pb_ratio", "Pb/I" ,] # "V (Cs-OA)", "t_Rkt", "Centrifugation time [min]", "Centrifugation speed [rpm]",]
-#features = ["Cs_Pb_ratio", "Pb/I" , "V (Cs-OA)","Centrifugation time [min]", "Centrifugation speed [rpm]",]
+features = ["Cs_Pb_ratio", "T" ,] 
 
 # get training data
 inputs, targets, selection_dataframe = datastructure.get_training_data(training_selection=features, target="peak_pos")
-#inputs, targets, selection_dataframe= datastructure.get_training_data(training_selection=features, target="polydispersity")
-low_fhm = selection_dataframe[selection_dataframe["fwhm"] < 0.2]
-low_fhm = low_fhm[["Sample No.", "peak_pos", "fwhm",]]
-
-# remove everything below 560 nm
-low_fhm = low_fhm[low_fhm["peak_pos"] > 630]
-
-#sort rows by peak_pos
-low_fhm = low_fhm.sort_values(by="peak_pos")
-
-# print full dataframe, all rows
-with pandas.option_context('display.max_rows', None, 'display.max_columns', None):
-    print(low_fhm)
 
 
 #exit()

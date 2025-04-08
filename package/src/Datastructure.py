@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 
 # custom imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
-from src.helpers import nm_to_ev, ev_to_nm
+from src.helpers import nm_to_ev, ev_to_nm, get_ml_from_peak_pos
 
 
 
@@ -84,7 +84,12 @@ class Datastructure:
         add_baseline =         False,
         monodispersity_only =  False,
         P_only =               False,
+        S_only =               False,
         ):
+        
+        # check S/P
+        if S_only and P_only:
+            raise ValueError("S_only and P_only cannot be True at the same time")
         
 
         # main stettings
@@ -95,6 +100,7 @@ class Datastructure:
         # selection flags
         self.flags = {"monodispersity_only": monodispersity_only,
                       "P_only"             : P_only,
+                      "S_only"             : S_only,
                       "molecule"           : molecule}
         
         
@@ -127,7 +133,7 @@ class Datastructure:
         self.global_attributes_path =   self.data_path_raw + "AntisolventProperties.csv"
         self.spectrum_path =            self.data_path_raw + spectral_file_path
         self.encoding_path=             self.data_path_raw + "molecule_encoding.json"
-        self.molecule_dictionary_path = self.data_path_raw + "molecule_dictionary.json"
+        self.molecule_dictionary_path = self.data_path_raw + "molecule_dictionary_all.json"
         self.ml_dictionary_path =       self.data_path_raw + "ml_dictionary.json"
         self.geometry_path =            self.data_path_raw + "molecule_geometry.json"
 
@@ -492,15 +498,20 @@ class Datastructure:
             data_frame = data_frame[data_frame['molecule_name'] == self.flags["molecule"]]
 
         if self.flags["monodispersity_only"]:
+            print("Removing non-monodisperse samples")
             print(len(data_frame[data_frame['monodispersity'] != 0]))
             print(len(data_frame))
             data_frame = data_frame[data_frame['monodispersity'] != 0]
+            print(len(data_frame))
 
         if self.flags["P_only"]:
             print("Removing non-P type samples")
-            print(len(data_frame))
             data_frame = data_frame[data_frame['S/P'] != "S"]
-            print(len(data_frame))
+        
+        elif self.flags["S_only"]:
+            print("Removing non-S type samples")
+            data_frame = data_frame[data_frame['S/P'] != "P"]
+
 
         if target == "PLQY":
             data_frame = data_frame[data_frame['PLQY'] != 0]
@@ -638,11 +649,13 @@ class Datastructure:
         - the last column is the intensity 
         """
 
+        sample_name = os.path.basename(path).split(".")[0]
+
         if not os.path.exists(path):
             return 0,0,0,0
     
         # read the data from the file
-        energies, spectrum = [], []
+        energies, spectrum, wavelengths = [], [], []
         with open(path, "r") as filestream:
             for i, line in enumerate(filestream):
 
@@ -663,8 +676,10 @@ class Datastructure:
                     return None
 
                 # default is EV, later converted to nm if necessary
-                energies.append(nm_to_ev(float(x)))     
+                wavelengths.append(float(x))
+                energies.append(nm_to_ev(float(x))) 
                 spectrum.append(float(y))
+
 
 
         # normalize the spectrum
@@ -678,6 +693,21 @@ class Datastructure:
         peak_pos_eV = peak_pos
         poly_peak_pos = np.average(np.array(energies), weights = spectrum)
 
+        # save the spectrum to folder according to number of monolayers
+        # number of ML
+        # try:
+        #     ml = get_ml_from_peak_pos(peak_pos)
+        #     path = self.data_path_processed + f"ML_{ml}/"
+        #     if not os.path.exists(path):
+        #         os.makedirs(path)
+
+        #     np.savetxt(path + os.path.basename(self.spectrum_path) + sample_name +  ".txt",
+        #                   np.column_stack((wavelengths, spectrum)), delimiter = ",", header = "nm, intensity")
+        
+        # except TypeError:
+        #     print(f"TypeError: {path} not found in ML dictionary")
+                       
+            
 
         ### -- calculate the FWHM -- ###
         # linear interpolation for the FWHM
@@ -823,6 +853,7 @@ class Datastructure:
                 new_row["poly_peak_pos"] = peaks[i]
                 new_row["peak_pos_eV"] = nm_to_ev(peaks[i])
                 new_row["fwhm"] = 0
+                new_row["S/P"] = "SP"
 
                 dataframe = dataframe._append(new_row, ignore_index = True)
 
@@ -867,6 +898,7 @@ class Datastructure:
                 new_row["artificial"] = False
                 new_row["fwhm"] = 0
                 new_row["encoding"] = self.encode(molecule,)
+                new_row["S/P"] = "SP"
                 dataframe = dataframe._append(new_row, ignore_index = True)
             
         return dataframe

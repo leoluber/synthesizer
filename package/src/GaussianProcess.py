@@ -409,7 +409,9 @@ class GaussianProcess:
         x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1]))
 
         # train the model
-        model = GPy.models.GPRegression(x, y, self.kernel)
+        # TODO: add ideas like the following
+        #constant_mean = GPy.mappings.Constant(input_dim = x.shape[1], output_dim = 1, value = 460)
+        model = GPy.models.GPRegression(x, y, self.kernel,) # mean_function=constant_mean)
         model.optimize()
 
         # predict the test data
@@ -450,18 +452,21 @@ class GaussianProcess:
                 return GPy.kern.MLP(input_dim, ARD = True) + GPy.kern.MLP(input_dim, ARD=True)
             case "EXP":
                 return GPy.kern.Exponential(input_dim, lengthscale= 0.15)
+            case "EXP2":
+                return GPy.kern.Exponential(input_dim, lengthscale= 0.15) + GPy.kern.Exponential(input_dim, lengthscale= 0.15)
             case "LIN":
                 return GPy.kern.Linear(input_dim)
             case "POLY":
                 return GPy.kern.Poly(input_dim, order = 3,)
             
             case "SPECIAL":
-                parameter_kernel = GPy.kern.Exponential(2, active_dims= [5,6])
-                parameter_kernel.lengthscale.constrain_bounded(100, 600)
-                parameter_kernel.variance.constrain_bounded(100, 600)
-                geometry_kernel = GPy.kern.Exponential(5, active_dims=[0,1,2,3,4,],)
-                geometry_kernel.lengthscale.constrain_bounded(10, 200)
-                geometry_kernel.variance.constrain_bounded(0.1, 200)
+                parameter_kernel = GPy.kern.Exponential(2, active_dims= [5,6], lengthscale= 0.15)
+                # parameter_kernel.lengthscale.constrain_bounded(10, 600)
+                # parameter_kernel.variance.constrain_bounded(10, 600)
+
+                geometry_kernel = GPy.kern.Linear(5, active_dims=[0,1,2,3,4,],) # lengthscale= 1)
+                # geometry_kernel.lengthscale.constrain_bounded(10, 500)
+                # geometry_kernel.variance.constrain_bounded(0.1, 500)
 
                 return parameter_kernel * geometry_kernel 
             
@@ -489,8 +494,8 @@ class GaussianProcess:
         
         # plot the identity line
         if TRANSFER_MOLECULE is None:
-            #ax.plot([0.06, 0.18],[0.06, 0.18] ,'k--', lw=2)
-            ax.plot([0.0, 1],[0.0, 1] ,'k--', lw=2)
+            ax.plot([0.06, 0.18],[0.06, 0.18] ,'k--', lw=2)
+            #ax.plot([0.0, 1],[0.0, 1] ,'k--', lw=2)
             #ax.plot([420, 530], [420, 530], 'k--', lw=2)
             #ax.plot([570, 710],[570, 710] ,'k--', lw=2)
         else:
@@ -509,7 +514,7 @@ class GaussianProcess:
         plt.show()
 
         # save as svg
-        #fig.savefig(f"regression_plot_{TRANSFER_MOLECULE}_err_med_{error_median}_.svg", format = "svg")
+        fig.savefig(f"regression_plot_{TRANSFER_MOLECULE}_err_med_{error_median}_.svg", format = "svg")
 
 
     def plot_error(self, error_list, num_exp, molecule = None):

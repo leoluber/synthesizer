@@ -41,8 +41,8 @@ SUMMARY
 
 ### -------------------- choose molecule and target peak -------------------- ###
 
-antisolvent =  "Cyclopentanone"
-target_peak   =   503
+antisolvent =  "Toluene"
+target_peak   =   463
 
 ### ------------------------------------------------------------------------- ###
 
@@ -66,12 +66,12 @@ def main():
                               ion=               "CsPbBr3",  # "CsPbI3", "CsPbBr3",
                               Cs_Pb_opt =        False,
                               Cs_As_opt=         False,
-                              #c_Pb_fixed =       0.01, 
+                              c_Pb_fixed =       False, 
                               c_Cs_fixed =       0.02,
-                              V_Cs_fixed=        100,  
-                              c_Pb_max =         0.01,
-                              V_As_max=          5000,
-                              V_Pb_max=          2000,
+                              V_Cs_fixed=        150,  
+                              c_Pb_max =         0.0025,
+                              V_As_max=          1,
+                              V_Pb_max=          7000,
                               add_baseline=      True,
                               )
     

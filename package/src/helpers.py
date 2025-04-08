@@ -62,9 +62,9 @@ def get_ml_from_peak_pos(peak_pos) -> int:
         peak_pos = ev_to_nm(peak_pos)
 
     for key in ml_dictionary:
-        if peak_pos <= ml_dictionary[key][1]:
+        if peak_pos <= ml_dictionary[key][1] and peak_pos >= ml_dictionary[key][0]:
             return int(key)
-        
+    
     return None
 
 
