@@ -19,6 +19,8 @@ as well as other arbitrary experimental parameters.
 - 📌 Feature 3: Simultaneous optimization for arbitrary set of targets
 - 📌 Feature 4: High transfer capabilities to unknown antisolvents
 
+- 📌 Can be used with the provided dataset or applied to your own!
+
 
 
 ## Installation
