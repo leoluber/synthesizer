@@ -41,8 +41,8 @@ SUMMARY
 
 ### -------------------- choose molecule and target peak -------------------- ###
 
-antisolvent =  "Toluene"
-target_peak   =   463
+antisolvent =  "Acetone"
+target_peak   =   461
 
 ### ------------------------------------------------------------------------- ###
 
@@ -50,13 +50,11 @@ target_peak   =   463
 
 def main():
 
-    """ For explanation of the parameters see the Synthesizer.py file """
-
     synthesizer = Synthesizer(antisolvent, 
                               
                             #   data_path=        "CsPbI3_NH_LB_AS_BS_combined_new.csv",
                             #   spectral_path=    "spectrum_CsPbI3/",
-                              data_path=         "Perovskite_NC_synthesis_NH_240418_new.csv",
+                              data_path=         "Perovskite_NC_synthesis_NH_240418_transfer.csv",
                               spectral_path=     "spectrum/",
 
 
@@ -66,12 +64,12 @@ def main():
                               ion=               "CsPbBr3",  # "CsPbI3", "CsPbBr3",
                               Cs_Pb_opt =        False,
                               Cs_As_opt=         False,
-                              c_Pb_fixed =       False, 
+                              c_Pb_fixed =       0.01, 
                               c_Cs_fixed =       0.02,
-                              V_Cs_fixed=        150,  
-                              c_Pb_max =         0.0025,
-                              V_As_max=          1,
-                              V_Pb_max=          7000,
+                              V_Cs_fixed=        100,  
+                              c_Pb_max =         None,
+                              V_As_max=          5000,
+                              V_Pb_max=          2000,
                               add_baseline=      True,
                               )
     

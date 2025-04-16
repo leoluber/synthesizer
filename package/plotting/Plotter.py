@@ -260,8 +260,8 @@ class Plotter(Datastructure):
             Z, err, X, Y, x_vec, y_vec = dict_["Z"], dict_["err"], dict_["X"], dict_["Y"], dict_["x_vec"], dict_["y_vec"]
             
             # write X, Y, Z to a csv with pandas
-            df = pd.DataFrame(data = Z, index = x_vec, columns = y_vec)
-            df.to_csv(f"model_{molecule}_S.csv")
+            df_ = pd.DataFrame(data = Z, index = x_vec, columns = y_vec)
+            df_.to_csv(f"model_{molecule}_S.csv")
 
 
             # add the surface plot of the kernel with a uniform color
@@ -290,11 +290,47 @@ class Plotter(Datastructure):
 
         # save the plot as interactive html
         if library == "plotly":
-            fig.write_html(f"plots/{molecule}.html")
+            #fig.write_html(f"plots/{molecule}.html")
             fig.show()
         
         elif library == "matplotlib":
             plt.show()
+
+        # plot toluene baseline
+        fig = plt.figure(figsize=(2.5, 3.5))
+        data = df[df["V (antisolvent)"] == 0]
+        peak_pos = data["peak_pos"]
+        cs_pb_ratio = data["Cs_Pb_ratio"]
+        model = Z[:, 0]
+        plt.scatter(cs_pb_ratio, peak_pos, cmap = "gist_rainbow_r", vmin=400, vmax = 600, c = peak_pos)
+        plt.plot(x_vec, model, "--", color = "black", linewidth = 1, label = "Model")
+
+        # # add grey lines for the ML boundaries
+        # for ml in self.ml_dictionary.keys():
+        #     # if ml in ["7", "8",]:
+        #     #     continue
+        #     peak_range = self.ml_dictionary[ml]
+        #     peak_range = [peak_range[0], peak_range[1]]
+        #     plt.fill_between([-0.05, 1.05], peak_range[0], peak_range[1], color = "gray", alpha = 0.1)
+
+        # data = df[df["Cs_Pb_ratio"] == 0.20]
+        # peak_pos = data["peak_pos"]
+        # as_pb_ratio = data["AS_Pb_ratio"]
+        # model = Z[20, :]
+        # plt.scatter(as_pb_ratio, peak_pos, cmap = "gist_rainbow_r", vmin=400, vmax = 600, c = peak_pos)
+        # plt.plot(x_vec[0:40], model[0:40], "--", color = "black", linewidth = 1, label = "Model")
+
+
+        # # layout
+        #plt.xlabel("Cs/Pb ratio")
+        plt.xlabel("As/Pb ratio (10^4)")
+        plt.ylabel("peak position (nm)")
+        plt.xlim(-0.05, 0.70)
+        plt.ylim(430, 520)
+        plt.gca().xaxis.set_tick_params(direction='in', which='both', top=True, bottom=True,)
+        plt.gca().yaxis.set_tick_params(direction='in', which='both', right=True, left=True,)
+        plt.tight_layout()
+        plt.show()
 
         return fig
         
@@ -535,8 +571,8 @@ class Plotter(Datastructure):
         cbar.remove()
         
         # label the points with the sample number
-        for i, txt in enumerate(sample_no):
-            ax.annotate(txt, (np.array(x)[i]+0.001, np.array(y)[i]), fontsize = 8, color = "black")
+        # for i, txt in enumerate(sample_no):
+        #     ax.annotate(txt, (np.array(x)[i]+0.001, np.array(y)[i]), fontsize = 8, color = "black")
 
         
         # settings
@@ -749,6 +785,3 @@ class Plotter(Datastructure):
 
         # save as svg
         fig.write_image(f"plots/Ternary_{molecule}.svg")
-
-
-

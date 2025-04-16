@@ -83,14 +83,15 @@ gp = GaussianProcess(
 
 
     # (2) 2D MAP
-# gp.train()
+gp.train()
+plotter = Plotter(datastructure.processed_file_path, encoding= datastructure.encoding, selection_dataframe= selection_dataframe)
+plotter.plot_data("AS_Pb_ratio", "Cs_Pb_ratio", "peak_pos", kernel= gp, molecule= "Methanol", library="matplotlib", selection_dataframe= selection_dataframe)
+exit()
 
 
     # (2) 3D MAP
 gp.train()
 #gp.print_parameters()
-
-plotter = Plotter(datastructure.processed_file_path, encoding= datastructure.encoding, selection_dataframe= selection_dataframe)
 
 #plotter.plot_correlation()
 #plotter.plot_ternary(selection_dataframe= selection_dataframe, molecule= MOLECULE)

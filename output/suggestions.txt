@@ -1019,3 +1019,22 @@ SETTINGS:  Obj-> ['peak_pos', 'fwhm'], iterations-> 100,  peak-> 487
 molecule-> Cyclopentanone,  add_baseline-> True
 
 THANK YOU FOR USING THE SYNTHESIZER MODULE!
+
+------------------------------------   2025-04-14   ---------------------------------
+L-SYNTH 2.0-7268
+THE SYNTHESIZER RECOMMENDS: 
+
+When using -Cyclopentanone- as an antisolvent 
+to make CsPbBr3 NPLs around 461nm:
+Choose the following synthesis parameters:
+['V (antisolvent) :  905.2788173706782', 'c (PbBr2) :  0.010000000000000002', 'c (Cs-OA) :  0.02', 'V (PbBr2 prec.) :  962.549744616984', 'V (Cs-OA) :  100.0']
+with the following As/Pb ratio: 0.10618254178834068
+ and the following Cs/Pb ratio: 0.2077814690809394
+
+Predicted peak position: [461.05019677]
+
+DEV:
+SETTINGS:  Obj-> ['peak_pos', 'fwhm'], iterations-> 100,  peak-> 461
+molecule-> Cyclopentanone,  add_baseline-> True
+
+THANK YOU FOR USING THE SYNTHESIZER MODULE!

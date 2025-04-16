@@ -76,8 +76,8 @@ ________________________________________________________________________________
 """
 
 # # # # #
-# plotter.plot_parameters("peak_pos_eV", "PLQY", color_var = "peak_pos_eV")
-# plt.show()
+plotter.plot_parameters("peak_pos_eV", "fwhm", color_var = "peak_pos_eV")
+plt.show()
 
 # exit()
 
