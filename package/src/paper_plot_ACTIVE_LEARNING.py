@@ -15,12 +15,13 @@ from helpers import *
 
 
 
-datastructure = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_240418_new.csv", 
+datastructure = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_240418_transfer.csv", #"Perovskite_NC_synthesis_NH_240418_new.csv", 
                               spectral_file_path  = "spectrum/",        
                               monodispersity_only= True,
                               P_only=True, 
                               molecule="all",
                               add_baseline= True,
+                              encoding= "geometry",
                               )
 
 
@@ -55,7 +56,9 @@ ________________________________________________________________________________
 ...
 
 # """
-for molecule in ["Methanol", "Ethanol", "Butanol", "Cyclopentanone"]:
+for molecule in ["Methanol", "Ethanol", "Propanol", "Isopropanol",  
+                 "Butanol", "Pentanol", "Octanol", "Acetone", "Butanone", "Pentanone", 
+                 "3-Pentanone", "Cyclopentanone"]:
     gp.active_learning_simulation(selection_dataframe, measured_molecule = molecule, resolution=5)
 
 plt.show()

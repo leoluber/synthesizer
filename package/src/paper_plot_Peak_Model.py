@@ -19,13 +19,13 @@ from helpers import *
 TRANSFER_MOLECULE = "Methanol"
 
 
-datastructure = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_240418_new.csv", 
+datastructure = Datastructure(synthesis_file_path= "Perovskite_NC_synthesis_NH_240418_transfer.csv", 
                               spectral_file_path  = "spectrum/",        
                               monodispersity_only= True,
                               P_only=True, 
                               molecule="all",
                               add_baseline= True,
-                              encoding= "combined",
+                              encoding= "geometry",
                               )
 
 
@@ -77,7 +77,9 @@ ________________________________________________________________________________
 
 
 # molecule loo with histogram
-antisolvents  = ["Methanol", "Ethanol", "Isopropanol", "Butanol", "Cyclopentanone",]
+antisolvents  = ["Methanol", "Ethanol", "Propanol", "Isopropanol",  
+                 "Butanol", "Pentanol", "Octanol", "Acetone", "Butanone", "Pentanone", 
+                 "3-Pentanone", "Cyclopentanone"]
 #antisolvents  = ["Butanol",]
 errors = []
 errors_10 = []

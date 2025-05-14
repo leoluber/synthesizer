@@ -19,11 +19,13 @@ import os
 import sys
 from typing import Literal
 import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
 
 
 # custom imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from src.helpers import nm_to_ev, ev_to_nm, get_ml_from_peak_pos
+from src.Func_SplitVoigt import SplitVoigt, PARAMETERS_SPLIT_VOIGT, BOUNDS_SPLIT_VOIGT
 
 
 
@@ -85,6 +87,7 @@ class Datastructure:
         monodispersity_only =  False,
         P_only =               False,
         S_only =               False,
+        fitting =              False,
         ):
         
         # check S/P
@@ -96,6 +99,7 @@ class Datastructure:
         self.add_baseline      = add_baseline
         self.wavelength_filter = wavelength_filter
         self.encoding          = encoding
+        self.fitting           = fitting
 
         # selection flags
         self.flags = {"monodispersity_only": monodispersity_only,
@@ -409,33 +413,33 @@ class Datastructure:
         
         """
 
-
         # define the columns for the spectral data
-        for key in ["fwhm", "peak_pos", "poly_peak_pos", "peak_pos_eV"]:
+        fitting_properties = ["fwhm", "peak_pos", "poly_peak_pos", "peak_pos_eV", 
+                              "sigma", "gamma1", "gamma2", "fitting_error"]
+        for key in fitting_properties:
             df[key] = np.zeros(len(df["Sample No."]))
 
         # iterate the rows and read the spectral data
+        print("Reading spectral data...")
         for index, row in df.iterrows():
             try:
-                fwhm, peak_pos, poly_peak_pos, peak_pos_eV = \
+                fitting_dictionary = \
                     self.read_spectrum(self.spectrum_path + row["PL_data"])
-                df["fwhm"][index] = fwhm
-                df["peak_pos"][index] = peak_pos
-                df["poly_peak_pos"][index] = poly_peak_pos
-                df["peak_pos_eV"][index] = peak_pos_eV
+                
+                for key in fitting_properties:
+                    df[key][index] = fitting_dictionary[key]
 
             except TypeError:
                 print(f"TypeError: {row['PL_data']} not found in spectral data")
                 continue
+        print("Spectral data read successfully!")
 
         plt.show()
         # remove all rows with missing spectral data
         df = df[df["peak_pos"] != 0]
 
-
         # classify the product
         df["NPL_type"] = [self.get_NPL_type(peak_pos) for peak_pos in df["peak_pos"]]
-
 
         return df
 
@@ -489,7 +493,7 @@ class Datastructure:
             
 
         # make sample selection based on self.flags and other criteria
-        data_frame = data_frame[data_frame['Cs_Pb_ratio'] <= 1]
+        data_frame = data_frame[data_frame['Cs_Pb_ratio'] <= 1.1]
         data_frame = data_frame[data_frame['peak_pos'] <= max(self.wavelength_filter)]
         data_frame = data_frame[data_frame['peak_pos'] >= min(self.wavelength_filter)]
 
@@ -637,7 +641,7 @@ class Datastructure:
 
 
 
-    def read_spectrum(self, path,) -> tuple:
+    def read_spectrum(self, path,) -> dict:
 
         """ Reads in the spectral data from a .txt or .csv file
         
@@ -652,7 +656,7 @@ class Datastructure:
         sample_name = os.path.basename(path).split(".")[0]
 
         if not os.path.exists(path):
-            return 0,0,0,0
+            return 0,0,0,0,0,0,0
     
         # read the data from the file
         energies, spectrum, wavelengths = [], [], []
@@ -692,6 +696,21 @@ class Datastructure:
         peak_pos = energies[max_index]
         peak_pos_eV = peak_pos
         poly_peak_pos = np.average(np.array(energies), weights = spectrum)
+
+        # fit SplitVoigt to the spectrum
+        if self.fitting:
+            p_0 = [peak_pos_eV * 1000, 20, 30, 20, 0,]
+
+            popt, pcov = curve_fit(SplitVoigt, np.array(energies)*1000, spectrum, bounds=BOUNDS_SPLIT_VOIGT, p0=p_0, maxfev=100000000, method="trf")
+            error = np.sqrt(np.diag(pcov))[-1]
+            sigma, gamma1, gamma2 = popt[1], popt[2], popt[3]
+            
+            # if round(sigma, 3) <= 12 :
+            #     plt.plot(energies, spectrum, label = sample_name)
+            #     plt.plot(energies, SplitVoigt(np.array(energies)*1000, *popt), label = "Fitted")
+            #     plt.show()
+        else:
+            sigma, gamma1, gamma2 = 0, 0, 0	
 
         # save the spectrum to folder according to number of monolayers
         # number of ML
@@ -733,9 +752,12 @@ class Datastructure:
         if peak_pos < 400:
             print(f"Peak position below 400 nm: {peak_pos} nm")
             return None
+        
+        dictionary = {"peak_pos": peak_pos, "poly_peak_pos": poly_peak_pos,
+                    "peak_pos_eV": peak_pos_eV, "fwhm": fwhm, "sigma": sigma,
+                    "gamma1": gamma1, "gamma2": gamma2, "fitting_error": error}
     
-
-        return fwhm, peak_pos, poly_peak_pos, peak_pos_eV
+        return dictionary
 
 
     def normalize(self, a, name):

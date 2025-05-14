@@ -45,9 +45,10 @@ datastructure.read_synthesis_data()
 features = ["AS_Pb_ratio", "Cs_Pb_ratio",] # "V_total", "c (PbBr2)", "c (Cs-OA)"] # for fwhm/plqy
 
 # get training data
-inputs, targets, selection_dataframe = datastructure.get_training_data(training_selection=features, target="peak_pos", encoding=True)
-
+inputs, targets_, selection_dataframe = datastructure.get_training_data(training_selection=features, target="peak_pos", encoding=True)
+targets = np.array([target for target in targets_])
 # print(len(inputs), len(targets))
+
 
 # # save dataframe to csv
 # print_dataframe = selection_dataframe[["Sample No.", "molecule_name", "monodispersity", "S/P"]]
@@ -68,7 +69,7 @@ gp = GaussianProcess(
 
 
 #     # (1) LOO cross validation
-# for MOLECULE in ["Methanol", "Ethanol", "Isopropanol", "Butanol", "Cyclopentanone",]:
+# for MOLECULE in ["Butanol",]: # "Methanol", "Isopropanol", "Butanol", "Cyclopentanone",
 #     baseline = selection_dataframe["baseline"].to_numpy().astype(bool)
 #     include = np.array([True if molecule == MOLECULE else False for molecule in selection_dataframe["molecule_name"]])
 #     gp.leave_one_out_cross_validation(inputs, targets, include_sample=include, baseline_list=baseline)
@@ -79,14 +80,14 @@ gp = GaussianProcess(
 # gp.leave_one_out_cross_validation(inputs, targets, include_sample=include,)
 # gp.regression_plot() #MOLECULE)
 
-# exit()
+#exit()
 
 
     # (2) 2D MAP
-gp.train()
+#gp.train()
 plotter = Plotter(datastructure.processed_file_path, encoding= datastructure.encoding, selection_dataframe= selection_dataframe)
-plotter.plot_data("AS_Pb_ratio", "Cs_Pb_ratio", "peak_pos", kernel= gp, molecule= "Methanol", library="matplotlib", selection_dataframe= selection_dataframe)
-exit()
+# plotter.plot_data("AS_Pb_ratio", "Cs_Pb_ratio", "peak_pos", kernel= gp, molecule= "Propanol", library="plotly", selection_dataframe= selection_dataframe)
+# exit()
 
 
     # (2) 3D MAP
@@ -95,9 +96,9 @@ gp.train()
 
 #plotter.plot_correlation()
 #plotter.plot_ternary(selection_dataframe= selection_dataframe, molecule= MOLECULE)
-for MOLECULE in ["Methanol", "Ethanol", "Isopropanol", "Butanol", "Cyclopentanone",]: 
-    #plotter.plot_data("AS_Pb_ratio", "Cs_Pb_ratio", "peak_pos", kernel= gp, molecule= MOLECULE, selection_dataframe= selection_dataframe, library="matplotlib")
-    plotter.plot_2D_contour_old("AS_Pb_ratio", "Cs_Pb_ratio", kernel= gp, molecule= MOLECULE, selection_dataframe= selection_dataframe)
+for MOLECULE in ["Butanol","Acetone", ]: #"Methanol", "Ethanol", "Propanol", "Butanol", "Isopropanol", "Pentanol", "Hexanol", "Octanol"]:
+    plotter.plot_data("AS_Pb_ratio", "Cs_Pb_ratio", "peak_pos", kernel= gp, molecule= MOLECULE, selection_dataframe= selection_dataframe, library="plotly")
+    print(plotter.plot_2D_contour_old("AS_Pb_ratio", "Cs_Pb_ratio", kernel= gp, molecule= MOLECULE, selection_dataframe= selection_dataframe)/0.45)
 
     molecule_df = selection_dataframe[selection_dataframe["molecule_name"] == MOLECULE]
     molecule_df = molecule_df[[ "AS_Pb_ratio", "Cs_Pb_ratio", "peak_pos", "Sample No.", "molecule_name", "monodispersity", "S/P"]]

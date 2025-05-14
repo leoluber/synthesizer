@@ -16,13 +16,14 @@ import plotly
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+from matplotlib.colors import ListedColormap
 
 # custom imports
 from src.Datastructure import Datastructure
 from src.helpers import surface_proportion, ev_to_nm, nm_to_ev
 
-
-
+# darkmode
+plt.style.use('dark_background')
 
 
 
@@ -69,6 +70,17 @@ class Plotter(Datastructure):
         # molecule attributes
         self.global_attributes_df =  pd.read_csv(self.global_attributes_path, 
                                                  delimiter= ';', header= 0)
+        
+        # get labels dictionary for axis labels
+        self.labels_dict = {
+            "PLQY": "plqy",
+            "fwhm": "fwhm (meV)",
+            "peak_pos_ev": "energy (eV)",
+            "peak_pos": "PL peak position (nm)",
+            "sigma": "$\\sigma$ (meV)",
+            "gamma1": "$\\gamma_1$ (meV)",
+            "gamma2": "$\\gamma_2$ (meV)"
+        }
 
 
 
@@ -290,20 +302,20 @@ class Plotter(Datastructure):
 
         # save the plot as interactive html
         if library == "plotly":
-            #fig.write_html(f"plots/{molecule}.html")
+            fig.write_html(f"plots/{molecule}.html")
             fig.show()
         
         elif library == "matplotlib":
             plt.show()
 
         # plot toluene baseline
-        fig = plt.figure(figsize=(2.5, 3.5))
-        data = df[df["V (antisolvent)"] == 0]
-        peak_pos = data["peak_pos"]
-        cs_pb_ratio = data["Cs_Pb_ratio"]
-        model = Z[:, 0]
-        plt.scatter(cs_pb_ratio, peak_pos, cmap = "gist_rainbow_r", vmin=400, vmax = 600, c = peak_pos)
-        plt.plot(x_vec, model, "--", color = "black", linewidth = 1, label = "Model")
+        # fig = plt.figure(figsize=(2.5, 3.5))
+        # data = df[df["V (antisolvent)"] == 0]
+        # peak_pos = data["peak_pos"]
+        # cs_pb_ratio = data["Cs_Pb_ratio"]
+        # model = Z[:, 0]
+        # plt.scatter(cs_pb_ratio, peak_pos, cmap = "gist_rainbow_r", vmin=400, vmax = 600, c = peak_pos)
+        # plt.plot(x_vec, model, "--", color = "black", linewidth = 1, label = "Model")
 
         # # add grey lines for the ML boundaries
         # for ml in self.ml_dictionary.keys():
@@ -323,14 +335,14 @@ class Plotter(Datastructure):
 
         # # layout
         #plt.xlabel("Cs/Pb ratio")
-        plt.xlabel("As/Pb ratio (10^4)")
-        plt.ylabel("peak position (nm)")
-        plt.xlim(-0.05, 0.70)
-        plt.ylim(430, 520)
-        plt.gca().xaxis.set_tick_params(direction='in', which='both', top=True, bottom=True,)
-        plt.gca().yaxis.set_tick_params(direction='in', which='both', right=True, left=True,)
-        plt.tight_layout()
-        plt.show()
+        # plt.xlabel("As/Pb ratio (10^4)")
+        # plt.ylabel("peak position (nm)")
+        # plt.xlim(-0.05, 0.70)
+        # plt.ylim(430, 520)
+        # plt.gca().xaxis.set_tick_params(direction='in', which='both', top=True, bottom=True,)
+        # plt.gca().yaxis.set_tick_params(direction='in', which='both', right=True, left=True,)
+        # plt.tight_layout()
+        # plt.show()
 
         return fig
         
@@ -450,7 +462,7 @@ class Plotter(Datastructure):
 
 
         # a contour plot of the kernel
-        fig, ax = plt.subplots(figsize=(5, 4))
+        fig, ax = plt.subplots(figsize=(6, 4.5))
 
 
         # evaluate the kernel on the grid
@@ -477,10 +489,10 @@ class Plotter(Datastructure):
 
 
         # plot the data
-        ax.scatter(x, y, c = peak_pos, s = 50, vmin = 400, vmax = 600, 
+        ax.scatter(x, y, c = peak_pos,  vmin = 400, vmax = 600, s = 80,
                     cmap = "gist_rainbow_r",
                     edgecolors='black', zorder = 3)
-        ax.scatter(x_poly, y_poly, c = "white", s = 50,
+        ax.scatter(x_poly, y_poly, c = "white",  s = 80,
                     edgecolors='black', zorder = 3)
         
         # scatter polydisperse data in white
@@ -495,8 +507,10 @@ class Plotter(Datastructure):
         ax.yaxis.set_tick_params(direction='in', which='both', labelsize = 12, right=True, left=True,)
 
         # set x and y range to -0.1, 1.1
-        ax.set_xlim(0, 1)
-        ax.set_ylim(0, 1)
+        # ax.set_ylim(-0.05, 1.05)
+        # ax.set_xlim(-0.05, 1.05)
+        ax.set_ylim(0., 1.)
+        ax.set_xlim(0., 1.)
 
         # set labels
         ax.set_xlabel("AS/Pb ratio (10^4)", fontsize = 12)
@@ -538,31 +552,42 @@ class Plotter(Datastructure):
 
         # get the data
         x = df[var1]
-        y = df[var2]*1000
+        y = df[var2]#*100 #1000
         color = df[color_var]
         sample_no = df["Sample No."]    
 
         peak_pos_eV = df["peak_pos_eV"]
-        suggestion = df["suggestion"]
-        suggestion = [1 if "L-" in str(s) else 0 for s in suggestion]
+        #suggestion = df["suggestion"]
+        #suggestion = [1 if "L-" in str(s) else 0 for s in suggestion]
         LL = [1 if "LL" in str(s) else 0 for s in sample_no]
-        if color_var == "suggestion":
-            color = suggestion
+        #if color_var == "suggestion":
+        #    color = suggestion
 
         # set color to black if the sample is LL
-        color = [0 if l == 1 else c for l, c in zip(LL, color)]
+        #color = [0 if l == 1 else c for l, c in zip(LL, color)]
 
 
 
 
         """ basic scatter plot """
-        #fig, ax = plt.subplots(figsize = (3, 4))
-        fig, ax = plt.subplots(figsize = (6, 4))
+        fig, ax = plt.subplots(figsize = (4, 4))
+        #fig, ax = plt.subplots(figsize = (6, 4))
         #fig, ax = plt.subplots(figsize = (10, 5.5))
         #fig, ax = plt.subplots(figsize = (4, 3))
 
+        # custom color map# Choose original colormap
+        original_cmap = plt.get_cmap('vanimo')
+
+        # Get the original colormap colors
+        n_colors = 256
+        original_colors = original_cmap(np.linspace(0, 1, n_colors))
+        half = n_colors // 2
+        modified_colors = np.copy(original_colors)
+        modified_colors[half:] = [0, 0, 0, 1]  # RGBA for black
+        custom_cmap = ListedColormap(modified_colors)
+
         # cbar = plt.colorbar(ax.scatter(x, y,
-        #                                 c = color, cmap= "bwr_r", alpha = 1, s = 70,vmin = 0, vmax = 0.2)) # vmin = nm_to_ev(400), vmax = nm_to_ev(600)))
+        #                                 c = color, cmap= "bwr", alpha = 1, s = 70,vmin = 0, vmax = 1)) #vmin = 0, vmax = 0.3)) # vmin = nm_to_ev(400), vmax = nm_to_ev(600)))
 
         cmap = plt.get_cmap('gist_rainbow')
         cmap.set_under('k')
@@ -580,14 +605,14 @@ class Plotter(Datastructure):
         ax.yaxis.set_tick_params(direction='in', which='both', labelsize = 12, right=True, left=True, ) # labelleft=True, labelright=False)
 
         # set axis range
-        #ax.set_ylim(0, 1)
-        #ax.set_xlim(0, 1)
+        # ax.set_ylim(-0.05, 1.05)
+        # ax.set_xlim(-0.05, 1.05)
 
         # axis limits
         #ax.set_xlim(2.45, 2.65)
 
         # reverse x axis
-        ax.invert_xaxis()
+        #ax.invert_xaxis()
 
 
         """ plot lines at ml boundaries """
@@ -607,6 +632,15 @@ class Plotter(Datastructure):
         if var2 == "fwhm":
             ax.axhline(y =70, color = "black", linestyle = "dashed", linewidth = 1, alpha = 0.3)
 
+        # set axis labels
+        if var1 in self.labels_dict.keys():
+            ax.set_xlabel(self.labels_dict[var1], fontsize = 12)
+        else:
+            ax.set_xlabel(var1, fontsize = 12)
+        if var2 in self.labels_dict.keys():
+            ax.set_ylabel(self.labels_dict[var2], fontsize = 12)
+        else:
+            ax.set_ylabel(var2, fontsize = 12)
         
         #plt.show()
 
@@ -614,7 +648,7 @@ class Plotter(Datastructure):
         """plot surface proportions"""
         # plt.tight_layout()
         # x = np.linspace(min(peak_pos_eV), max(peak_pos_eV), 300)
-        # prop = [surface_proportion(x, "EV") for x in x]
+        # prop = [surface_proportion(x, "EV")*100 for x in x]
         # plt.plot(x, prop, "--", color = "black")
 
         plt.tight_layout()

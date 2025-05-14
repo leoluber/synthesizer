@@ -20,18 +20,19 @@ from plotting.Plotter import Plotter
 
 
 datastructure = Datastructure(
-                            synthesis_file_path = "Perovskite_NC_synthesis_NH_240418_LL.csv", 
-                            spectral_file_path  = "spectrum/", 
+                            synthesis_file_path = "Perovskite_NC_synthesis_NH_240418_LL.csv", #"CsPbI3_NH_LB_AS_BS_combined_new.csv", #
+                            spectral_file_path  = "spectrum/", #"spectrum_CsPbI3/", #
                             monodispersity_only = True,
                             P_only              = False,
                             molecule            = "all",
                             add_baseline        = True,
+                            fitting             = True,
                             #wavelength_filter= (400, 440),
                             )
                             
 
-datastructure.read_synthesis_data()
-
+# datastructure.read_synthesis_data()
+# exit()
 
 
 #%%
@@ -48,6 +49,12 @@ inputs, targets, selection_dataframe = datastructure.get_training_data(training_
 # # save the dataframe
 # ourput_df.to_csv("plots/PLQY.csv")
 
+
+
+# remove all samples where "fwhm" > 0.1
+selection_dataframe = selection_dataframe[selection_dataframe["fwhm"] < 0.12]
+selection_dataframe = selection_dataframe[selection_dataframe["fitting_error"] < 0.0015]
+#selection_dataframe = selection_dataframe[selection_dataframe["peak_pos"] > 2.6]
 plotter = Plotter(datastructure.processed_file_path, encoding= datastructure.encoding, selection_dataframe= selection_dataframe)
 
 """
@@ -75,11 +82,26 @@ ________________________________________________________________________________
 
 """
 
-# # # # #
-plotter.plot_parameters("peak_pos_eV", "fwhm", color_var = "peak_pos_eV")
+# # # # # #
+#plotter.plot_parameters("peak_pos_eV", "PLQY", color_var = "Cs_Pb_ratio")
+plotter.plot_parameters("gamma1", "gamma2", color_var = "peak_pos_eV")
+plt.show()
+plotter.plot_parameters("sigma", "PLQY", color_var = "peak_pos_eV")
+plt.show()
+plotter.plot_parameters("gamma1", "PLQY", color_var = "peak_pos_eV")
 plt.show()
 
-# exit()
+
+plotter.plot_parameters("peak_pos_eV", "sigma", color_var = "peak_pos_eV")
+plt.show()
+plotter.plot_parameters("peak_pos_eV", "gamma1", color_var = "peak_pos_eV")
+plt.show()
+plotter.plot_parameters("peak_pos_eV", "gamma2", color_var = "peak_pos_eV")
+plt.show()
+
+
+
+exit()
 
 
 
@@ -154,7 +176,7 @@ for i, row in selection_dataframe.iterrows():
     ml = get_ml_from_peak_pos(row["peak_pos"])
     
     if ml is not None:
-        matrix[molecules.index(molecule)][int(ml-2)].append(row["PLQY"])
+        matrix[molecules.index(molecule)][int(ml-2)].append(row["fwhm"])
 
 
 # delete entries with less than n data points
@@ -166,8 +188,8 @@ for i in range(len(matrix)):
             # depending on the desired output (min, max, mean)
             
             #matrix[i][j] = np.mean(matrix[i][j])  *1000
-            #matrix[i][j]  = np.min(matrix[i][j])
-            matrix[i][j] = np.max(matrix[i][j])
+            matrix[i][j]  = np.min(matrix[i][j]) * 1000
+            #matrix[i][j] = np.max(matrix[i][j])
 
         # if nan, set to 0
         if np.isnan(matrix[i][j]):
@@ -177,12 +199,12 @@ for i in range(len(matrix)):
 
 # plot the matrix as heatmap
 fig, ax = plt.subplots()
-cmap = plt.get_cmap('Blues_r')
+cmap = plt.get_cmap('Blues')
 cmap.set_under('grey')
 #cmap.set_over('red')
 
-#cax = ax.matshow(matrix, cmap= cmap, vmin=0.065, vmax=0.12) 
-cax = ax.matshow(matrix, cmap= cmap,  vmin = 0.01, vmax = 1, )
+cax = ax.matshow(matrix, cmap= cmap, vmin=65, vmax=120) 
+#cax = ax.matshow(matrix, cmap= cmap,  vmin = 0.01, vmax = 1, )
 
 # save matrix as csv with pandas
 df = pandas.DataFrame(matrix, index= molecules, columns= list(datastructure.ml_dictionary.keys()))
@@ -192,7 +214,7 @@ df.to_csv("plots/PLQY_matrix.csv")
 # layout stuff
 fig.colorbar(cax,) #  label="AVG PLQY",)
 plt.tick_params(axis='x', which='both', bottom=False)
-fig.set_size_inches(10, 4)
+fig.set_size_inches(7.5, 3)
 
 ax.set_xticklabels([""] + list(ml_dictionary.keys()), rotation=45)
 plt.xticks(range(len(ml_dictionary)), ml_dictionary.keys())
