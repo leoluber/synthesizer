@@ -44,11 +44,20 @@ python setup.py install
 
 ## Usage
 
-After installation, you can start using the package in your Python scripts.
+After installation, some setup steps are required to adapt the Synthesizer to your project.
+
 
 ### Setup Datastructure
 
-(...)
+A table of synthesis parameters (in the format of "data\raw\Perovskite_NC_synthesis_NH_240418_new.csv") needs to be provided together with the corresponding spectral files (.csv or .txt format) in "data\raw\spectrum" named as "Sample No.". The dictionaries/tables at "data\raw\AntisolventProperties.csv", "data\raw\ml_dictionary.json", "data\raw\molecule_encoding.json" and "data\raw\molecule_dictionary.json" need to be updated as well.
+
+Additionally, it is required to specify custom properties both in Datastructure.__init__ and Datastructure.calculate_properties
+
+
+### Train a Model
+
+The Gaussian Process pipline as well as the plotting functionality can be tested via the run_GP.py script. 
+
 
 ### Synthesizer Optimization
 

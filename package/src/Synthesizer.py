@@ -131,22 +131,12 @@ class Synthesizer:
         # specify the parameters used for the optimization
         # TODO: refactor this to a more general approach
         if self.ion == "CsPbBr3":
-            self.ratios =             ["AS_Pb_ratio", "Cs_Pb_ratio",]
-            self.parameters_PEAK =    self.ratios 
-            self.parameters =         self.parameters_PEAK + ["V (antisolvent)", "c (PbBr2)",  "c (Cs-OA)", "V (PbBr2 prec.)","V (Cs-OA)",]
-
-            self.parameters_opt = [parameter for parameter in self.parameters if parameter not in self.ratios]
-            self.parameters_opt_PEAK = [parameter for parameter in self.parameters_PEAK if parameter not in self.ratios]
-            self.total_parameters = self.parameters_opt 
-    
-        if self.ion == "CsPbI3":
-            self.ratios =             ["Cs_Pb_ratio",]
-            self.parameters_PEAK =    self.ratios # + ["Pb/I" , "V (Cs-OA)", "t_Rkt",]
-            self.parameters =         self.parameters_PEAK # + ["Centrifugation time [min]", "Centrifugation speed [rpm]",]
-
-            self.parameters_opt =         [parameter for parameter in self.parameters if parameter not in self.ratios]
-            self.parameters_opt_PEAK =    [parameter for parameter in self.parameters_PEAK if parameter not in self.ratios] 
-            self.total_parameters =       self.parameters_opt + ["V (antisolvent)", "c (PbBr2)",  "c (Cs-OA)", "V (PbBr2 prec.)","V (Cs-OA)",]
+            self.ratios =               ["AS_Pb_ratio", "Cs_Pb_ratio",]
+            self.parameters_PEAK =      self.ratios 
+            self.parameters =           self.parameters_PEAK + ["V (antisolvent)", "c (PbBr2)",  "c (Cs-OA)", "V (PbBr2 prec.)","V (Cs-OA)",]
+            self.parameters_opt =       [parameter for parameter in self.parameters if parameter not in self.ratios]
+            self.parameters_opt_PEAK =  [parameter for parameter in self.parameters_PEAK if parameter not in self.ratios]
+            self.total_parameters =     self.parameters_opt 
 
 
         # extra constraints
@@ -175,8 +165,7 @@ class Synthesizer:
             self.POLY_model =       self.train_GP(self.parameters, target = "polydispersity")
 
 
-        # display the trained models to check for overfitting etc. 
-        # (if the number of dimensions is sufficiently small)
+        # display the trained model to check for overfitting etc. 
         self.plotter = Plotter(self.datastructure.processed_file_path, encoding= self.datastructure.encoding, selection_dataframe= self.selection_dataframe)
         self.plotter.plot_data( "AS_Pb_ratio", "Cs_Pb_ratio", "peak_pos", 
                               kernel= self.NPL_model, molecule= self.molecule,)
@@ -221,7 +210,6 @@ class Synthesizer:
         self.results = self.return_results(optimizer.x_opt)
 
         return optimizer.x_opt, optimizer.fx_opt
-
 
 
     def objective_function(self, x) -> float:
@@ -324,7 +312,6 @@ class Synthesizer:
 
 
 
-
 ### ----------------------------- INIT ------------------------------ ###
 
     def train_GP(self, parameter_selection, target) -> GaussianProcess:
@@ -386,7 +373,7 @@ class Synthesizer:
                                                    - self.datastructure.max_min[parameter_string][1]))
         
 
-        # if a custom limit is set, we adjust the limits accordingly
+        # if a custom limit is set, we adjust accordingly
         if self.V_As_max is not None:
             max_V_As = self.V_As_max
             norm_max_V_As   = Norm(max_V_As, "V (antisolvent)")
@@ -424,10 +411,6 @@ class Synthesizer:
 
         """ Initialize the datastructure for the current molecule
 
-        RETURNS
-        -------
-        Datastructure:  datastructure object
-
         """
         
         datastructure = Datastructure(synthesis_file_path = self.data_path,
@@ -464,7 +447,6 @@ class Synthesizer:
         """
 
         results = {}
-
 
         # get ratios (denormalize the parameters first)
         V_As = self.datastructure.denormalize(x[-5], "V (antisolvent)")
@@ -566,21 +548,3 @@ class Synthesizer:
 
         return 0
 
-    
-
-
-    def print_logo(self):
-
-        """ Print the logo to the console
-        -> ASCII image from ascii-art-generator.org
-
-        """
-
-        # read in from file (ascii-art.txt)
-        with open("data/ascii-art.txt", "r") as file:
-            for line in file:
-                print(line, end="")
-                time.sleep(0.02)	
-
-        print("\n")
-    
