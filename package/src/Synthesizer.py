@@ -1,7 +1,9 @@
 """ 
-    Project:     synthesizer
     File:        Synthesizer.py
-    Description: Defines the Synthesizer class for the optimization of NPL synthesis 
+    Project:     Synthesizer: Chemistry-Aware Machine Learning for 
+                 Precision Control of Nanocrystal Growth 
+                 (Henke et al., Advanced Materials 2025)
+    Description: Defines the Synthesizer class for the optimization of NC synthesis 
                  parameters using Gaussian Processes and Bayesian Optimization
     Author:      << github.com/leoluber >> 
     License:     MIT
@@ -9,14 +11,14 @@
 
 
 
-
+# ------------------------
 import numpy as np
-import time
 from datetime import date
 import sys
 import os
-from typing import Literal
 from GPyOpt.methods import BayesianOptimization
+# ------------------------
+
 
 
 # custom modules
@@ -27,46 +29,36 @@ from package.plotting.Plotter import Plotter
 
 
 
-
-
-
 class Synthesizer:
 
 
-
-    """ Optimizer Class for perovskite NPL synthesis parameters
+    """ Optimizer Class for perovskite NC synthesis parameters
 
     Optimization Module for Synthesis Parameter Recommendations for Perovskite 
-    NPL synthesis; Samples synthesis parameters for a given NPL type while 
-    optimizing the target values specified in the objectife function.
+    NC synthesis; Samples synthesis parameters for a given NC PL peak pos. while 
+    also optimizing the target values specified in the objective function.
 
-    
     MODULES
     -------
     - models:           Gaussian Process Regression (GPy)
     - optimization:     Bayesian Optimization (GPyOpt)
 
-    
     ARGS
     ----
     - molecule (str):         molecule for the synthesis (e.g. "Methanol")
     - iterations (int):       max. number of optimization iterations
     - peak (int):             target peak position
-    - ion (str):              NPL type (default is "CsPbI3")
     - obj (list):             properties included in the objective function
-                              ("peak_pos", "plqy", "fwhm", "poly",)
-    - c_Pb_fixed (float):     fixed Pb concentration (default is None)
+                              ("peak_pos", "plqy", "fwhm",)
     - V_As_fixed (float):     fixed As volume (default is None)
     - V_Cs_fixed (float):     fixed Cs volume (default is None)
-    - Cs_Pb_opt (bool):       Cs/Pb ratio optimization (default is False)
-    - Cs_As_opt (bool):       Cs/As ratio optimization (default is False)
     - c_Pb_max (float):       maximum Pb concentration (default is None)
 
     
     USAGE
     -----
     >>> synthesizer      = Synthesizer(...)
-    >>> opt_x, opt_delta = synthesizer.optimize_NPL()
+    >>> opt_x, opt_delta = synthesizer.optimize_NC()
     >>> results          = synthesizer.results
     >>> synthesizer.print_results(results["results_string"], results["input_PLQY"], ... )
 
@@ -75,100 +67,88 @@ class Synthesizer:
 
 
 
-
     def __init__(
                  self,
                  molecule : str,
                  data_path : str,
-                 spectral_path : str,
                  iterations : int,
                  peak : int,
-                 ion : Literal["CsPbI3", "CsPbBr3"] = "CsPbBr3",
-                 obj : list =       ["peak_pos", "fwhm",],
+
+                 # objectives to optimize
+                 obj : list =       ["peak_pos", "fwhm",], #plqy
+
+                 # here the weights for the different objectives can be adjusted
                  weights : list =   {"peak_pos": 10, 
-                                     "poly": 10,
                                      "plqy": 5,
                                      "fwhm": 10,},
-                 c_Pb_fixed =       None,
+
+                 # in some cases, it might be useful to fix certain parameters
+                 # (add more if needed; see get_limits() function)
                  V_Cs_fixed =       None,
-                 Cs_Pb_opt =        False,
-                 Cs_As_opt =        False,
-                 c_Pb_max =         None,
                  c_Cs_fixed =       None,
+
+                 # some experimental constraints (e.g. max. volumes) can be added here
                  V_As_max =         5000,
                  V_Pb_max =         None,
                  add_baseline =     True,
+
                 ):
         
 
         # set the parameters
-        self.obj = obj
-        self.weights = weights
+        self.obj =              obj
+        self.weights =          weights
         self.molecule =         molecule
-        self.ion =              ion
-        self.Cs_Pb_opt =        Cs_Pb_opt
-        self.Cs_As_opt =        Cs_As_opt
         self.add_baseline =     add_baseline
         self.data_path =        data_path
-        self.spectral_path =    spectral_path
         self.iterations =       iterations
-
 
         # initialize datastructure and encoding for current molecule
         self.datastructure =    self.get_datastructure()
-        self.molecule_names =   self.datastructure.molecule_names
         self.encoding =         self.datastructure.encode(self.molecule)
+        self.encoding_dim =     len(self.encoding)
+
+        # initialize for later use
         self.selection_dataframe = None
-
-        # results dictionary
         self.results = None
-
 
         # target peak position
         self.peak = peak
 
+        ### ------------ TODO: ADJUST FOR OTHER APPLICATIONS ------------ ###
+        # specify the parameters used for the optimization (the order matters!)
 
-        # specify the parameters used for the optimization
-        # TODO: refactor this to a more general approach
-        if self.ion == "CsPbBr3":
-            self.ratios =               ["AS_Pb_ratio", "Cs_Pb_ratio",]
-            self.parameters_PEAK =      self.ratios 
-            self.parameters =           self.parameters_PEAK + ["V (antisolvent)", "c (PbBr2)",  "c (Cs-OA)", "V (PbBr2 prec.)","V (Cs-OA)",]
-            self.parameters_opt =       [parameter for parameter in self.parameters if parameter not in self.ratios]
-            self.parameters_opt_PEAK =  [parameter for parameter in self.parameters_PEAK if parameter not in self.ratios]
-            self.total_parameters =     self.parameters_opt 
+        # NOTE: as the ratio space fully defines the peak position, we only
+        #       need to include those in the PEAK model; for FWHM and PLQY
+        #       we include the full parameter space (see publication for details)
 
+        self.parameters_PEAK =      ["AS_Pb_ratio", "Cs_Pb_ratio"]
+        self.synthesis_parameters = ["V (antisolvent)", "c (PbBr2)",  "c (Cs-OA)", "V (PbBr2 prec.)","V (Cs-OA)",]
+        self.total_parameters =     self.parameters_PEAK + self.synthesis_parameters
+        ### ------------------------------------------------------------- ###
 
-        # extra constraints
-        self.c_Pb_max = c_Pb_max
+        # constraints
         self.V_As_max = V_As_max
         self.V_Pb_max = V_Pb_max
-        self.c_Pb_fixed = c_Pb_fixed
         self.c_Cs_fixed = c_Cs_fixed
         self.V_Cs_fixed = V_Cs_fixed
-
         
-        # generate the limits for the optimization
+        # generate the limits for the optimization (depending on the constraints)
         self.limits = self.get_limits()
 
+        # train the models for the given objectives (peak position, FWHM, PLQY, ...)
+        self.PEAK_model  =           self.train_GP(self.parameters_PEAK, target = "peak_pos")
 
-        # train the models for the given objectives
-        self.NPL_model  =           self.train_GP(self.parameters_PEAK, target = "peak_pos")
-        
         if "plqy" in self.obj:
-            self.PLQY_model =       self.train_GP(self.parameters, target = "plqy")
-
+            self.PLQY_model =       self.train_GP(self.total_parameters, target = "plqy")
         if "fwhm" in self.obj:
-            self.FWHM_model =       self.train_GP(self.parameters, target = "fwhm")
-
-        if "poly" in self.obj:
-            self.POLY_model =       self.train_GP(self.parameters, target = "polydispersity")
+            self.FWHM_model =       self.train_GP(self.total_parameters, target = "fwhm")
 
 
         # display the trained model to check for overfitting etc. 
-        self.plotter = Plotter(self.datastructure.processed_file_path, encoding= self.datastructure.encoding, selection_dataframe= self.selection_dataframe)
+        self.plotter = Plotter(self.datastructure.processed_file_path, selection_dataframe= self.selection_dataframe)
         self.plotter.plot_data( "AS_Pb_ratio", "Cs_Pb_ratio", "peak_pos", 
-                              kernel= self.NPL_model, molecule= self.molecule,)
+                              kernel= self.PEAK_model, molecule= self.molecule,)
         
 
 
@@ -176,10 +156,10 @@ class Synthesizer:
 ### ------------------------- OPTIMIZATION ------------------------- ###
 
 
-    def optimize_NPL(self) -> tuple:
+    def optimize_NC(self) -> tuple:
 
 
-        """ Optimize for the selected NPL type using the GPyOpt library
+        """ Optimize for the selected NC type using the GPyOpt library
 
         Minimizes the distance to the perfect peak position as well as
         the specified objectives (e.g. FWHM, PLQY, ...) using Bayesian 
@@ -192,7 +172,7 @@ class Synthesizer:
         """
 
         # update
-        print(f"\noptimizing NPL ...\n")
+        print(f"\noptimizing NC ...\n")
 
 
         # define the optimization domain from the limits dictionary
@@ -200,7 +180,7 @@ class Synthesizer:
                    'type': 'continuous', 
                    'domain': (self.limits[parameter][0], 
                               self.limits[parameter][1])} 
-                              for parameter in self.total_parameters]
+                              for parameter in self.synthesis_parameters]
 
         # optimize
         optimizer = BayesianOptimization(f = self.objective_function, domain = bounds)
@@ -217,96 +197,86 @@ class Synthesizer:
         """ Objective function for the optimization
 
         The objective function for the optimization problem, which is
-        minimized by the Bayesian Optimization algorithm. The function
-        calculates the loss from the current input parameters and the
+        minimized by the Bayesian Optimization algorithm. 
+
+        The input "x" represents a point sampled from parameter space represented by
+        volumes and concentrations of the synthesis components. Together with the
+        ratios (As/Pb and Cs/Pb; calculated from the sampled parameters)
+        they are used as input for the trained Gaussian Process models.
+        The function calculates the loss from the current input parameters and the
         predictions from the Gaussian Process models.
-        (note: the ratios are not part of the input parameters, but
-        are calculated directly from the input parameters)
 
-        ARGS
-        ----
-        x (np.array):  input parameters
-
-        RETURNS
-        -------
-        float:  loss value
-
+        NOTE: denormalization of the parameters is done here, as the ratios
+              need to be calculated from the actual values; we avoid sampling in ratio
+              space directly as this would lead to a non-uniform sampling of the
+              parameter space.
         """
 
-        # extract the parameters from the input array
-        c_Pb_norm, c_Cs_norm, V_Pb_norm, V_Cs_norm =  x[0][-4], x[0][-3], x[0][-2], x[0][-1]
-        V_AS_norm = x[0][-5]
+        ### --- CALCULATE RATIOS --- ###
 
+        """ NOTE: the ratios are not part of the input parameters, but
+                  are calculated from the input parameters here
+                  --> this whole section needs to be adjusted for each separate application
+                  --> the indices used below are specific to the order of the parameters
+                      defined in self.total_parameters and self.parameters_PEAK
+                  """
+        
         # denormalize the parameters to calculate the ratios
-        V_As = self.datastructure.denormalize(V_AS_norm, "V (antisolvent)")
-        V_Pb = self.datastructure.denormalize(V_Pb_norm, "V (PbBr2 prec.)")
-        V_Cs = self.datastructure.denormalize(V_Cs_norm, "V (Cs-OA)")
-        c_Pb = self.datastructure.denormalize(c_Pb_norm, "c (PbBr2)") 
-        c_Cs_norm = self.datastructure.denormalize(c_Cs_norm, "c (Cs-OA)")
+        V_As = self.datastructure.denormalize(x[0][-5], "V (antisolvent)")
+        V_Pb = self.datastructure.denormalize(x[0][-2], "V (PbBr2 prec.)")
+        V_Cs = self.datastructure.denormalize(x[0][-1], "V (Cs-OA)")
+        c_Pb = self.datastructure.denormalize(x[0][-4], "c (PbBr2)") 
+        c_Cs_norm = self.datastructure.denormalize(x[0][-3], "c (Cs-OA)")
 
+        # calculate the ratios (note the rescaling of the As/Pb ratio by 10000; see publication)
         As_Pb_ratio = V_As *self.datastructure.concentrations[self.molecule] / (c_Pb * V_Pb * 10000) 
         Cs_Pb_ratio = (c_Cs_norm * V_Cs) / (c_Pb * V_Pb)
+        ### --------------------------- ###
 
 
-        # hard constraints 
-        # TODO: refactor this to a more general approach
-        #if Cs_Pb_ratio < 0.5: return 1000
-        if Cs_Pb_ratio > 0.4:  return 1000
-        #if As_Pb_ratio > 1.5: return 1000
-        #if As_Pb_ratio < 0.7: return 1000
+        # hard constraints can be added here (e.g. max. ratios), though this is not recommended
+        #if Cs_Pb_ratio > 1:  return 1000
 
 
-        # get the molecule encoding
+        ### --- Constructing the Input --- ###
+        # start with the molecule encoding
         input = np.array(self.encoding)
 
-        # construct the base input from ratios
-        if self.ion == "CsPbBr3":
-            input  = np.append(input, As_Pb_ratio)
-        base_input = np.append(input, Cs_Pb_ratio)    
-        
-        # construct the input for the NPL model
-        NPL_input = np.append(base_input, x[0][:len(self.parameters_opt_PEAK)])
+        # construct the PEAK input by adding the ratios
+        base_input  = np.append(input, As_Pb_ratio)
+        PEAK_input = np.append(base_input, Cs_Pb_ratio)    
+        print(f"PEAK input: {PEAK_input}")
 
         # construct the input for all other models
-        total_input = np.append(base_input, x[0])
-        print(f"total_input: {total_input}")
+        total_input = np.append(PEAK_input, x[0])
+        print(f"total input: {total_input}")
 
-        # predictions
-        NPL =   self.NPL_model.predict(NPL_input)[0][0]
+        ### --- PREDICTIONS FOR CURRENT INPUT --- ###
+        PEAK =   self.PEAK_model.predict(PEAK_input)[0][0]
 
         if "fwhm" in self.obj:
             FWHM =  self.FWHM_model.predict(total_input)[0][0]
-
         if "plqy" in self.obj:
             PLQY =  self.PLQY_model.predict(total_input)[0][0]
 
-        if "poly" in self.obj:
-            POLY =  self.POLY_model.predict(total_input)[0][0]
-        
 
+        ### --- CALCULATE THE LOSS --- ###
+        # NOTE: PLQY is subtracted here as we want to maximize it
+        #       while the other objectives are minimized
+        #       the weights for the different objectives can be adjusted in self.weights
 
-        # construct the objective function
-        # weights are fixed; note that the PLQY is subtracted!
-        output = abs(NPL[0] - self.peak) * self.weights["peak_pos"]
+        output = abs(PEAK[0] - self.peak) * self.weights["peak_pos"]
 
         if "fwhm" in self.obj:
             output += FWHM[0] * self.weights["fwhm"]
-            print(f"FWHM: {FWHM * self.weights["fwhm"]}")
+            #print(f"FWHM: {FWHM * self.weights["fwhm"]}")
 
         if "plqy" in self.obj:
             output -= PLQY[0] * self.weights["plqy"]
-            print(f"PLQY: {PLQY[0] * self.weights["plqy"]}")
+            #print(f"PLQY: {PLQY[0] * self.weights["plqy"]}")
 
-        if "poly" in self.obj:
-            output += POLY[0] * self.weights["poly"]
-            print(f"POLY: {POLY[0] * self.weights["poly"]}")
-                
-
-        if self.Cs_Pb_opt:
-            output += Cs_Pb_ratio * 20
-        
-        # print the current NPL value and ratios (for real-time feedback)
-        print(f"NPL: {NPL}, Cs_Pb: {Cs_Pb_ratio}, As_Pb: {As_Pb_ratio}, loss:{output}, FWHM: {FWHM}")
+        # print the current PEAK value and ratios (for real-time feedback)
+        print(f"PEAK: {PEAK}, Cs_Pb: {Cs_Pb_ratio}, As_Pb: {As_Pb_ratio}, loss:{output}, FWHM: {FWHM}")
 
         return output
 
@@ -333,9 +303,9 @@ class Synthesizer:
                             get_training_data(training_selection = parameter_selection, 
                                               target = target, encoding = True, 
                                               remove_baseline = (target != "peak_pos"))
+     
         if target == "peak_pos":
-            self.selection_dataframe = df
-    
+            self.selection_dataframe = df  # for plotting
         
         gp = GaussianProcess(training_data = inputs,
                             targets = targets, 
@@ -343,7 +313,7 @@ class Synthesizer:
                             )
         gp.train()
 
-        # LOO cross validation to check model performance
+        ### --- LOO cross validation to check model performance --- ###
         #gp.leave_one_out_cross_validation(inputs, targets,)
         #gp.regression_plot()
 
@@ -353,7 +323,9 @@ class Synthesizer:
 
     def get_limits(self) -> dict:
 
-        """ Defines the limits for the NPL synthesis parameters
+        """ Defines the limits for the NC synthesis parameters
+            Gneral limits are [0, 1] due to the normalization
+            however, custom limits can be set for certain parameters
 
         RETURNS
         -------
@@ -363,17 +335,17 @@ class Synthesizer:
 
         # standard limits are [0, 1] due to the normalization
         limits = {}
-        for parameter in self.total_parameters:
+        for parameter in self.synthesis_parameters:
             limits[parameter] = [0, 1]
-        
 
-        # local normalization function
+        # local normalization function using the datastructure max/min values
         Norm = lambda value, parameter_string: ((value - self.datastructure.max_min[parameter_string][1]) 
                                                 / (self.datastructure.max_min[parameter_string][0] 
                                                    - self.datastructure.max_min[parameter_string][1]))
         
 
         # if a custom limit is set, we adjust accordingly
+        # NOTE: we need to normalize the custom limits as well
         if self.V_As_max is not None:
             max_V_As = self.V_As_max
             norm_max_V_As   = Norm(max_V_As, "V (antisolvent)")
@@ -384,24 +356,13 @@ class Synthesizer:
             norm_max_V_Pb   = Norm(max_V_Pb, "V (PbBr2 prec.)")
             limits["V (PbBr2 prec.)"] = [0, norm_max_V_Pb]
 
-        if self.c_Pb_fixed is not None:
-            norm_c_Pb_fixed = Norm(self.c_Pb_fixed, "c (PbBr2)")
-            limits["c (PbBr2)"] = [norm_c_Pb_fixed, norm_c_Pb_fixed]
-
         if self.c_Cs_fixed is not None:
             norm_c_Cs_fixed = Norm(self.c_Cs_fixed, "c (Cs-OA)")
             limits["c (Cs-OA)"] = [norm_c_Cs_fixed, norm_c_Cs_fixed]
 
-        if self.c_Pb_max is not None:
-            max_c_Pb = self.c_Pb_max
-            norm_max_c_Pb   = Norm(max_c_Pb, "c (PbBr2)")
-            limits["c (PbBr2)"] = [0, norm_max_c_Pb]
-            print(f"max_c_Pb: {norm_max_c_Pb}")
-
         if self.V_Cs_fixed is not None:
             norm_V_Cs_fixed = Norm(self.V_Cs_fixed, "V (Cs-OA)")
             limits["V (Cs-OA)"] = [norm_V_Cs_fixed, norm_V_Cs_fixed]
-
 
         return limits
     
@@ -410,11 +371,10 @@ class Synthesizer:
     def get_datastructure(self) -> Datastructure:
 
         """ Initialize the datastructure for the current molecule
-
+            and read in the synthesis data
         """
         
         datastructure = Datastructure(synthesis_file_path = self.data_path,
-                                        spectral_file_path  = self.spectral_path,
                                         monodispersity_only = True,
                                         molecule = "all",
                                         P_only = True,
@@ -436,19 +396,13 @@ class Synthesizer:
 
         """ Generates and returns the results from the optimization
 
-        ARGS
-        ----
-        x (np.array):  optimal parameters
-
-        RETURNS
-        -------
-        dict:  results dictionary
-
+        NOTE: again, the calculations here are specific to the perovskite NC
+              synthesis in Henke et al. and need to be adjusted for other applications
         """
 
         results = {}
 
-        # get ratios (denormalize the parameters first)
+        # get ratios (denormalize the parameters first; beware the indices!)
         V_As = self.datastructure.denormalize(x[-5], "V (antisolvent)")
         c_Pb = self.datastructure.denormalize(x[-4], "c (PbBr2)")
         c_Cs = self.datastructure.denormalize(x[-3], "c (Cs-OA)")
@@ -459,22 +413,19 @@ class Synthesizer:
                                    / (c_Pb * V_Pb * 10000))
         results["Cs_Pb_ratio"] =  (c_Cs * V_Cs) / (c_Pb * V_Pb)
 
-
         # input
         input = np.array(self.encoding)
-        if self.ion == "CsPbBr3":
-            input  = np.append(input, results["As_Pb_ratio"])
-        input = np.append(input, results["Cs_Pb_ratio"])  
+        input  = np.append(input, results["As_Pb_ratio"])
+        input = np.append(input,  results["Cs_Pb_ratio"])  
 
-        # predictions
-        results["pred_peak"] = self.NPL_model.predict(input)[0][0]  
-
+        # predict the peak position again to check the result
+        results["pred_peak"] = self.PEAK_model.predict(input)[0][0]  
 
         # denormalize the parameters
         results["results_string"] = []
         denorm = {}
 
-        for i, parameter in enumerate(self.total_parameters):
+        for i, parameter in enumerate(self.synthesis_parameters):
             denorm[parameter] = self.datastructure.denormalize(x[i], parameter)
             results["results_string"].append(f"{parameter} :  {denorm[parameter]}")
 
@@ -489,17 +440,7 @@ class Synthesizer:
 
         Asks the user if the results should be printed to a file and
         then writes the results to a file in the output directory.
-        
-        ARGS
-        ----
-        results_string (str):  string with the optimized parameters
-        input_NPL (list):      input parameters for the NPL model
-        As_Pb_ratio (float):   As/Pb ratio
-        Cs_Pb_ratio (float):   Cs/Pb ratio
-
         """
-
-
 
         print("----------------------------------------------------")
         print(f"RESULTS: \n")
@@ -519,32 +460,27 @@ class Synthesizer:
 
                 file.write(f"\n")
                 file.write(f"------------------------------------   {str(date.today())}   ---------------------------------\n")
-                file.write(f"L-SYNTH 2.0-{np.random.randint(10000)}\n")
+                file.write(f"L-SYNTH -{np.random.randint(10000000)}\n")
                 file.write(f"THE SYNTHESIZER RECOMMENDS: \n")
                 file.write(f"\n")
                 file.write(f"When using -{self.molecule}- as an antisolvent \n")
-                file.write(f"to make {self.ion} NPLs around {self.peak}nm:\n")
+                file.write(f"to make CsPbBr3 NCs around {self.peak} nm:\n")
                 file.write(f"Choose the following synthesis parameters:\n")
                 file.write(f"{results_string}\n")
-
                 file.write(f"with the following As/Pb ratio: {As_Pb_ratio}\n")
                 file.write(f" and the following Cs/Pb ratio: {Cs_Pb_ratio}\n")
-
                 file.write(f"\n")
                 file.write(f"Predicted peak position: {peak_pos}\n")
-
                 file.write(f"\n")
                 file.write(f"DEV:\n")
 
-                # write settings
+                # write settings to file for future reference
                 file.write(f"SETTINGS:  Obj-> {self.obj}, iterations-> {self.iterations},  peak-> {self.peak}\n")
                 file.write(f"molecule-> {self.molecule},  add_baseline-> {self.add_baseline}\n")
-
                 file.write(f"\n")
                 file.write(f"THANK YOU FOR USING THE SYNTHESIZER MODULE!\n")
             
             print("done writing to file ...")
-
 
         return 0
 

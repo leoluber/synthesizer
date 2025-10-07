@@ -6,8 +6,8 @@ setup(
     packages=find_packages(exclude=['tests*']),
     license='MIT',
 
-    install_requires=['numpy', 'pandas', 'scipy', 'matplotlib', 
-                      'seaborn', 'scikit-learn', 'pubchempy', 'tqdm', 'joblib', 'GPy', 'GPyOpt'],
+    install_requires=['numpy', 'pandas', 'matplotlib', 'plotly',
+                      'GPy', 'GPyOpt'],
     
     author='Leo Luber',
     author_email= 'l.luber@campus.lmu.de',

@@ -62,7 +62,7 @@ class GaussianProcess:
                                       input_dim = self.input_dim)   
         self.model = None
 
-        # evaluation (LOO) results
+        # evaluation (LOO) results for later use
         self.loo_predictions, self.loo_uncertainty, self.loo_error \
         = None, None, None
 
@@ -100,6 +100,7 @@ class GaussianProcess:
         print("Training the model...")
 
         # if no training data or targets are provided, use the class variables
+        # NOTE: GPy requires very specific input shapes, which is why we reshape here
         if training_data is None or targets is None:
             targets = np.reshape(self.targets, (self.targets.shape[0], 1))
             training_data = np.reshape(self.training_data, 
@@ -183,7 +184,7 @@ class GaussianProcess:
 
 
         """LOO cross validation on the training data, 
-        returns the mean squared error"""
+        returns the mean/median error"""
 
         # LOO loop
         predictions, uncertainty, error = [], [], []
@@ -194,6 +195,9 @@ class GaussianProcess:
 
         if baseline_list is None:
             baseline_list = np.zeros(len(training_data))
+
+        #prepare the kernel
+        self.kernel = self.get_kernel(self.kernel_type, input_dim = X_train.shape[1])
 
         step = 0
         for i, data in enumerate(training_data):
@@ -219,9 +223,7 @@ class GaussianProcess:
             y_test  = np.reshape(targets[i], (1, 1))
 
             # select the model
-            self.kernel = self.get_kernel(self.kernel_type, input_dim = X_train.shape[1])
             model = GPy.models.GPRegression(X_train, y_train, self.kernel)
-
             model.optimize()
 
             # predict the test data
@@ -298,7 +300,7 @@ class GaussianProcess:
 # ------------------------------------------------------------------ 
 
 
-    def regression_plot(self, TRANSFER_MOLECULE = None):
+    def regression_plot(self,):
 
         """ Plots the regression results 
         """

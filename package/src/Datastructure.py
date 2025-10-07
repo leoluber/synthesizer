@@ -2,7 +2,8 @@
 """ 
     Module:         Datastructure.py
     Project:        Synthesizer: Chemistry-Aware Machine Learning for 
-                    Precision Control of Nanocrystal Growth
+                    Precision Control of Nanocrystal Growth 
+                    (Henke et al., Advanced Materials 2025)
     Description:    Class for handling the data structure and preprocessing
                     in the context of the Synthesizer project
     Author:         << github.com/leoluber >> 
@@ -38,19 +39,22 @@ class Datastructure:
     -----------------
     - all experimental data should be in "/data/raw/" and contain:
         - a .csv file with the synthesis data containing the sample numbers, molecule names, 
-          synthesis parameters and other properties
+          synthesis parameters and other properties as well as the results of optical 
+          characterization (dataset_synthesizer.csv)
         - a .csv file with the global attributes of the molecules (AntisolventProperties.csv)
         - a .json file with the molecule dictionary (molecule_dictionary.json)
         - a .json file with the molecule encodings (molecule_encoding.json)
-        - a .json file with the monolayer dictionary (ml_dictionary.json)
+
+    [blueprints for the .json files are provided in the repository, adjust as you see fit
+    NOTE: how to do this properly is discussed in self.get_dictionaries()]
 
         
     ARGS
     ----
     - synthesis_file_path (str):   path to the synthesis data file (.csv)
     - wavelength_filter (tuple):   filter for the peak position (list of two values in nm)
-    - molecule (str):              molecule to be selected ("all" or  specific molecule)
-    - add_baseline (bool):         add a baseline data to the data objects
+    - molecule (str):              molecule to be selected ("all" or specific molecule)
+    - add_baseline (bool):         add baseline data to the data objects (see publication for details)
     - monodispersity_only (bool):  exclude samples that are not monodisperse
     - P_only (bool):               exclude samples that are not P type (precipitation)
 
@@ -69,7 +73,7 @@ class Datastructure:
 
     def __init__(self,
         synthesis_file_path:   str, 
-        wavelength_filter =    [400, 800], #nm
+        wavelength_filter =    [400, 600], #nm
         molecule =             "all",
         encoding =             "geometry",
         add_baseline =         False,
@@ -81,14 +85,13 @@ class Datastructure:
         # check S/P
         if S_only and P_only:
             raise ValueError("S_only and P_only cannot be True at the same time")
-        
 
-        # main stettings
+        # main settings
         self.add_baseline      = add_baseline
         self.wavelength_filter = wavelength_filter
         self.encoding          = encoding
 
-        # selection flags
+        # selection flags (changes here need to be reflected in "self.get_training_data()")
         self.flags = {"monodispersity_only": monodispersity_only,
                       "P_only"             : P_only,
                       "S_only"             : S_only,
@@ -101,8 +104,10 @@ class Datastructure:
                                          "V (Cs-OA)","V (antisolvent)", "V (PbBr2 prec.)", 
                                          "antisolvent", "S/P", "monodispersity",]
         
-        self.parameters_to_normalize  = ["V_total", "V (Cs-OA)", "V (PbBr2 prec.)", "V (antisolvent)", "c (PbBr2)", 
-                                        "c (Cs-OA)",]
+        # parameters used for training should be normalized/rescaled to a common range 
+        # however, ratios should not be normalized (further discussed in publication)
+        self.parameters_to_normalize  = ["V_total", "V (Cs-OA)", "V (PbBr2 prec.)", 
+                                         "V (antisolvent)", "c (PbBr2)", "c (Cs-OA)",]
         ##### ----------------------------------------------------------------------- ####
 
 
@@ -110,19 +115,16 @@ class Datastructure:
         self.dataset =                  synthesis_file_path
         self.current_path =             os.getcwd()   # needs to be changed when using linux
         self.data_path_raw =            self.current_path  + "/data/raw/"
-        self.data_path_processed =      self.current_path  + "/data/processed/"
         self.synthesis_file_path =      self.data_path_raw + synthesis_file_path
-        self.processed_file_path =      self.data_path_processed + "processed_" + synthesis_file_path
+        self.processed_file_path =      "/data/processed/processed_" + synthesis_file_path
         self.global_attributes_path =   self.data_path_raw + "AntisolventProperties.csv"
         self.encoding_path=             self.data_path_raw + "molecule_encoding.json"
         self.molecule_dictionary_path = self.data_path_raw + "molecule_dictionary.json"
-        self.ml_dictionary_path =       self.data_path_raw + "ml_dictionary.json"
 
 
         # dictionaries for molecule names, geometries and atom numbers
-        self.molecule_dictionary, self.ml_dictionary, self.encoding_dictionary \
+        self.molecule_dictionary, self.encoding_dictionary \
             =  self.get_dictionaries()
-
 
         # list of all relevant molecule names
         self.molecule_names = list(self.molecule_dictionary.values())
@@ -149,13 +151,14 @@ class Datastructure:
 
     def read_synthesis_data(self):
 
-        """ Read in the synthesis data from dataframe and return as container (dict.) 
+        """ Read in the synthesis data from dataframe and write to processed_file_path
         
         The synthesis data is read in from the synthesis file and normalized.
-        The data is then stored in a dictionary container:
-        - the keys are the column names of the synthesis data file
-        - the values are the normalized data as numpy arrays
-        --> ratios are NOT normalized, use units instead to rescale them
+        The data is then stored in a standardized .csv file that can be used for
+        machine learning tasks.
+        - NOTE: baseline data can be added based on physical and chemical insights
+                (further discussed in publication)
+        --> ratios are NOT normalized, instead units are adjusted to create a range of 0-1
 
         """
 
@@ -176,6 +179,7 @@ class Datastructure:
         if self.add_baseline:
             for key in ["baseline", "artificial", ]:
                 df[key] = np.zeros(len(df["Sample No."]), dtype = bool)
+
             df = self.add_limit_baseline(df)
             df = self.add_Toluene_baseline(df)
 
@@ -244,11 +248,11 @@ class Datastructure:
         # read the processed data
         data_frame = pd.read_csv(self.processed_file_path, delimiter= ";", header= 0)
 
-        # remove the baseline data if requested
+        # remove the baseline data if requested (its added as default)
         if remove_baseline:
             data_frame = data_frame[data_frame["baseline"] == False]
 
-        # check if the keys are in the dataframe
+        # check if all relevant keys are in the dataframe
         for key in (training_selection + [target]):
             if key not in data_frame.columns:
                 raise KeyError(f"KeyError: {key} not found in synthesis data")
@@ -427,25 +431,31 @@ class Datastructure:
 
     def get_dictionaries(self) -> dict:
 
-        """ Read the molecule dictionary and ML dictionary and encoding 
-        dictionary from the json files
+        """ Read the molecule dictionary and encoding dictionary from the json files
+
+        molecule_dictionary: maps molecule names in the csv file to
+            standardized molecule names in the synthesizer framework
+            (e.g. "MeOH" --> "Methanol")
+            NOTE: if a different naming scheme is used in the synthesis data,
+            adjust the molecule_dictionary.json file in the /data/raw/ folder
+
+        encoding_dictionary: maps molecule names to geometry encodings
+            NOTE: the simplest way to implement an encoding is to change 
+            the molecule_encoding.json file in the /data/raw/ folder
+
         """
 
         try:
             with open(self.molecule_dictionary_path, "r") as file:
                 molecule_dictionary = json.load(file)
-            
-            with open(self.ml_dictionary_path, "r") as file:
-                ml_dictionary = json.load(file)
 
             with open(self.encoding_path, "r") as file:
                 encoding = json.load(file)
 
-            return molecule_dictionary, ml_dictionary, encoding
+            return molecule_dictionary, encoding
         
         except FileNotFoundError:
-            print("Could not find the molecule dictionary, " \
-            "encoding dictionary or the ML dictionary file")
+            print("Could not find the molecule dictionary or the encoding dictionary file")
             print("Please make sure the files are in the correct " \
             "path and in .json format.")
             return None

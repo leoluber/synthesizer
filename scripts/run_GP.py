@@ -1,12 +1,25 @@
-""" Runs a Gaussian Process for list-format inputs from a Datastructure object and plots the result """
-    # < github.com/leoluber/synthesizer >
+""" 
+    Module:         run_GP.py
+    Project:        Synthesizer: Chemistry-Aware Machine Learning for 
+                    Precision Control of Nanocrystal Growth 
+                    (Henke et al., Advanced Materials 2025)
+    Description:    This script uses the GaussianProcess.py module to run a GP regression
+                    on the Perovskite NC synthesis data and plot the results in 3D and 2D 
+                    contour plots
+    Author:         << github.com/leoluber >> 
+    License:        MIT
+    Year:           2025
+"""
 
 
+# -------
 import numpy as np
 import warnings
 import os
 import sys
-warnings.filterwarnings("ignore")
+# -------
+
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 
 # custom
@@ -18,15 +31,13 @@ from package.plotting.Plotter import Plotter
 
 
 """
-    Utilizes the GaussianProcess class to run a GP regression on the Perovskite NPL synthesis data
+    Utilizes the GaussianProcess class to run a GP regression on the Perovskite NC synthesis data
     and plot the results in 3D and 2D contour plots
 """
 
-# TODO: update paths and selections here if necessary
-
+# NOTE: update paths and selections here if necessary
 datastructure = Datastructure(
                             synthesis_file_path = "dataset_synthesizer.csv", 
-                            spectral_file_path  = "spectrum/", 
                             monodispersity_only = True,
                             P_only              = False,
                             S_only              = False,
@@ -37,7 +48,9 @@ datastructure = Datastructure(
 
 
 ### -------- TODO: RUN THE FOLLOWING LINES ONCE ----------- ###
-#datastructure.read_synthesis_data()
+# reads data from the synthesis_file_path and normalizes it
+# to create the processed file at data/processed/processed_data.csv
+datastructure.read_synthesis_data()
 ### ------------------------------------------------------- ###
 
 
@@ -54,15 +67,19 @@ targets = np.array([target for target in targets_])
 gp = GaussianProcess(
                     training_data = inputs,
                     targets = targets, 
+
+                    # select a kernel type ("RBF", "EXP", "LIN")
                     kernel_type = "EXP",  
                     )
 gp.train()
 
 
+# select a molecule to visualize
 TEST_MOLECULE = "Methanol"
-plotter = Plotter(datastructure.processed_file_path, encoding= datastructure.encoding, selection_dataframe= selection_dataframe)
+plotter = Plotter(datastructure.processed_file_path, selection_dataframe= selection_dataframe)
 
-### ------- TODO: specify your plotted parameters here ------- ###
-plotter.plot_data("AS_Pb_ratio", "Cs_Pb_ratio", "peak_pos", kernel= gp, molecule= TEST_MOLECULE, library="plotly", selection_dataframe= selection_dataframe)
+
+### ------- TODO: specify your plotted parameters here (x,y,z) ------- ###
+plotter.plot_data("AS_Pb_ratio", "Cs_Pb_ratio", "peak_pos", kernel= gp, molecule= TEST_MOLECULE, selection_dataframe= selection_dataframe)
 plotter.plot_2D_contour("AS_Pb_ratio", "Cs_Pb_ratio", kernel = gp, molecule= TEST_MOLECULE, selection_dataframe= selection_dataframe)
-### --------------------------------------------------------- ###
+### ------------------------------------------------------------------ ###
