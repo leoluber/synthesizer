@@ -1,31 +1,28 @@
+
 """ 
-    Project:     synthesizer
-    File:        helpers.py
-    Description: Helper functions for the synthesizer project
-    Author:      << github.com/leoluber >> 
-    License:     MIT
+    Module:         GaussianProcess.py
+    Project:        Synthesizer: Chemistry-Aware Machine Learning for 
+                    Precision Control of Nanocrystal Growth
+    Description:    Trains Gaussian Process regression models using the 
+                    GPy library and handles cross-validation
+    Author:         << github.com/leoluber >> 
+    License:        MIT
+    Year:           2025
 """
 
 
-
+#-------------------------------#
 import numpy as np
 import matplotlib.pyplot as plt
 import GPy
 from typing import Literal
+#-------------------------------#
+
 
 
 class GaussianProcess:
     
-    """ Gaussian Process Regression
-
-    A Gaussian Process model for regression tasks with the GPy library and a set of
-    helper functions for hyperparameter optimization and model evaluation
-
-    BASICS
-    ------
-    - uses GPy
-    - optimized hyperparameters
-    - can optimize the choice of input parameters
+    """ Gaussian Process Regression class using GPy library
 
     PARAMETERS
     ----------
@@ -37,14 +34,12 @@ class GaussianProcess:
 
     USAGE
     -----
-    >>> gp = GaussianProcess(training_data, targets, parameter_selection, ...)
+    >>> gp = GaussianProcess(training_data, targets, ...)
     >>> gp.leave_one_out_cross_validation(training_data, targets)
     OR:
-    >>> gp = GaussianProcess(training_data, targets, parameter_selection, ...)
+    >>> gp = GaussianProcess(training_data, targets, ...)
     >>> gp.train()
     >>> gp.predict(sample)
-
-    where sample has to be of the form ... TODO
 
     """
 
@@ -55,6 +50,7 @@ class GaussianProcess:
                  kernel_type: Literal["RBF", "EXP", "LIN",] = "EXP",
                  ):
         
+        
         # training specific
         self.training_data = training_data
         self.input_dim = self.training_data.shape[1]
@@ -62,14 +58,22 @@ class GaussianProcess:
 
         # model specific
         self.kernel_type = kernel_type
-        self.kernel = self.get_kernel(self.kernel_type, input_dim = self.input_dim)   
+        self.kernel = self.get_kernel(self.kernel_type, 
+                                      input_dim = self.input_dim)   
         self.model = None
 
         # evaluation (LOO) results
-        self.loo_predictions, self.loo_uncertainty, self.loo_error = None, None, None
+        self.loo_predictions, self.loo_uncertainty, self.loo_error \
+        = None, None, None
 
 
-### ----------------------- BASICS ------------------------- ###
+
+
+# ------------------------------------------------------------------
+#                       TRAINING & PREDICTION
+# ------------------------------------------------------------------ 
+
+
 
     def train(self,
               training_data = None, targets = None,
@@ -87,19 +91,30 @@ class GaussianProcess:
         -------
         - model: GPy.models.GPRegression object
 
+        RAISES
+        ------
+        - ValueError: if training data and targets have different lengths
+
         """
+
         print("Training the model...")
 
-        # adjust dimensions
+        # if no training data or targets are provided, use the class variables
         if training_data is None or targets is None:
             targets = np.reshape(self.targets, (self.targets.shape[0], 1))
             training_data = np.reshape(self.training_data, 
-                                       (self.training_data.shape[0], self.training_data.shape[1]))
+                                       (self.training_data.shape[0], 
+                                        self.training_data.shape[1]))
 
         else:
             targets = np.reshape(targets, (targets.shape[0], 1))
             training_data = np.reshape(training_data, 
-                                       (training_data.shape[0], training_data.shape[1]))
+                                       (training_data.shape[0], 
+                                        training_data.shape[1]))
+            
+        if len(training_data) != len(targets):
+            raise ValueError("Training data and targets must have the same length")
+
 
         # initialize the model and optimize
         model = GPy.models.GPRegression(training_data, targets, self.kernel)
@@ -139,6 +154,10 @@ class GaussianProcess:
         -------
         - kernel: GPy.kern object
 
+        RAISES
+        ------
+        - ValueError: if kernel is not supported
+
         """
 
         match kernel:
@@ -152,18 +171,24 @@ class GaussianProcess:
                 raise ValueError("Kernel not supported")
             
 
-### ------------------ CROSS VALIDATION -------------------- ###
+
+# ------------------------------------------------------------------
+#                         CROSS VALIDATION
+# ------------------------------------------------------------------ 
+
 
     def leave_one_out_cross_validation(self, training_data, targets, 
-                                       baseline_list = None, include_sample = None,) -> float:
+                                       baseline_list = None, 
+                                       include_sample = None,) -> float:
 
 
-        """LOO cross validation on the training data, returns the mean squared error"""
+        """LOO cross validation on the training data, 
+        returns the mean squared error"""
 
         # LOO loop
         predictions, uncertainty, error = [], [], []
 
-        # default values
+        # default values for baseline and include_sample
         if include_sample is None:
             include_sample = np.ones(len(training_data))
 
@@ -181,7 +206,8 @@ class GaussianProcess:
             if include_sample[i] == False:
                 continue
 
-            print("step: "+ str(step) + "  / " + str(len([inc for inc in include_sample if inc == True])))
+            print("step: "+ str(step) + "  / " \
+                  + str(len([inc for inc in include_sample if inc == True])))
 
             # Split the data into training and test data
             X_train = np.delete(training_data, i, axis=0)
@@ -207,7 +233,8 @@ class GaussianProcess:
             error.append(np.abs(mean[0][0] - y_test[0][0]))
         
 
-        self.loo_predictions, self.loo_uncertainty, self.loo_error = np.array(predictions), np.array(uncertainty), np.array(error)
+        self.loo_predictions, self.loo_uncertainty, self.loo_error \
+            = np.array(predictions), np.array(uncertainty), np.array(error)
 
         print(f"Mean squared error: {np.mean(self.loo_error)}")
         print(f"Median squared error: {np.median(self.loo_error)}")
@@ -222,6 +249,9 @@ class GaussianProcess:
 
         """
         Transfer cross validation for a specific molecule
+        where all data for that molecule is left out of the training
+        and used as test data
+
         """
 
         # training
@@ -230,7 +260,7 @@ class GaussianProcess:
         y_train = [data["y"] for data in data_objects 
                    if data["molecule_name"] != transfer_molecule]
 
-        # testing (we dont want to test against the baseline, as it is not a real molecule)
+        # testing (we dont want to test against the baseline)
         x_test = [data["encoding"] + data["total_parameters"] for data in data_objects 
                   if data["molecule_name"] == transfer_molecule and data["baseline"] == False]
         y_test = [data["y"] for data in data_objects 
@@ -239,8 +269,10 @@ class GaussianProcess:
         # reshape for GPy
         y_train = np.reshape(np.array(y_train), (np.array(y_train).shape[0], 1))
         y_test  = np.reshape(np.array(y_test), (np.array(y_test).shape[0], 1))
-        x_train = np.reshape(np.array(x_train), (np.array(x_train).shape[0], np.array(x_train).shape[1]))
-        x_test  = np.reshape(np.array(x_test), (np.array(x_test).shape[0], np.array(x_test).shape[1]))
+        x_train = np.reshape(np.array(x_train), (np.array(x_train).shape[0], 
+                                                 np.array(x_train).shape[1]))
+        x_test  = np.reshape(np.array(x_test), (np.array(x_test).shape[0], 
+                                                np.array(x_test).shape[1]))
 
         # select the kernel
         self.kernel = self.get_kernel(self.kernel_type, input_dim = x_train.shape[1])
@@ -261,7 +293,10 @@ class GaussianProcess:
         # return mean_error
 
 
-### ------------------ PLOTTING FUNCTIONS ------------------ ###
+# ------------------------------------------------------------------
+#                             PLOTTING
+# ------------------------------------------------------------------ 
+
 
     def regression_plot(self, TRANSFER_MOLECULE = None):
 
@@ -283,7 +318,6 @@ class GaussianProcess:
         # plot the identity line
         ax.plot([min(self.targets), max(self.targets)], [min(self.targets), max(self.targets)], 'k--', lw=2)
 
-
         # plot settings
         ax.xaxis.set_tick_params(direction='in', which='both', labelsize = 12)
         ax.yaxis.set_tick_params(direction='in', which='both', labelsize = 12)
@@ -299,3 +333,4 @@ class GaussianProcess:
         """ Prints the parameters of the model """
 
         print(self.model)
+

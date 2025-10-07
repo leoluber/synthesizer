@@ -25,7 +25,7 @@ from package.plotting.Plotter import Plotter
 # TODO: update paths and selections here if necessary
 
 datastructure = Datastructure(
-                            synthesis_file_path = "Perovskite_NC_synthesis_NH_240418_new.csv", 
+                            synthesis_file_path = "dataset_synthesizer.csv", 
                             spectral_file_path  = "spectrum/", 
                             monodispersity_only = True,
                             P_only              = False,
@@ -37,7 +37,7 @@ datastructure = Datastructure(
 
 
 ### -------- TODO: RUN THE FOLLOWING LINES ONCE ----------- ###
-# datastructure.read_synthesis_data()
+#datastructure.read_synthesis_data()
 ### ------------------------------------------------------- ###
 
 

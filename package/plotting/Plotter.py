@@ -1,39 +1,42 @@
+
 """ 
-    Project:     synthesizer
-    File:        Datastructure.py
-    Description: Defines the Plotter class (child class of Datastructure) 
-                 for visualizing the processed data
-    Author:      << github.com/leoluber >> 
-    License:     MIT
+    Module:         Plotter.py
+    Project:        Synthesizer: Chemistry-Aware Machine Learning for 
+                    Precision Control of Nanocrystal Growth
+    Description:    Class for plotting the processed data and trained models
+                    in the context of the Datastructure class
+    Author:         << github.com/leoluber >> 
+    License:        MIT
+    Year:           2025
 """
 
 
+# -----------------------------#
 import matplotlib.pyplot as plt
+plt.style.use('dark_background')
 import pandas as pd
 import plotly
 import numpy as np
-from matplotlib.colors import ListedColormap
 
 # custom imports
 from src.Datastructure import Datastructure
-from src.helpers import ev_to_nm, nm_to_ev
+# -----------------------------#
 
-# darkmode
-plt.style.use('dark_background')
 
 
 
 class Plotter(Datastructure):
 
-    """ General purpose class for plotting the processed data in various ways
+    """ General purpose class for plotting the processed data
     
         --> Inherits from Datastructure
+        --> Can be used to plot the data and trained models
     """
 
 
     def __init__(self,
                  processed_file_path,
-                 encoding = "combined",
+                 encoding = "geometry",
                  selection_dataframe = None,
                  ):
 
@@ -44,8 +47,8 @@ class Plotter(Datastructure):
         else:
             self.data_frame = pd.read_csv(processed_file_path, header=0, sep=";")
 
-
         self.encoding = encoding
+
 
         # paths to the data
         self.data_path_raw =            "data/raw/"
@@ -53,10 +56,10 @@ class Plotter(Datastructure):
         self.molecule_dictionary_path = self.data_path_raw + "molecule_dictionary.json"
         self.ml_dictionary_path =       self.data_path_raw + "ml_dictionary.json"
         self.global_attributes_path =   self.data_path_raw + "AntisolventProperties.csv"
-        self.geometry_path =            self.data_path_raw + "molecule_geometry.json"
 
         # get encodings
-        self.molecule_dictionary, self.ml_dictionary, self.encoding_dictionary = self.get_dictionaries()
+        self.molecule_dictionary, self.ml_dictionary, self.encoding_dictionary \
+            = self.get_dictionaries()
 
         # molecule attributes
         self.global_attributes_df =  pd.read_csv(self.global_attributes_path, 
@@ -76,14 +79,20 @@ class Plotter(Datastructure):
 
 
 
-### ---------------------------- INIT RELATED ---------------------------- ###
+# ------------------------------------------------------------------
+#                             KERNEL EVALUATION
+# ------------------------------------------------------------------ 
 
     def evaluate_kernel(self, kernel, molecule) -> dict:
 
-        """ Evaluates the kernel on a grid for visualization purposes
+        """ Evaluates the GP kernel on a grid for visualization purposes
+
+        RETURNS
+        -------
+        dict with Z (predicted values), err (uncertainty), X, Y (meshgrid), x_vec, y_vec (1D arrays)
         """
 
-        # set the grid (and define bounds of parameter space)
+        # set the grid (and define bounds of viz. parameter space)
         y_vec = np.linspace(0, 1, 100)
         x_vec = np.linspace(0, 1, 100)
         X, Y  = np.meshgrid(x_vec, y_vec)
@@ -99,10 +108,14 @@ class Plotter(Datastructure):
         predict = kernel.model.predict(input_)
         Z = predict[0].reshape(X.shape)
         err = predict[1].reshape(X.shape)
+
         return {"Z": Z, "err": err, "X": X, "Y": Y, "x_vec": x_vec, "y_vec": y_vec}
 
 
-### ------------------------------ PLOTTING ------------------------------ ###
+
+# ------------------------------------------------------------------
+#                                PLOTTING
+# ------------------------------------------------------------------ 
 
 
     def plot_data(self,
@@ -181,9 +194,8 @@ class Plotter(Datastructure):
 
         fig.show()
         
-
-
         return fig
+
 
     def plot_2D_contour(self, var1, var2, target = "peak_pos",
                             kernel = None, molecule = None,
@@ -206,12 +218,10 @@ class Plotter(Datastructure):
         # get the data 
         x = df[var1]
         y = df[var2]
-        peak_pos = df[target]
-
+        targets = df[target]
 
         # a contour plot of the kernel
         fig, ax = plt.subplots(figsize=(6, 4.5))
-
 
         # evaluate the kernel on the grid
         if kernel is not None:
@@ -224,10 +234,6 @@ class Plotter(Datastructure):
             # add black lines for the contour
             ax.contour(X, Y, Z, 30, colors='black', linewidths=0.5, zorder = 2)
 
-            # save the data to a csv
-            # df_Z = pd.DataFrame(data = Z, index = x_vec, columns = y_vec)
-            # df_Z.to_csv(f"model_{molecule}_contour_data.csv")
-
             # colorbar with text size 12
             cbar = fig.colorbar(c, ax=ax, label = "PEAK POS",)
             cbar.ax.tick_params(labelsize=12,)
@@ -235,13 +241,11 @@ class Plotter(Datastructure):
 
 
         # plot the data
-        ax.scatter(x, y, c = peak_pos,  vmin = 400, vmax = 600, s = 80,
+        ax.scatter(x, y, c = targets,  vmin = 400, vmax = 600, s = 80,
                     cmap = "gist_rainbow_r",
                     edgecolors='black', zorder = 3)
     
-        
         # layout
-        # ticks inside, label size 12
         ax.xaxis.set_tick_params(direction='in', which='both', labelsize = 12, top=True, bottom=True,)
         ax.yaxis.set_tick_params(direction='in', which='both', labelsize = 12, right=True, left=True,)
 
@@ -250,12 +254,15 @@ class Plotter(Datastructure):
         ax.set_xlim(0., 1.)
 
         # set labels
-        ax.set_xlabel("AS/Pb ratio (10^4)", fontsize = 12)
-        ax.set_ylabel("Cs/Pb ratio", fontsize = 12)
+        if var1 in self.labels_dict.keys():
+            ax.set_xlabel(self.labels_dict[var1], fontsize = 12)
+        else:
+            ax.set_xlabel(var1, fontsize = 12)
+        if var2 in self.labels_dict.keys():
+            ax.set_ylabel(self.labels_dict[var2], fontsize = 12)
+        else:
+            ax.set_ylabel(var2, fontsize = 12)
         ax.set_title(f"{molecule}", fontsize = 14)
-
-        # plot as svg
-        #plt.savefig(f"Contour_{molecule}.svg")
 
         plt.show()
 
@@ -277,33 +284,15 @@ class Plotter(Datastructure):
         #df = df[df["S/P"] == "P"]
         df = df[df["monodispersity"] == True]
 
-        # remove everything with y=0
-        df = df[df[var2] != 0]
-
         # get the data
         x = df[var1]
-        y = df[var2]#*100 #1000
+        y = df[var2]
         color = df[color_var]
         sample_no = df["Sample No."]    
-
-        peak_pos_eV = df["peak_pos_eV"]
-        #suggestion = df["suggestion"]
-        #suggestion = [1 if "L-" in str(s) else 0 for s in suggestion]
-        LL = [1 if "LL" in str(s) else 0 for s in sample_no]
-        #if color_var == "suggestion":
-        #    color = suggestion
-
-        # set color to black if the sample is LL
-        #color = [0 if l == 1 else c for l, c in zip(LL, color)]
-
-
 
 
         """ basic scatter plot """
         fig, ax = plt.subplots(figsize = (4, 4))
-        #fig, ax = plt.subplots(figsize = (6, 4))
-        #fig, ax = plt.subplots(figsize = (10, 5.5))
-        #fig, ax = plt.subplots(figsize = (4, 3))
 
         # custom color map# Choose original colormap
         original_cmap = plt.get_cmap('vanimo')
@@ -313,50 +302,23 @@ class Plotter(Datastructure):
         original_colors = original_cmap(np.linspace(0, 1, n_colors))
         half = n_colors // 2
         modified_colors = np.copy(original_colors)
-        modified_colors[half:] = [0, 0, 0, 1]  # RGBA for black
-        custom_cmap = ListedColormap(modified_colors)
-
-        # cbar = plt.colorbar(ax.scatter(x, y,
-        #                                 c = color, cmap= "bwr", alpha = 1, s = 70,vmin = 0, vmax = 1)) #vmin = 0, vmax = 0.3)) # vmin = nm_to_ev(400), vmax = nm_to_ev(600)))
+        modified_colors[half:] = [0, 0, 0, 1]
 
         cmap = plt.get_cmap('gist_rainbow')
         cmap.set_under('k')
-        cbar = plt.colorbar(ax.scatter(x, y, c = color, cmap= cmap, alpha = 1, s = 70, vmin = nm_to_ev(400), vmax = nm_to_ev(600)))
+        cbar = plt.colorbar(ax.scatter(x, y, c = color, cmap= cmap, alpha = 1, s = 70, vmin = self.nm_to_ev(400), vmax = self.nm_to_ev(600)))
+
         # hide the colorbar
         cbar.remove()
         
         # label the points with the sample number
         # for i, txt in enumerate(sample_no):
         #     ax.annotate(txt, (np.array(x)[i]+0.001, np.array(y)[i]), fontsize = 8, color = "black")
-
         
         # settings
         ax.xaxis.set_tick_params(direction='in', which='both', labelsize = 12, top=True, bottom=True,) # labeltop=True, labelbottom=False)
         ax.yaxis.set_tick_params(direction='in', which='both', labelsize = 12, right=True, left=True, ) # labelleft=True, labelright=False)
 
-        # set axis range
-        # ax.set_ylim(-0.05, 1.05)
-        # ax.set_xlim(-0.05, 1.05)
-
-        # axis limits
-        #ax.set_xlim(2.45, 2.65)
-
-        # reverse x axis
-        #ax.invert_xaxis()
-
-
-        """ plot lines at ml boundaries """
-        for ml in self.ml_dictionary.keys():
-            peak_range = self.ml_dictionary[ml]
-            peak_range = [ev_to_nm(peak_range[0]), ev_to_nm(peak_range[1])]
-            #ax.axvline(x = peak_range[0], color = "black", linestyle = "dashed", linewidth = 1)
-            #ax.axvline(x = peak_range[1], color = "black", linestyle = "dashed", linewidth = 1)
-
-            #ax.axhline(y = peak_range[0], color = "black", linestyle = "dashed", linewidth = 1, alpha = 0.3)
-            #ax.axhline(y = peak_range[1], color = "gray", linestyle = "dashed", linewidth = 1, alpha = 0.3)
-
-            # fill between the lines
-            #ax.fill_between([-0.05, 0.4], peak_range[0], peak_range[1], color = "gray", alpha = 0.1)
 
         # plot horizontal line at 0.07
         if var2 == "fwhm":
@@ -372,46 +334,29 @@ class Plotter(Datastructure):
         else:
             ax.set_ylabel(var2, fontsize = 12)
         
-        #plt.show()
-
-
-        """plot surface proportions"""
-        # plt.tight_layout()
-        # x = np.linspace(min(peak_pos_eV), max(peak_pos_eV), 300)
-        # prop = [surface_proportion(x, "EV")*100 for x in x]
-        # plt.plot(x, prop, "--", color = "black")
 
         plt.tight_layout()
         plt.show()
-        #plt.savefig(f"data/{molecule_name}_As_Pb_peak_pos.png")
-
-        # save the plot as svg
-        #plt.savefig(f"plots/{var1}_{var2}.svg")
-
-        # save data to csv
-        #df = df[[var1, var2, "Sample No.", "molecule_name"]]
-        #df.to_csv(f"plots/{var1}_{var2}.csv", mode='a', header=True, index=True)
 
         return fig, ax
 
 
-    def plot_correlation(self, selection_dataframe = None) -> None:
+    def plot_correlation(self, selection_dataframe = None,
+                         properties = ["peak_pos", "V_total", "n_Cs", "n_As", 
+                                       "n_Pb", "Cs_Pb_ratio", "AS_Pb_ratio", 
+                                       "AS_Cs_ratio", ]) -> None:
 
         """
-            Plots the correlation matrix of the data 
-            together with the target values
+            Plots the correlation matrix of the data
+            for a selection of parameters
         """
 
         if selection_dataframe is not None:
             df = selection_dataframe
         else:
             df = self.data_frame
-
-        # properties = ["Cs_Pb_ratio", "t_Rkt", "V (Cs-OA)","peak_pos", "fwhm", "polydispersity", "Pb/I", 
-        #               "Centrifugation time [min]", "Centrifugation speed [rpm]", "c (Cs-OA)",]
-        properties = ["peak_pos", "V_total", "n_Cs", "n_As", "n_Pb", "Cs_Pb_ratio", "AS_Pb_ratio", "AS_Cs_ratio", ] #"relative polarity (-)","dielectric constant (-)","dipole moment (D)","Hansen parameter hydrogen bonding (MPa)1/2","Gutman donor number (kcal/mol)"]
+        
         df = df[properties]
-
 
         # plot the correlation matrix
         corr = df.corr()
@@ -421,13 +366,11 @@ class Plotter(Datastructure):
         # save correlation matrix as csv
         corr.to_csv("plots/S_correlation_matrix.csv")
 
-
         # write the values in the matrix
         for i in range(len(properties)):
             for j in range(len(properties)):
                 text = ax.text(j, i, round(corr.iloc[i, j], 2),
                                 ha="center", va="center", color="black")
-
 
         # mark the peak_pos with a black border along the row
         for i in range(len(properties)):
@@ -435,13 +378,29 @@ class Plotter(Datastructure):
                 ax.axhline(i+0.5, color = "black", linewidth = 2)
                 ax.axhline(i-0.5, color = "black", linewidth = 2)
 
-
         ax.set_xticks(np.arange(len(properties)))
         ax.set_yticks(np.arange(len(properties)))
         ax.set_xticklabels(properties, rotation = 45)
         ax.set_yticklabels(properties)
 
-
         plt.colorbar(im)
         plt.show()
+
+
+# ------------------------------------------------------------------
+#                       TRAINING & PREDICTION
+# ------------------------------------------------------------------ 
+            
+    def nm_to_ev(self, nm) -> float:
+
+        """ Convert nm to eV """
+
+        return 1239.840/nm
+
+
+    def ev_to_nm(self, eV) -> float:
+        
+        """ Convert eV to nm """
+
+        return 1239.840/eV
 

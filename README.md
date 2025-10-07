@@ -49,9 +49,9 @@ After installation, some setup steps are required to adapt the Synthesizer to yo
 
 ### Setup Datastructure
 
-A table of synthesis parameters (in the format of "data\raw\Perovskite_NC_synthesis_NH_240418_new.csv") needs to be provided together with the corresponding spectral files (.csv or .txt format) in "data\raw\spectrum" named as "Sample No.". The dictionaries/tables at "data\raw\AntisolventProperties.csv", "data\raw\ml_dictionary.json", "data\raw\molecule_encoding.json" and "data\raw\molecule_dictionary.json" need to be updated as well.
+A table of synthesis parameters (in the format of "data\raw\Perovskite_NC_synthesis_NH_240418_new.csv") needs to be provided. The dictionaries/tables at "data\raw\AntisolventProperties.csv", "data\raw\ml_dictionary.json", "data\raw\molecule_encoding.json" and "data\raw\molecule_dictionary.json" might need to be updated.
 
-Additionally, it is required to specify custom properties both in Datastructure.__init__ and Datastructure.calculate_properties
+Additionally, any potential custom properties need to be added both in Datastructure.__init__ and Datastructure.calculate_properties.
 
 
 ### Train a Model
@@ -61,7 +61,7 @@ The Gaussian Process pipline as well as the plotting functionality can be tested
 
 ### Synthesizer Optimization
 
-Run the file
+Set targets and general requirements in the run_Synthesizer.py file and run the file!
 
 ```bash
 run_Synthesizer.py
@@ -76,14 +76,19 @@ synthesizer/
 │   │── __init__.py             # Package initialization
 │   │── src/
 |      |── Datastructure.py 
-|      |── Preprocessor.py
 |      |── GaussianProcess.py
-|      |── helpers.py
 |      |── Synthesizer.py
-|   
 │
+│── plotting/                   
+|   |── Plotter.py              # handles all visualization
+|   
 │── scripts/                    # Example scripts
-|   |── run_Synthesizer.py
+|   |── run_Synthesizer.py      # optimize NCs
+|   |── run_GP.py               # testing setup and plotting models
+│
+│── output/   
+|   |── suggestions.txt         # contains the resulting synthesis suggestions                
+│
 │── README.md                   # Documentation
 │── setup.py                    # setup file
 │── LICENSE.txt                 # License file

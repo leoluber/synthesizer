@@ -244,7 +244,7 @@ class Synthesizer:
         c_Pb = self.datastructure.denormalize(c_Pb_norm, "c (PbBr2)") 
         c_Cs_norm = self.datastructure.denormalize(c_Cs_norm, "c (Cs-OA)")
 
-        As_Pb_ratio = V_As *self.datastructure.densities[self.molecule] / (c_Pb * V_Pb * 10000) 
+        As_Pb_ratio = V_As *self.datastructure.concentrations[self.molecule] / (c_Pb * V_Pb * 10000) 
         Cs_Pb_ratio = (c_Cs_norm * V_Cs) / (c_Pb * V_Pb)
 
 
@@ -455,7 +455,7 @@ class Synthesizer:
         V_Pb = self.datastructure.denormalize(x[-2], "V (PbBr2 prec.)")
         V_Cs = self.datastructure.denormalize(x[-1], "V (Cs-OA)")
 
-        results["As_Pb_ratio"] =  (V_As  * self.datastructure.densities[self.molecule] 
+        results["As_Pb_ratio"] =  (V_As  * self.datastructure.concentrations[self.molecule] 
                                    / (c_Pb * V_Pb * 10000))
         results["Cs_Pb_ratio"] =  (c_Cs * V_Cs) / (c_Pb * V_Pb)
 
