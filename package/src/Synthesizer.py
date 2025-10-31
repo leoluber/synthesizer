@@ -12,6 +12,7 @@
 
 
 # ------------------------
+from turtle import pos
 import numpy as np
 from datetime import date
 import sys
@@ -245,11 +246,11 @@ class Synthesizer:
         # construct the PEAK input by adding the ratios
         base_input  = np.append(input, As_Pb_ratio)
         PEAK_input = np.append(base_input, Cs_Pb_ratio)    
-        print(f"PEAK input: {PEAK_input}")
+        #print(f"PEAK input: {PEAK_input}")
 
         # construct the input for all other models
         total_input = np.append(PEAK_input, x[0])
-        print(f"total input: {total_input}")
+        #print(f"total input: {total_input}")
 
         ### --- PREDICTIONS FOR CURRENT INPUT --- ###
         PEAK =   self.PEAK_model.predict(PEAK_input)[0][0]
@@ -425,8 +426,10 @@ class Synthesizer:
         results["results_string"] = []
         denorm = {}
 
+
         for i, parameter in enumerate(self.synthesis_parameters):
             denorm[parameter] = self.datastructure.denormalize(x[i], parameter)
+            denorm[parameter] = round(denorm[parameter], 3)
             results["results_string"].append(f"{parameter} :  {denorm[parameter]}")
 
         return results
@@ -436,11 +439,17 @@ class Synthesizer:
     def print_results(self, results_string, peak_pos,
                       As_Pb_ratio, Cs_Pb_ratio):
         
+        
         """ Print the resulting suggestion to a file 
 
         Asks the user if the results should be printed to a file and
         then writes the results to a file in the output directory.
         """
+
+        # round results for better readability
+        peak_pos = round(peak_pos[0], 0)
+        As_Pb_ratio = round(As_Pb_ratio, 2)
+        Cs_Pb_ratio = round(Cs_Pb_ratio, 2)
 
         print("----------------------------------------------------")
         print(f"RESULTS: \n")
@@ -450,7 +459,7 @@ class Synthesizer:
         print(f"Cs_Pb_ratio (old): {Cs_Pb_ratio}")
         print("----------------------------------------------------")
 
-        print("Do you want to print the results? (y/n)")
+        print("Do you want to save the results? (y/n)")
         if input() == "y":
 
             print("writing to file ...")

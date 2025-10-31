@@ -2,7 +2,7 @@
 # Synthesizer
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Python](https://img.shields.io/badge/python-3.12%2B-brightgreen)
+![Python](https://img.shields.io/badge/python-3.10%2B-brightgreen)
 
 
 ## Overview

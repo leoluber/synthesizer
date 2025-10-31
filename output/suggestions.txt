@@ -1,19 +1,19 @@
 
-------------------------------------   2025-10-07   ---------------------------------
-L-SYNTH 2.0-6071
+------------------------------------   2025-10-31   ---------------------------------
+L-SYNTH -1381167
 THE SYNTHESIZER RECOMMENDS: 
 
 When using -Methanol- as an antisolvent 
-to make CsPbBr3 NCs around 500nm:
+to make CsPbBr3 NCs around 500 nm:
 Choose the following synthesis parameters:
-['V (antisolvent) :  3076.337568261991', 'c (PbBr2) :  0.011537942283157087', 'c (Cs-OA) :  0.02', 'V (PbBr2 prec.) :  1648.6131986513492', 'V (Cs-OA) :  100.0']
-with the following As/Pb ratio: 0.3988227527993661
- and the following Cs/Pb ratio: 0.10514360445176459
+['V (antisolvent) :  5000.0', 'c (PbBr2) :  0.041', 'c (Cs-OA) :  0.02', 'V (PbBr2 prec.) :  660.991', 'V (Cs-OA) :  100.0']
+with the following As/Pb ratio: 0.45
+ and the following Cs/Pb ratio: 0.07
 
-Predicted peak position: [501.25454696]
+Predicted peak position: 500.0
 
 DEV:
-SETTINGS:  Obj-> ['peak_pos', 'fwhm'], iterations-> 10,  peak-> 500
+SETTINGS:  Obj-> ['peak_pos', 'fwhm'], iterations-> 100,  peak-> 500
 molecule-> Methanol,  add_baseline-> True
 
 THANK YOU FOR USING THE SYNTHESIZER MODULE!

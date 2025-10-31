@@ -116,7 +116,7 @@ class Datastructure:
         self.current_path =             os.getcwd()   # needs to be changed when using linux
         self.data_path_raw =            self.current_path  + "/data/raw/"
         self.synthesis_file_path =      self.data_path_raw + synthesis_file_path
-        self.processed_file_path =      "/data/processed/processed_" + synthesis_file_path
+        self.processed_file_path =      self.current_path  + "/data/processed/processed_" + synthesis_file_path
         self.global_attributes_path =   self.data_path_raw + "AntisolventProperties.csv"
         self.encoding_path=             self.data_path_raw + "molecule_encoding.json"
         self.molecule_dictionary_path = self.data_path_raw + "molecule_dictionary.json"
