@@ -33,7 +33,7 @@ Since this package is not available via `pip`, you need to clone it manually:
 
 ```bash
 git clone https://github.com/leoluber/synthesizer
-cd my_package
+cd synthesizer
 ```
 
 ### 2️⃣ Install Dependencies
