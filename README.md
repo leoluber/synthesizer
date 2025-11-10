@@ -25,30 +25,9 @@ Control of Nanocrystal Growth". (Advanced Materials, 2025)
 - 📌 Can be used with the provided dataset or applied to your own!
 
 
-
-## Installation
-
-### 1️⃣ Clone the Repository
-Since this package is not available via `pip`, you need to clone it manually:
-
-```bash
-git clone https://github.com/leoluber/synthesizer
-cd synthesizer
-```
-
-### 2️⃣ Install Dependencies
-
-Ensure you have Python **3.10+** installed, then install the required dependencies:
-
-```bash
-python setup.py install
-```
-
-
 ## Usage
 
-After installation, some setup steps are required to adapt the **Synthesizer** to your project.
-
+Some setup steps are required to adapt the **Synthesizer** to your project.
 
 ### Setup Datastructure
 
