@@ -90,6 +90,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Contact
 
 For any questions, reach out to:
-📧 **Leo Luber** - l.luber@campus.lmu.de
 🌐 [GitHub Profile](https://github.com/leoluber)
 
