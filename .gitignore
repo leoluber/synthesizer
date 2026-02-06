@@ -1,0 +1,33 @@
+# --- Python Basics ---
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# --- Distribution / Packaging ---
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+
+# --- Virtual Environments (CRITICAL) ---
+# You must ignore these because they contain thousands of binaries specific to your OS.
+# uv creates '.venv' by default.
+.venv/
+venv/
+env/
+ENV/
+
+# --- IDE & OS Files ---
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# --- UV & Dependency Management ---
+# Do NOT ignore 'uv.lock' or 'pyproject.toml'.
+# Do NOT ignore '.python-version'.

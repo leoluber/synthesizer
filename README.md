@@ -25,6 +25,41 @@ Control of Nanocrystal Growth". (Advanced Materials, 2025)
 - 📌 Can be used with the provided dataset or applied to your own!
 
 
+## Quick Start 🚀
+This tool requires specific legacy versions of Python and NumPy. We use **[uv](https://docs.astral.sh/uv/)** to manage this environment automatically, ensuring it runs on any machine without conflicts.
+
+### 1. Install `uv`
+If you don't have it installed, get it with a single command:
+
+**macOS / Linux:**
+```bash
+curl -lsSf [https://astral.sh/uv/install.sh](https://astral.sh/uv/install.sh) | sh
+```
+
+**Windows:**
+```powershell
+winget install astral-sh.uv
+# or
+powershell -c "irm [https://astral.sh/uv/install.ps1](https://astral.sh/uv/install.ps1) | iex"
+```
+
+### 2. Setup
+
+Run this command in the project folder. It will automatically download the correct Python version and install all dependencies in an isolated virtual environment.
+```shell
+uv sync
+```
+
+### 3. Running 
+
+You can run the tool directly using uv run. This ensures the script uses the correct isolated environment.
+```shell
+uv run scripts/run_Synthesizer.py
+# or
+uv run scripts/run_GP.py
+```
+
+
 ## Usage
 
 Some setup steps are required to adapt the **Synthesizer** to your project.
@@ -49,11 +84,6 @@ The Gaussian Process pipline as well as the plotting functionality can be tested
 
 Set targets and general requirements in the run_Synthesizer.py file and run the file!
 
-```bash
-run_Synthesizer.py
-```
-
-
 ## Project Structure
 
 ```
@@ -76,12 +106,8 @@ synthesizer/
 |   |── suggestions.txt         # contains the resulting synthesis suggestions                
 │
 │── README.md                   # Documentation
-│── setup.py                    # setup file
 │── LICENSE.txt                 # License file
 ```
-
-
-
 
 ## License
 
