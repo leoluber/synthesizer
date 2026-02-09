@@ -1,0 +1,26 @@
+[project]
+name = "synthesizer"
+version = "0.1.1"
+description = "An optimizer for perovskite nanocrystal synthesis"
+readme = "README.md"
+requires-python = "==3.10.*"
+license = { text = "MIT" }
+keywords = ["perovskite", "nanocrystals", "synthesis", "optimization"]
+
+dependencies = [
+    "numpy==1.23.5",
+    "gpy>=1.13.1",
+    "gpyopt>=1.2.6",
+    "matplotlib>=3.5.0",
+    "pandas>=2.0.0",
+    "plotly>=5.0.0",
+    "scipy>=1.10.0",
+	"setuptools>=80.10.2",
+]
+
+[[project.authors]]
+name = "Leo Luber"
+email = "l.luber@campus.lmu.de"
+
+[project.urls]
+Repository = "https://github.com/leoluber/synthesizer"
